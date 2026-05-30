@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Rounded square background -->
+  <rect width="512" height="512" rx="96" ry="96" fill="#3457F0"/>
+  <!-- Shield path (scaled from 24px to ~280px centered at 256,256) -->
+  <!-- Original: M12 3 19 6v5.5c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9V6Z -->
+  <!-- Scale factor: 280/24 ≈ 11.667, offset so center of 24-box (12,12) maps to (256,256) -->
+  <!-- transform: scale(11.667) translate(-12+256/11.667, -12+256/11.667) = translate(9.94,9.94) then scale -->
+  <g transform="translate(256,256) scale(11.667) translate(-12,-12)">
+    <path d="M12 3 19 6v5.5c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9V6Z" fill="none" stroke="white" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M9 12l2 2 4-4" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>
