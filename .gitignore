@@ -1,0 +1,17 @@
+# deps / build
+node_modules/
+.next/
+out/
+dist/
+# env
+.env
+.env*.local
+# supabase
+supabase/.branches
+supabase/.temp
+# test artifacts
+test-results/
+playwright-report/
+coverage/
+# os / editor
+.DS_Store
