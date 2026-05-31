@@ -1,29 +1,74 @@
-# Scheduling Engine
+# Scheduling Engine (Phase 4 spec)
 
 Pure TypeScript in `src/lib/scheduling/` (no I/O → fully unit-testable). Seeded from
-`DesignTemplate/data.jsx` (`generateSchedule`) and extended. Built in Phase 4 (TDD).
+`DesignTemplate/data.jsx` (`generateSchedule`) and extended to the full ruleset below. Build with **TDD**
+and an exhaustive test matrix — the calculation must be flawless across every case.
 
-## Inputs / outputs
-Input: employees (roles, min shifts, observes_shabbat/holidays, must_accept), requests (per-day off /
-preferred shifts / vacation ranges), shift_requirements, holidays, settings (min_rest_hours,
-allow_12h_fallback). Output: `{ grid, assignments, warnings, coverage, stats }`.
+## Inputs
+- Employees, each with: roles (multi), `employment_type` (full | part | student), `min_shifts_per_week`,
+  `max_shifts_per_week`, `observes_shabbat`, `observes_holidays`, `must_accept`, and a **recurring
+  availability profile** (per day-of-week → which shifts they can work — see below).
+- Weekly `requests` (per day: off / preferred shift ids) + `employee_vacations` (date ranges).
+- `shift_requirements` (per day-of-week × shift × role → count), `shift_types` (8h base + 12h fallback),
+  `holidays`, settings (`min_rest_hours`=8, `ideal_rest_hours`=16, `allow_12h_fallback`).
 
-## Hard constraints (must hold)
-1. Role match — employee must hold the required role.
-2. Day-off / vacation range / `off` request → not assignable.
-3. **Shabbat** (observer): blocked Fri **צהריים+לילה** and Sat **בוקר+צהריים**; Sat **לילה (23:00) allowed**.
-4. **Holiday** (observer): same pattern around each `holidays` date (ערב חג noon+night, יום החג morning+noon,
-   plus all holiday days).
-5. Minimum rest between shifts = `min_rest_hours` (default 8). Use absolute-hour math
-   (`day*24 + start`, `+ hours`) as in `DesignTemplate/data.jsx`.
-6. One shift per employee per day.
+## Employment type → shift counts
+- **full-time:** min 5 shifts/week (default). **part-time:** flexible min/max. **student:** max 3.
+- `employment_type` sets sensible default min/max, but explicit `min_shifts_per_week`/`max_shifts_per_week`
+  override. Engine never assigns more than max, and tries to reach min.
 
-## Soft preferences (scored, sorted)
-Requested shift (high weight) → `must_accept` priority (off-day is hard) → under `min_shifts` →
-fairness (fewer shifts so far / hour balance) → 16h-rest ideal bonus for guards.
+## Recurring availability profile (NEW — hard constraint)
+Some guards can only work certain shifts on certain day-types. Example: weekdays → nights only;
+Fri/Sat → night, noon, or morning. Model per-employee availability as (employee × day_of_week × shift)
+"allowed" flags. If a profile exists for an employee, they are assignable on a given day ONLY to shifts
+marked allowed for that day_of_week. (No profile ⇒ available to all, subject to the other rules.)
+Data model addition (Phase 4 migration): `employee_availability(employee_id, day_of_week, shift_key/shift_type_id, allowed)` plus `employees.employment_type` + `employees.max_shifts_per_week`.
 
-## Algorithm
-Two passes: (1) fill only from employees who requested the slot; (2) relax to any eligible. Remaining gaps →
-propose **12h fallback** variants (07–19 / 19–07 / 03–15 / 15–03) **only** if `allow_12h_fallback`, flagged for
-manager approval. Manual edits (Phase 5) re-validate via `validateAssignment()`; applying a 12h shift blocks
-the overlapping adjacent slot and recomputes coverage/rest.
+## Hard constraints (must always hold)
+1. Role match — employee holds the required role.
+2. Off request / vacation range / not-available-this-day → not assignable.
+3. **Recurring availability** — only shifts allowed by the employee's profile for that day-of-week.
+4. **Shabbat** (observer): blocked Fri צהריים+לילה and Sat בוקר+צהריים; Sat לילה (23:00) allowed.
+5. **Holiday** (observer): same pattern around each `holidays` date (+ all holiday days).
+6. Minimum rest between shifts = `min_rest_hours` (default 8). Absolute-hour math (`day*24 + start`, `+hours`).
+7. One shift per employee per day.
+8. Never exceed `max_shifts_per_week`.
+
+## Soft objectives (in priority order)
+1. **Honor requests**, but guarantee **≥2 requests per employee** when possible; if even that is impossible,
+   guarantee **≥1**. (Per-employee request-satisfaction floor.)
+2. **`must_accept`** employees — their requests are honored with top priority (an off-day request is hard).
+3. **Employment-type priority:** fill **full-time** employees' shifts FIRST, then part-time, then students.
+4. Reach each employee's **min shifts**.
+5. **Fairness via lottery:** when more employees request the same shift than there are slots, pick winners by
+   **random draw** (seeded/deterministic-per-run for reproducibility & testing); losers' request goes unfilled.
+   Track and balance unpopular shifts (nights/weekends) over time.
+6. Ideal **16h rest** for guards — a scoring bonus, not a hard cap.
+
+## 12h fallback policy
+Base shifts are 8h (morning/noon/night). When the 8h grid cannot be fully staffed within the hard
+constraints AND `allow_12h_fallback`, propose 12h variants (07–19 / 19–07 / 03–15 / 15–03) only where
+needed, flagged for manager approval. A 12h assignment occupies two adjacent 8h windows and updates
+rest/coverage accordingly.
+
+## Feasibility pre-check (NEW — feature)
+Before/at scheduling time, compute and surface: **"are there enough available employees this week to cover
+all required slots with regular 8h shifts, or are 12h shifts needed?"** Output a clear status per the week
+(e.g. OK / short by N / 12h required for X slots), so the manager knows up front. Pure function over the
+same inputs; drives a UI banner.
+
+## Algorithm (sketch)
+Two passes (requested-first, then any-eligible) over days×shifts×roles, honoring all hard constraints; apply
+the soft objectives via candidate scoring + lottery tie-breaks; enforce the ≥2 (else ≥1) request floor and
+full-time-first ordering; finally propose 12h fallbacks for residual gaps. Returns
+`{ grid, assignments, warnings, coverage, stats, feasibility }`. Manual edits (Phase 5) re-validate via
+`validateAssignment()`; applying a 12h shift blocks the overlapping adjacent slot and recomputes.
+
+## Exhaustive test matrix (TDD — must all pass)
+Cover at minimum: all-8h fully staffed; understaffed → 12h needed; **12h across the whole week**; **half-week
+12h**; a few isolated single shifts; Shabbat/holiday observer boundaries (incl. Sat-night allowed, holiday
+eve/exit); 8h-rest violations rejected; recurring-availability (weekday-nights-only guard, weekend-flex
+guard); must_accept honored; vacation ranges excluded; lottery fairness with N>slots requesters
+(deterministic seed → assert winners); ≥2-requests floor (and the ≥1 fallback when 2 impossible);
+min/max per employment type; full-time-before-part-time ordering; max-shifts never exceeded; feasibility
+pre-check correctness (OK vs short vs 12h-required). Build hand-computed fixtures and assert exact output.

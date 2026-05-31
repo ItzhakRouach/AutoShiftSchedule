@@ -146,14 +146,27 @@ Pure-TS constraint engine. **Write tests first.** Port + extend `generateSchedul
 4. **12h fallback**: when a slot is unstaffable under 8h shifts, propose a 12h variant (only if `allow_12h_fallback`), flagged for manager approval.
 5. **Holiday source**: `lib/holidays/israel.ts` using `@hebcal/core` → dates + eve/exit; manager-editable overrides table `holidays`.
 
+**Expanded ruleset (user-specified) — see `docs/scheduling-engine.md` for the full spec.** Adds: recurring
+per-employee availability (weekday vs weekend, hard constraint); `employment_type` full/part/student with
+min/max shifts and **full-time-first** ordering; **lottery** tie-break (deterministic seed) when
+requesters>slots; **≥2-requests-per-employee floor** (else ≥1); **feasibility pre-check** ("enough for 8h or
+are 12h needed?"). Requires a migration at the start of Phase 4: `employees.employment_type` +
+`employees.max_shifts_per_week` + `employee_availability(employee_id, day_of_week, shift_type_id, allowed)`,
+and EmployeeEditor UI to set them.
+
 ### Success Criteria
-**Automated** (Vitest)
+**Automated** (Vitest — exhaustive matrix)
 - [ ] Shabbat observer never assigned Fri-noon/Fri-night/Sat-morning/Sat-noon; CAN get Sat-night
 - [ ] Holiday observer blocked around configured holiday dates
 - [ ] No employee gets two shifts < 8h apart
 - [ ] must_accept employee's day-off always honored; requested shift prioritized
 - [ ] Vacation range fully excludes those dates
-- [ ] Under-staffed week → 12h fallback proposed only when `allow_12h_fallback=true`
+- [ ] Recurring availability honored (weekday-nights-only guard; weekend-flex guard)
+- [ ] employment_type min/max enforced; max never exceeded; full-time filled before part-time/student
+- [ ] ≥2 requests satisfied per employee when possible, else ≥1
+- [ ] Lottery: with N requesters > slots and a fixed seed, asserted winners; losers unfilled
+- [ ] Feasibility pre-check returns correct OK / short-by-N / 12h-required
+- [ ] 12h cases: whole week, half week, isolated single shifts, under-staffed → fallback only when allowed
 - [ ] `coverage`, `stats`, `warnings` match hand-computed fixtures
 - [ ] `tsc`/`lint` pass
 
