@@ -7,31 +7,24 @@ import { getLatestInvite } from './invite-actions'
 import { TeamClient } from './TeamClient'
 import { InvitePanel } from './InvitePanel'
 import type { RoleOption, EmployeeData } from './EmployeeEditor'
+import type { ShiftTypeOption } from './AvailabilityGrid'
+import type { AvailabilityItem } from '@/lib/validation/employee'
+import type { EmploymentType } from '@/lib/validation/employee'
 
 export default async function TeamPage() {
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    redirect('/login')
-  }
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
 
   const workplace = await getActiveWorkplace(supabase)
+  if (!workplace) redirect('/onboarding')
 
-  if (!workplace) {
-    redirect('/onboarding')
-  }
-
-  // Derive base URL from request headers
   const headersList = await headers()
   const host = headersList.get('host') ?? 'localhost:3000'
   const proto = host.startsWith('localhost') ? 'http' : 'https'
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? `${proto}://${host}`
 
-  // Fetch latest active invite
   const latestInvite = await getLatestInvite(workplace.id)
 
   // Fetch roles
@@ -47,25 +40,70 @@ export default async function TeamPage() {
     color: r.color,
   }))
 
-  // Fetch employees with their role_ids
+  // Fetch base (non-fallback) shift types for this workplace
+  const { data: shiftTypesRaw } = await supabase
+    .from('shift_types')
+    .select('id, name')
+    .eq('workplace_id', workplace.id)
+    .eq('is_fallback', false)
+    .order('name')
+
+  const shiftTypes: ShiftTypeOption[] = (shiftTypesRaw ?? []).map((st) => ({
+    id: st.id,
+    name: st.name,
+  }))
+
+  // Fetch employees with role_ids
   const { data: employeesRaw } = await supabase
     .from('employees')
-    .select('id, name, phone, color, min_shifts_per_week, observes_shabbat, observes_holidays, must_accept, status, employee_roles(role_id)')
+    .select('id, name, phone, color, min_shifts_per_week, max_shifts_per_week, employment_type, observes_shabbat, observes_holidays, must_accept, status, employee_roles(role_id)')
     .eq('workplace_id', workplace.id)
     .order('name')
 
-  const employees: EmployeeData[] = (employeesRaw ?? []).map((e) => ({
-    id: e.id,
-    name: e.name,
-    phone: e.phone ?? null,
-    color: e.color,
-    minShifts: e.min_shifts_per_week ?? 0,
-    observesShabbat: e.observes_shabbat ?? false,
-    observesHolidays: e.observes_holidays ?? false,
-    mustAccept: e.must_accept ?? false,
-    status: e.status,
-    roleIds: (e.employee_roles ?? []).map((er: { role_id: string }) => er.role_id),
-  }))
+  // Fetch all availability rows for the workplace in one query
+  const employeeIds = (employeesRaw ?? []).map((e) => e.id)
+  const { data: availRaw } = employeeIds.length > 0
+    ? await supabase
+        .from('employee_availability')
+        .select('employee_id, day_of_week, shift_type_id')
+        .in('employee_id', employeeIds)
+    : { data: [] }
+
+  // Group availability by employee_id
+  const availByEmployee: Record<string, AvailabilityItem[]> = {}
+  for (const row of availRaw ?? []) {
+    if (!availByEmployee[row.employee_id]) availByEmployee[row.employee_id] = []
+    availByEmployee[row.employee_id].push({
+      dayOfWeek: row.day_of_week,
+      shiftTypeId: row.shift_type_id,
+    })
+  }
+
+  const VALID_TYPES: EmploymentType[] = ['full', 'part', 'student']
+
+  const employees: EmployeeData[] = (employeesRaw ?? []).map((e) => {
+    const rawType = e.employment_type as string
+    const empType: EmploymentType = (VALID_TYPES as string[]).includes(rawType)
+      ? (rawType as EmploymentType)
+      : 'full'
+    const empAvail = availByEmployee[e.id] ?? null
+    return {
+      id: e.id,
+      name: e.name,
+      phone: e.phone ?? null,
+      color: e.color,
+      minShifts: e.min_shifts_per_week ?? 0,
+      maxShifts: e.max_shifts_per_week ?? null,
+      employmentType: empType,
+      observesShabbat: e.observes_shabbat ?? false,
+      observesHolidays: e.observes_holidays ?? false,
+      mustAccept: e.must_accept ?? false,
+      status: e.status,
+      roleIds: (e.employee_roles ?? []).map((er: { role_id: string }) => er.role_id),
+      // null means no rows existed = unrestricted; [] means explicitly empty (shouldn't occur)
+      availability: empAvail && empAvail.length > 0 ? empAvail : null,
+    }
+  })
 
   return (
     <main
@@ -113,7 +151,7 @@ export default async function TeamPage() {
         baseUrl={baseUrl}
       />
 
-      <TeamClient employees={employees} roles={roles} />
+      <TeamClient employees={employees} roles={roles} shiftTypes={shiftTypes} />
     </main>
   )
 }

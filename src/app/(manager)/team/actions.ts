@@ -7,6 +7,7 @@ import { getActiveWorkplace } from '@/lib/workplace/current'
 import { employeeSchema } from '@/lib/validation/employee'
 import { parseFormData, buildFieldErrors } from '@/lib/employees/form'
 import { syncEmployeeRoles } from '@/lib/employees/roles'
+import { syncEmployeeAvailability } from '@/lib/employees/availability'
 import { pickColorByIndex } from '@/lib/employees/colors'
 
 export type EmployeeActionState = {
@@ -32,8 +33,10 @@ export async function createEmployee(
   const parsed = employeeSchema.safeParse(raw)
   if (!parsed.success) return { fieldErrors: buildFieldErrors(parsed) }
 
-  const { name, phone, minShifts, observesShabbat, observesHolidays, mustAccept, roleIds } =
-    parsed.data
+  const {
+    name, phone, minShifts, maxShifts, employmentType,
+    observesShabbat, observesHolidays, mustAccept, roleIds, availability,
+  } = parsed.data
 
   const { count } = await supabase
     .from('employees')
@@ -48,6 +51,8 @@ export async function createEmployee(
       phone: phone || null,
       color: pickColorByIndex(count ?? 0),
       min_shifts_per_week: minShifts,
+      max_shifts_per_week: maxShifts,
+      employment_type: employmentType,
       observes_shabbat: observesShabbat,
       observes_holidays: observesHolidays,
       must_accept: mustAccept,
@@ -56,9 +61,7 @@ export async function createEmployee(
     .select('id')
     .single()
 
-  if (empError || !emp) {
-    return { error: 'שגיאה בשמירת העובד' }
-  }
+  if (empError || !emp) return { error: 'שגיאה בשמירת העובד' }
 
   const { error: rolesError } = await supabase
     .from('employee_roles')
@@ -68,6 +71,9 @@ export async function createEmployee(
     await supabase.from('employees').delete().eq('id', emp.id)
     return { error: 'שגיאה בשיוך תפקידים לעובד' }
   }
+
+  const availError = await syncEmployeeAvailability(supabase, emp.id, availability ?? null)
+  if (availError) return { error: availError }
 
   revalidatePath('/team')
   return { ok: true }
@@ -100,8 +106,10 @@ export async function updateEmployee(
   const parsed = employeeSchema.safeParse(raw)
   if (!parsed.success) return { fieldErrors: buildFieldErrors(parsed) }
 
-  const { name, phone, minShifts, observesShabbat, observesHolidays, mustAccept, roleIds } =
-    parsed.data
+  const {
+    name, phone, minShifts, maxShifts, employmentType,
+    observesShabbat, observesHolidays, mustAccept, roleIds, availability,
+  } = parsed.data
 
   const { error: updateError } = await supabase
     .from('employees')
@@ -109,6 +117,8 @@ export async function updateEmployee(
       name,
       phone: phone || null,
       min_shifts_per_week: minShifts,
+      max_shifts_per_week: maxShifts,
+      employment_type: employmentType,
       observes_shabbat: observesShabbat,
       observes_holidays: observesHolidays,
       must_accept: mustAccept,
@@ -119,6 +129,9 @@ export async function updateEmployee(
 
   const syncError = await syncEmployeeRoles(supabase, id, roleIds)
   if (syncError) return { error: syncError }
+
+  const availError = await syncEmployeeAvailability(supabase, id, availability ?? null)
+  if (availError) return { error: availError }
 
   revalidatePath('/team')
   return { ok: true }
@@ -131,8 +144,6 @@ export async function deleteEmployee(id: string): Promise<EmployeeActionState> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // .select('id') returns the deleted rows; under RLS a non-owned row deletes
-  // 0 rows silently — treat an empty result as "not found" to avoid a false success.
   const { data: deleted, error } = await supabase
     .from('employees')
     .delete()

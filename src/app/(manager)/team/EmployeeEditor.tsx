@@ -6,6 +6,10 @@ import { createEmployee, updateEmployee, deleteEmployee, type EmployeeActionStat
 import { EmployeeFields } from './EmployeeFields'
 import { RoleSelector } from './RoleSelector'
 import { EmployeeSettingsToggles } from './EmployeeSettingsToggles'
+import { EmploymentTypeSelector } from './EmploymentTypeSelector'
+import { AvailabilityGrid, type ShiftTypeOption } from './AvailabilityGrid'
+import type { EmploymentType } from '@/lib/validation/employee'
+import type { AvailabilityItem } from '@/lib/validation/employee'
 
 export interface RoleOption {
   id: string
@@ -19,45 +23,60 @@ export interface EmployeeData {
   phone: string | null
   color: string
   minShifts: number
+  maxShifts: number | null
+  employmentType: EmploymentType
   observesShabbat: boolean
   observesHolidays: boolean
   mustAccept: boolean
   roleIds: string[]
   status: string
+  availability: AvailabilityItem[] | null
 }
 
 interface EmployeeEditorProps {
   roles: RoleOption[]
-  employee?: EmployeeData // undefined → create mode
+  shiftTypes: ShiftTypeOption[]
+  employee?: EmployeeData
   onSuccess: () => void
 }
 
 const initialState: EmployeeActionState = {}
 
-export function EmployeeEditor({ roles, employee, onSuccess }: EmployeeEditorProps) {
+/** Suggest min/max defaults when employment type changes */
+function defaultsForType(type: EmploymentType): { min: number; max: number | null } {
+  if (type === 'full') return { min: 5, max: null }
+  if (type === 'student') return { min: 0, max: 3 }
+  return { min: 0, max: null }
+}
+
+const errBoxStyle: React.CSSProperties = {
+  padding: '10px 14px',
+  borderRadius: 'var(--r-md)',
+  background: 'rgba(220,70,70,0.1)',
+  color: '#D8423B',
+  fontSize: 14,
+}
+
+export function EmployeeEditor({ roles, shiftTypes, employee, onSuccess }: EmployeeEditorProps) {
   const isEdit = !!employee
 
   const [name, setName] = useState(employee?.name ?? '')
   const [phone, setPhone] = useState(employee?.phone ?? '')
   const [minShifts, setMinShifts] = useState(employee?.minShifts ?? 2)
+  const [maxShifts, setMaxShifts] = useState<number | null>(employee?.maxShifts ?? null)
+  const [employmentType, setEmploymentType] = useState<EmploymentType>(employee?.employmentType ?? 'full')
   const [observesShabbat, setObservesShabbat] = useState(employee?.observesShabbat ?? false)
   const [observesHolidays, setObservesHolidays] = useState(employee?.observesHolidays ?? false)
   const [mustAccept, setMustAccept] = useState(employee?.mustAccept ?? false)
-  const [selectedRoleIds, setSelectedRoleIds] = useState<Set<string>>(
-    new Set(employee?.roleIds ?? []),
-  )
+  const [selectedRoleIds, setSelectedRoleIds] = useState<Set<string>>(new Set(employee?.roleIds ?? []))
+  const [availability, setAvailability] = useState<AvailabilityItem[] | null>(employee?.availability ?? null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const boundAction = isEdit ? updateEmployee.bind(null, employee!.id) : createEmployee
-  const [state, formAction, isPending] = useActionState<EmployeeActionState, FormData>(
-    boundAction,
-    initialState,
-  )
+  const [state, formAction, isPending] = useActionState<EmployeeActionState, FormData>(boundAction, initialState)
 
-  useEffect(() => {
-    if (state.ok) onSuccess()
-  }, [state.ok, onSuccess])
+  useEffect(() => { if (state.ok) onSuccess() }, [state.ok, onSuccess])
 
   function toggleRole(roleId: string) {
     setSelectedRoleIds((prev) => {
@@ -68,6 +87,13 @@ export function EmployeeEditor({ roles, employee, onSuccess }: EmployeeEditorPro
     })
   }
 
+  function handleEmploymentTypeChange(type: EmploymentType) {
+    setEmploymentType(type)
+    const d = defaultsForType(type)
+    setMinShifts(d.min)
+    setMaxShifts(d.max)
+  }
+
   async function handleDelete() {
     if (!employee) return
     setDeleteError(null)
@@ -76,36 +102,19 @@ export function EmployeeEditor({ roles, employee, onSuccess }: EmployeeEditorPro
     else onSuccess()
   }
 
-  const fieldErrorStyle: React.CSSProperties = {
-    fontSize: 12.5,
-    color: '#D8423B',
-    marginTop: 4,
-    textAlign: 'center',
-  }
+  const customAvailability = availability !== null
 
   return (
     <form action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-      {state.error && (
-        <div
-          style={{
-            padding: '10px 14px',
-            borderRadius: 'var(--r-md)',
-            background: 'rgba(220,70,70,0.1)',
-            color: '#D8423B',
-            fontSize: 14,
-          }}
-        >
-          {state.error}
-        </div>
-      )}
+      {state.error && <div style={errBoxStyle}>{state.error}</div>}
+
+      <EmploymentTypeSelector value={employmentType} onChange={handleEmploymentTypeChange} />
 
       <EmployeeFields
-        name={name}
-        onNameChange={setName}
-        phone={phone}
-        onPhoneChange={setPhone}
-        minShifts={minShifts}
-        onMinShiftsChange={setMinShifts}
+        name={name} onNameChange={setName}
+        phone={phone} onPhoneChange={setPhone}
+        minShifts={minShifts} onMinShiftsChange={setMinShifts}
+        maxShifts={maxShifts} onMaxShiftsChange={setMaxShifts}
         nameError={state.fieldErrors?.name}
         phoneError={state.fieldErrors?.phone}
       />
@@ -118,71 +127,41 @@ export function EmployeeEditor({ roles, employee, onSuccess }: EmployeeEditorPro
       />
 
       <EmployeeSettingsToggles
-        observesShabbat={observesShabbat}
-        setObservesShabbat={setObservesShabbat}
-        observesHolidays={observesHolidays}
-        setObservesHolidays={setObservesHolidays}
-        mustAccept={mustAccept}
-        setMustAccept={setMustAccept}
+        observesShabbat={observesShabbat} setObservesShabbat={setObservesShabbat}
+        observesHolidays={observesHolidays} setObservesHolidays={setObservesHolidays}
+        mustAccept={mustAccept} setMustAccept={setMustAccept}
       />
 
-      <Btn
-        type="submit"
-        variant="primary"
-        size="lg"
-        icon="check"
-        style={{ width: '100%' }}
-        disabled={isPending}
-      >
+      <AvailabilityGrid
+        shiftTypes={shiftTypes}
+        availability={availability}
+        onChange={setAvailability}
+      />
+
+      {/* Hidden fields for form submission */}
+      <input type="hidden" name="customAvailability" value={String(customAvailability)} />
+      <input type="hidden" name="availability" value={JSON.stringify(availability ?? [])} />
+
+      <Btn type="submit" variant="primary" size="lg" icon="check" style={{ width: '100%' }} disabled={isPending}>
         {isPending ? 'שומר…' : isEdit ? 'שמירת שינויים' : 'הוספת עובד'}
       </Btn>
 
       {isEdit && (
         <div>
           {!confirmDelete ? (
-            <Btn
-              type="button"
-              variant="danger"
-              size="md"
-              icon="x"
-              style={{ width: '100%' }}
-              onClick={() => setConfirmDelete(true)}
-            >
+            <Btn type="button" variant="danger" size="md" icon="x" style={{ width: '100%' }} onClick={() => setConfirmDelete(true)}>
               מחיקת עובד
             </Btn>
           ) : (
-            <div
-              style={{
-                padding: '14px',
-                borderRadius: 'var(--r-md)',
-                border: '1.5px solid rgba(220,70,70,0.4)',
-                background: 'rgba(220,70,70,0.06)',
-              }}
-            >
+            <div style={{ padding: '14px', borderRadius: 'var(--r-md)', border: '1.5px solid rgba(220,70,70,0.4)', background: 'rgba(220,70,70,0.06)' }}>
               <p style={{ margin: '0 0 12px', fontSize: 14, color: 'var(--text)', textAlign: 'center' }}>
                 האם למחוק את העובד לצמיתות?
               </p>
               <div style={{ display: 'flex', gap: 10 }}>
-                <Btn
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  style={{ flex: 1 }}
-                  onClick={() => setConfirmDelete(false)}
-                >
-                  ביטול
-                </Btn>
-                <Btn
-                  type="button"
-                  variant="danger"
-                  size="sm"
-                  style={{ flex: 1 }}
-                  onClick={handleDelete}
-                >
-                  מחק
-                </Btn>
+                <Btn type="button" variant="ghost" size="sm" style={{ flex: 1 }} onClick={() => setConfirmDelete(false)}>ביטול</Btn>
+                <Btn type="button" variant="danger" size="sm" style={{ flex: 1 }} onClick={handleDelete}>מחק</Btn>
               </div>
-              {deleteError && <p style={fieldErrorStyle}>{deleteError}</p>}
+              {deleteError && <p style={{ fontSize: 12.5, color: '#D8423B', marginTop: 4, textAlign: 'center' }}>{deleteError}</p>}
             </div>
           )}
         </div>

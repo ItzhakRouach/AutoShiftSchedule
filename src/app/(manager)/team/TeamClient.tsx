@@ -8,13 +8,15 @@ import { RoleChip } from '@/components/ui/RoleChip'
 import { Icon } from '@/components/ui/Icon'
 import { Sheet } from '@/components/ui/Sheet'
 import { EmployeeEditor, type EmployeeData, type RoleOption } from './EmployeeEditor'
+import type { ShiftTypeOption } from './AvailabilityGrid'
 
 interface TeamClientProps {
   employees: EmployeeData[]
   roles: RoleOption[]
+  shiftTypes: ShiftTypeOption[]
 }
 
-export function TeamClient({ employees, roles }: TeamClientProps) {
+export function TeamClient({ employees, roles, shiftTypes }: TeamClientProps) {
   const router = useRouter()
   const [sheetMode, setSheetMode] = useState<'add' | 'edit' | null>(null)
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeData | null>(null)
@@ -158,16 +160,13 @@ export function TeamClient({ employees, roles }: TeamClientProps) {
                     ))}
                   </div>
                 </div>
-                <div
-                  style={{
-                    textAlign: 'center',
-                    flexShrink: 0,
-                    color: 'var(--text-2)',
-                    fontSize: 11,
-                    fontWeight: 600,
-                  }}
-                >
-                  מינ׳ {emp.minShifts}
+                <div style={{ textAlign: 'center', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                  <span style={{ color: 'var(--text-2)', fontSize: 11, fontWeight: 600 }}>מינ׳ {emp.minShifts}</span>
+                  {emp.employmentType !== 'full' && (
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 'var(--r-pill)', background: 'var(--surface-sunk)', color: 'var(--text-3)' }}>
+                      {emp.employmentType === 'student' ? 'סטודנט' : 'חלקית'}
+                    </span>
+                  )}
                 </div>
                 <Icon name="chevronLeft" size={18} color="var(--text-3)" />
               </Card>
@@ -181,6 +180,7 @@ export function TeamClient({ employees, roles }: TeamClientProps) {
         {sheetMode !== null && (
           <EmployeeEditor
             roles={roles}
+            shiftTypes={shiftTypes}
             employee={sheetMode === 'edit' ? (selectedEmployee ?? undefined) : undefined}
             onSuccess={handleSuccess}
           />
