@@ -1,27 +1,8 @@
-import { ImageResponse } from 'next/og'
-import { promises as fs } from 'fs'
-import path from 'path'
 import { createClient } from '@/lib/supabase/server'
-import { formatHebDate } from '@/lib/dates/week'
-import { buildImageGrid } from '@/lib/schedule/image-data'
-import { ScheduleImageTemplate } from '../schedule-image-template'
+import { renderSchedulePng, IMAGE_WIDTH, IMAGE_HEIGHT } from '@/lib/schedule/render-image'
+import type { RawAssignment } from '@/lib/schedule/image-data'
 
 export const runtime = 'nodejs'
-
-const WIDTH = 1200
-const HEIGHT = 800
-
-async function loadFonts() {
-  const fontsDir = path.join(process.cwd(), 'src', 'assets', 'fonts')
-  const [regular, bold] = await Promise.all([
-    fs.readFile(path.join(fontsDir, 'Heebo-Regular.ttf')),
-    fs.readFile(path.join(fontsDir, 'Heebo-Bold.ttf')),
-  ])
-  return [
-    { name: 'Heb', data: regular.buffer as ArrayBuffer, weight: 400 as const },
-    { name: 'Heb', data: bold.buffer as ArrayBuffer, weight: 700 as const },
-  ]
-}
 
 export async function GET(
   _req: Request,
@@ -63,29 +44,14 @@ export async function GET(
     .select('day_of_week, count, shift_types(key)')
     .eq('workplace_id', period.workplace_id)
 
-  // Build day dates array (7 days from week_start)
-  const weekStart = new Date(period.week_start_date + 'T00:00:00')
-  const dayDates: string[] = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(weekStart)
-    d.setDate(weekStart.getDate() + i)
-    return formatHebDate(d.toISOString().slice(0, 10))
-  })
-
-  // Week label e.g. "31.5 – 6.6"
-  const lastDay = new Date(weekStart)
-  lastDay.setDate(weekStart.getDate() + 6)
-  const weekLabel = `${dayDates[0]} – ${dayDates[6]}.${lastDay.getFullYear()}`
-
-  // Shape assignments
   type STKey = { key: string }
   type EmpName = { name: string }
-  const assignments = (assignsRaw ?? []).map((a) => ({
+  const assignments: RawAssignment[] = (assignsRaw ?? []).map((a) => ({
     day_of_week: a.day_of_week,
     shift_type_key: (a.shift_types as unknown as STKey | null)?.key ?? '',
     employee_name: (a.employees as unknown as EmpName | null)?.name ?? '',
   }))
 
-  // Required counts: day → shiftKey → total count
   const required: Record<number, Record<string, number>> = {}
   for (const r of reqRaw ?? []) {
     const sk = (r.shift_types as unknown as STKey | null)?.key
@@ -94,17 +60,19 @@ export async function GET(
     ;(required[day] ??= {})[sk] = ((required[day]?.[sk]) ?? 0) + (r.count as number)
   }
 
-  const grid = buildImageGrid(assignments, required)
+  const png = await renderSchedulePng({
+    workplaceName: workplace?.name ?? 'סידור שבועי',
+    weekStartISO: period.week_start_date,
+    assignments,
+    required,
+  })
 
-  const fonts = await loadFonts()
-
-  return new ImageResponse(
-    <ScheduleImageTemplate
-      workplaceName={workplace?.name ?? 'סידור שבועי'}
-      weekLabel={weekLabel}
-      dayDates={dayDates}
-      grid={grid}
-    />,
-    { width: WIDTH, height: HEIGHT, fonts },
-  )
+  return new Response(png.buffer as ArrayBuffer, {
+    headers: {
+      'Content-Type': 'image/png',
+      'Cache-Control': 'private, no-store',
+      'X-Image-Width': String(IMAGE_WIDTH),
+      'X-Image-Height': String(IMAGE_HEIGHT),
+    },
+  })
 }
