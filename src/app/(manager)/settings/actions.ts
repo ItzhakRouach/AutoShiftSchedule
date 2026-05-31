@@ -1,0 +1,70 @@
+'use server'
+
+import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
+import { z } from 'zod'
+import { createClient } from '@/lib/supabase/server'
+import { getActiveWorkplace } from '@/lib/workplace/current'
+
+export type DeadlineActionState = {
+  ok?: boolean
+  error?: string
+  fieldErrors?: Record<string, string>
+}
+
+const deadlineSchema = z.object({
+  request_deadline_dow: z.coerce
+    .number()
+    .int()
+    .min(0, { message: 'יום לא תקין' })
+    .max(6, { message: 'יום לא תקין' }),
+  request_deadline_time: z
+    .string()
+    .regex(/^\d{2}:\d{2}$/, { message: 'שעה לא תקינה (HH:MM)' }),
+})
+
+export async function updateRequestDeadline(
+  prevState: DeadlineActionState,
+  formData: FormData,
+): Promise<DeadlineActionState> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const workplace = await getActiveWorkplace(supabase)
+  if (!workplace) return { error: 'לא נמצא מקום עבודה.' }
+
+  const raw = {
+    request_deadline_dow: formData.get('request_deadline_dow'),
+    request_deadline_time: formData.get('request_deadline_time'),
+  }
+
+  const parsed = deadlineSchema.safeParse(raw)
+  if (!parsed.success) {
+    const fieldErrors: Record<string, string> = {}
+    for (const [key, msgs] of Object.entries(parsed.error.flatten().fieldErrors)) {
+      fieldErrors[key] = msgs?.[0] ?? 'שגיאה'
+    }
+    return { fieldErrors }
+  }
+
+  const { request_deadline_dow, request_deadline_time } = parsed.data
+
+  const { error: upsertError } = await supabase
+    .from('workplace_settings')
+    .upsert(
+      {
+        workplace_id: workplace.id,
+        request_deadline_dow,
+        request_deadline_time,
+      },
+      { onConflict: 'workplace_id' },
+    )
+
+  if (upsertError) return { error: 'שגיאה בשמירת ההגדרות' }
+
+  revalidatePath('/settings')
+  return { ok: true }
+}

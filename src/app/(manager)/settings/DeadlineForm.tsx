@@ -1,0 +1,106 @@
+'use client'
+
+import { useActionState } from 'react'
+import { updateRequestDeadline, type DeadlineActionState } from './actions'
+
+const DAYS_HEB = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
+
+interface Props {
+  initialDow: number | null
+  initialTime: string | null
+}
+
+const initialState: DeadlineActionState = {}
+
+export function DeadlineForm({ initialDow, initialTime }: Props) {
+  const [state, action, pending] = useActionState(updateRequestDeadline, initialState)
+
+  return (
+    <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <label htmlFor="deadline-dow" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
+          יום
+        </label>
+        <select
+          id="deadline-dow"
+          name="request_deadline_dow"
+          defaultValue={initialDow ?? 4}
+          style={{
+            padding: '10px 14px',
+            borderRadius: 'var(--r-md)',
+            border: '1px solid var(--border-strong)',
+            background: 'var(--surface)',
+            color: 'var(--text)',
+            fontSize: 15,
+            fontFamily: 'var(--font)',
+            cursor: 'pointer',
+          }}
+        >
+          {DAYS_HEB.map((name, idx) => (
+            <option key={idx} value={idx}>
+              {name}
+            </option>
+          ))}
+        </select>
+        {state.fieldErrors?.request_deadline_dow && (
+          <span style={{ color: '#D8423B', fontSize: 13 }}>
+            {state.fieldErrors.request_deadline_dow}
+          </span>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <label htmlFor="deadline-time" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
+          שעה
+        </label>
+        <input
+          id="deadline-time"
+          type="time"
+          name="request_deadline_time"
+          defaultValue={initialTime ?? '18:00'}
+          style={{
+            padding: '10px 14px',
+            borderRadius: 'var(--r-md)',
+            border: '1px solid var(--border-strong)',
+            background: 'var(--surface)',
+            color: 'var(--text)',
+            fontSize: 15,
+            fontFamily: 'var(--font)',
+          }}
+        />
+        {state.fieldErrors?.request_deadline_time && (
+          <span style={{ color: '#D8423B', fontSize: 13 }}>
+            {state.fieldErrors.request_deadline_time}
+          </span>
+        )}
+      </div>
+
+      {state.error && (
+        <p style={{ color: '#D8423B', fontSize: 14, margin: 0 }}>{state.error}</p>
+      )}
+      {state.ok && (
+        <p style={{ color: '#13A98E', fontSize: 14, margin: 0 }}>ההגדרות נשמרו בהצלחה</p>
+      )}
+
+      <button
+        type="submit"
+        disabled={pending}
+        style={{
+          padding: '12px 24px',
+          background: 'var(--accent)',
+          color: '#fff',
+          border: 'none',
+          borderRadius: 'var(--r-pill)',
+          fontSize: 15,
+          fontWeight: 700,
+          fontFamily: 'var(--font)',
+          cursor: pending ? 'default' : 'pointer',
+          opacity: pending ? 0.55 : 1,
+          alignSelf: 'flex-start',
+        }}
+      >
+        {pending ? 'שומר…' : 'שמור'}
+      </button>
+    </form>
+  )
+}
