@@ -33,12 +33,12 @@ describe('mustAccept', () => {
   })
 })
 
-describe('employment-type ordering', () => {
-  it('full-time fills a scarce slot before part-time and student', () => {
+describe('employment-type ordering (FIX A — only among below-min employees)', () => {
+  it('full-time fills a scarce slot before part-time and student (all below min)', () => {
     const employees = [
-      emp('stud', { employmentType: 'student' }),
-      emp('part', { employmentType: 'part' }),
-      emp('full', { employmentType: 'full' }),
+      emp('stud', { employmentType: 'student', minShifts: 1 }),
+      emp('part', { employmentType: 'part', minShifts: 1 }),
+      emp('full', { employmentType: 'full', minShifts: 1 }),
     ]
     const res = generateSchedule(
       input({ employees, requirements: reqFor([0], 'morning', GUARD, 1), seed: 1 }),

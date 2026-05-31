@@ -34,16 +34,26 @@ Data model addition (Phase 4 migration): `employee_availability(employee_id, day
 7. One shift per employee per day.
 8. Never exceed `max_shifts_per_week`.
 
-## Soft objectives (in priority order)
-1. **Honor requests**, but guarantee **≥2 requests per employee** when possible; if even that is impossible,
-   guarantee **≥1**. (Per-employee request-satisfaction floor.)
-2. **`must_accept`** employees — their requests are honored with top priority (an off-day request is hard).
-3. **Employment-type priority:** fill **full-time** employees' shifts FIRST, then part-time, then students.
-4. Reach each employee's **min shifts**.
-5. **Fairness via lottery:** when more employees request the same shift than there are slots, pick winners by
-   **random draw** (seeded/deterministic-per-run for reproducibility & testing); losers' request goes unfilled.
-   Track and balance unpopular shifts (nights/weekends) over time.
-6. Ideal **16h rest** for guards — a scoring bonus, not a hard cap.
+## Soft objectives (canonical priority order — highest first)
+This is the EXACT order implemented in `scoring.ts compareCandidates` (and threaded into the
+reservation pre-pass via `dayfill.ts isTopPrecedenceFor`). Lower comparator output = higher priority.
+
+1. **`must_accept` requested** — a must-accept employee's requested shift wins outright (their off-day
+   request is already a hard constraint).
+2. **Reach-minimum, tier-ordered.** An employee **below** their `min_shifts` ranks above one who has
+   **reached** it. Among below-min employees only, employment tier breaks the tie: **full (0) < part (1) <
+   student (2)** — full-time first. **This is the ONLY place employment tier matters, and only until min is
+   reached.** Once an employee is at/above min, tier grants no priority.
+3. **Requested-this-shift** — a requester ranks above a non-requester.
+4. **≥2-request floor** — fewer satisfied requests so far ranks higher, driving the guarantee of **≥2**
+   requests per employee when possible (else **≥1**). (Per-employee request-satisfaction floor.)
+5. **Fairness** — fewer total assigned shifts.
+6. **Lottery** — deterministic per-employee rank (seeded for reproducibility & testing) as the final
+   tie-break. Losers of a contended slot go unfilled.
+
+Consequence: a **below-min** full-timer may pre-empt a part-time requester (step 2), but an **at-min**
+full-timer loses to a part-time requester (step 3 decides). Ideal **16h rest** for guards remains a soft
+preference (not a hard cap).
 
 ## 12h fallback policy
 Base shifts are 8h (morning/noon/night). When the 8h grid cannot be fully staffed within the hard

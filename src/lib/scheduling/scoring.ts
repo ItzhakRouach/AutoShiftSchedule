@@ -22,19 +22,20 @@ export interface CandidateState {
 }
 
 /**
- * Candidate precedence (FIX 4 — explicit, per the user's rule). Lower comparator
- * output = HIGHER priority. The order, highest first, is EXACTLY:
- *   1. mustAccept-requested  (their off is already hard; their request wins).
- *   2. Employment tier: full (0) < part (1) < student (2)  — full-time FIRST.
- *   3. Requested-this-shift   (requested before non-requested).
- *   4. >=2-floor rank         (fewer satisfied requests first — see floorRank).
- *   5. Below min-shifts first.
- *   6. Fewer total assigned shifts (load balance).
- *   7. Lottery rank (FIX 1) as the final deterministic tie-break.
+ * Canonical candidate precedence (FIX A — final product decision). Lower
+ * comparator output = HIGHER priority. The order, highest first, is EXACTLY:
+ *   1. mustAccept-requested      (their off is already hard; their request wins).
+ *   2. Reach-minimum, tier-ordered: an employee BELOW their minShifts ranks above
+ *      one who has reached it; among below-min employees ONLY, employment tier
+ *      full(0) < part(1) < student(2). This is the ONLY place tier matters — and
+ *      only until min is met. Once at/above min, tier grants no priority.
+ *   3. Requested-this-shift      (requester before non-requester).
+ *   4. >=2-request floor         (fewer satisfied requests first — see floorRank).
+ *   5. Fairness                  (fewer total assigned shifts).
+ *   6. Lottery rank (FIX 1)      (final deterministic tie-break).
  *
- * NOTE: per the user's explicit instruction "always fill full-time first, then
- * part-time, then student", employment tier (2) outranks request status (3): a
- * full-time non-requester beats a part-time requester for a scarce slot.
+ * Consequence: a below-min full-timer beats a part-time requester (step 2), but
+ * an at-min full-timer loses to a part-time requester (step 3 decides).
  */
 export function compareCandidates(a: CandidateState, b: CandidateState): number {
   // 1. mustAccept requested wins outright.
@@ -42,10 +43,12 @@ export function compareCandidates(a: CandidateState, b: CandidateState): number 
   const bm = b.mustAcceptRequested ? 0 : 1
   if (am !== bm) return am - bm
 
-  // 2. employment-type ordering (full > part > student).
-  const ae = EMPLOYMENT_RANK[a.emp.employmentType]
-  const be = EMPLOYMENT_RANK[b.emp.employmentType]
-  if (ae !== be) return ae - be
+  // 2. reach-minimum, tier-ordered. below-min ranks above at-min; among
+  // below-min, employment tier (full > part > student) breaks the tie. Tier is
+  // intentionally NOT consulted once an employee has reached their minimum.
+  const ar2 = reachMinRank(a)
+  const br2 = reachMinRank(b)
+  if (ar2 !== br2) return ar2 - br2
 
   // 3. requested over not-requested.
   const ar = a.requested ? 0 : 1
@@ -60,18 +63,25 @@ export function compareCandidates(a: CandidateState, b: CandidateState): number 
     if (af !== bf) return af - bf
   }
 
-  // 5. reach min shifts: under-min first.
-  const au = a.current.length < a.emp.minShifts ? 0 : 1
-  const bu = b.current.length < b.emp.minShifts ? 0 : 1
-  if (au !== bu) return au - bu
-
-  // 6. fewer total shifts so far.
+  // 5. fairness: fewer total shifts so far.
   if (a.current.length !== b.current.length) {
     return a.current.length - b.current.length
   }
 
-  // 7. deterministic lottery tie-break.
+  // 6. deterministic lottery tie-break.
   return a.lotteryRank - b.lotteryRank
+}
+
+/**
+ * Combined reach-minimum + tier key. Below-min employees sort ahead of at-min
+ * ones; among below-min, the employment tier (full=0, part=1, student=2) orders
+ * them. At/above-min employees all collapse to the same (largest) bucket so tier
+ * no longer separates them. Lower = higher priority.
+ */
+export function reachMinRank(c: CandidateState): number {
+  const belowMin = c.current.length < c.emp.minShifts
+  if (!belowMin) return EMPLOYMENT_RANK.student + 1
+  return EMPLOYMENT_RANK[c.emp.employmentType]
 }
 
 /** Employees with 0 satisfied requests rank above those with 1, then 2+. */

@@ -74,11 +74,11 @@ describe('FIX 3: feasibility via max-matching', () => {
   })
 })
 
-// FIX 4 — explicit precedence: full-time before part-time even when part requests.
-describe('FIX 4: candidate precedence', () => {
-  it('part-time REQUESTER loses a scarce slot to a full-time NON-requester', () => {
+// FIX A — canonical precedence: full-time first ONLY while below their minimum.
+describe('FIX A: candidate precedence', () => {
+  it('part-time REQUESTER loses a scarce slot to a BELOW-MIN full-time NON-requester', () => {
     const partReq = emp('part', { employmentType: 'part' })
-    const fullNon = emp('full', { employmentType: 'full' })
+    const fullNon = emp('full', { employmentType: 'full', minShifts: 1 })
     const requests = buildRequests([partReq, fullNon], (id, d) =>
       id === 'part' && d === 0 ? { preferred: ['morning'] } : {},
     )

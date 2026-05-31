@@ -51,6 +51,14 @@ export function twelveHourInterval(variant: TwelveHourKey, day: number): [number
  * FIX 6: would a suggested 12h variant on `day` create a rest violation (overlap
  * or < minRestHours gap) against any already-committed shift on the adjacent
  * days? Pure. Returns true if the variant should NOT be surfaced (or be flagged).
+ *
+ * HARDENING (FIX C) — INTENTIONALLY WORKPLACE-WIDE (conservative): a 12h
+ * suggestion is just a hint to the manager; we do NOT yet know which employee
+ * will take it. Flagging when the block would under-rest ANY committed shift
+ * warns the manager that adjacent coverage is tight, regardless of who fills it.
+ * If a per-employee check is later wanted (flag only when it conflicts with the
+ * shifts of an employee who could actually take the 12h), pass that employee's
+ * `committed` subset instead of the workplace-wide union.
  */
 export function would12hViolateRest(
   variant: TwelveHourKey,

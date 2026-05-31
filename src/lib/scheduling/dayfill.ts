@@ -159,14 +159,20 @@ export function matchDay(
   const slots = openSlotsForDay(input, st, meta.index)
   if (slots.length === 0) return
   const ordered = orderedEmployees(input, meta, st, slots)
-  const eligible = (e: Employee, slot: MatchSlot): boolean =>
-    slotFilter(e, slot) && isAssignable(ctxFor(input, e, meta, slot.shift, slot.roleId, st))
+  // HARDENING (FIX C): thread `chosenForEmp` so that if per-day capacity > 1 is
+  // ever used, an employee already matched to a slot on THIS day is barred from
+  // a second same-day slot (constraint 7). Today capacity is always 1 and all
+  // slots passed here are same-day, but this guard prevents that latent footgun.
+  const eligible = (e: Employee, slot: MatchSlot, chosenForEmp: MatchSlot[]): boolean => {
+    if (chosenForEmp.some((c) => c.day === slot.day)) return false
+    return slotFilter(e, slot) && isAssignable(ctxFor(input, e, meta, slot.shift, slot.roleId, st))
+  }
   const res = maxMatch<Employee>({
     slots,
     employees: ordered,
     idOf: (e) => e.id,
     capacityOf,
-    eligible: (e, slot) => eligible(e, slot),
+    eligible,
   })
   // Apply matches deterministically in slot order.
   for (let si = 0; si < slots.length; si++) {
