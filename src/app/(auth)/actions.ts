@@ -55,16 +55,21 @@ export async function signUp(prevState: AuthState, formData: FormData): Promise<
   }
 
   const supabase = await createClient()
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
   })
 
   if (error) {
-    const msg = error.message.includes('already registered') || error.message.includes('User already registered')
-      ? 'משתמש עם אימייל זה כבר קיים'
-      : error.message
-    return { error: msg }
+    const isDuplicate =
+      error.code === 'user_already_exists' ||
+      error.message.includes('already registered') ||
+      error.message.includes('already been registered')
+    return { error: isDuplicate ? 'משתמש עם אימייל זה כבר קיים' : 'שגיאה בהרשמה, נסה שוב' }
+  }
+
+  if (!data.session) {
+    return { error: 'נשלח אימייל אימות. אנא אשרו את האימייל ואז התחברו.' }
   }
 
   redirect('/dashboard')
