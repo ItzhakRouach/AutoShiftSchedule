@@ -1,8 +1,11 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveWorkplace } from '@/lib/workplace/current'
+import { getLatestInvite } from './invite-actions'
 import { TeamClient } from './TeamClient'
+import { InvitePanel } from './InvitePanel'
 import type { RoleOption, EmployeeData } from './EmployeeEditor'
 
 export default async function TeamPage() {
@@ -22,7 +25,16 @@ export default async function TeamPage() {
     redirect('/onboarding')
   }
 
-  // Fetch roles for this workplace
+  // Derive base URL from request headers
+  const headersList = await headers()
+  const host = headersList.get('host') ?? 'localhost:3000'
+  const proto = host.startsWith('localhost') ? 'http' : 'https'
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? `${proto}://${host}`
+
+  // Fetch latest active invite
+  const latestInvite = await getLatestInvite(workplace.id)
+
+  // Fetch roles
   const { data: rolesRaw } = await supabase
     .from('roles')
     .select('id, name, color')
@@ -35,7 +47,7 @@ export default async function TeamPage() {
     color: r.color,
   }))
 
-  // Fetch employees with their role_ids via employee_roles junction
+  // Fetch employees with their role_ids
   const { data: employeesRaw } = await supabase
     .from('employees')
     .select('id, name, phone, color, min_shifts_per_week, observes_shabbat, observes_holidays, must_accept, status, employee_roles(role_id)')
@@ -66,7 +78,6 @@ export default async function TeamPage() {
         direction: 'rtl',
       }}
     >
-      {/* Back link */}
       <Link
         href="/dashboard"
         style={{
@@ -95,6 +106,12 @@ export default async function TeamPage() {
         </svg>
         חזרה לדשבורד
       </Link>
+
+      <InvitePanel
+        initialCode={latestInvite?.code ?? null}
+        workplaceName={workplace.name}
+        baseUrl={baseUrl}
+      />
 
       <TeamClient employees={employees} roles={roles} />
     </main>
