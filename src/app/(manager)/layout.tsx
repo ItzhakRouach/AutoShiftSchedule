@@ -15,6 +15,8 @@ export default async function ManagerLayout({ children }: { children: React.Reac
     .from('organizations')
     .select('id')
     .eq('owner_user_id', user.id)
+    .order('created_at', { ascending: true })
+    .limit(1)
     .maybeSingle()
 
   if (!org) {
