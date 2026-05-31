@@ -1,5 +1,7 @@
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { getActiveWorkplace } from '@/lib/workplace/current'
 import { signOut } from '@/app/(auth)/actions'
 
 export default async function DashboardPage() {
@@ -15,34 +17,31 @@ export default async function DashboardPage() {
     redirect('/login')
   }
 
-  // Fetch org → workplace
-  const { data: org } = await supabase
-    .from('organizations')
-    .select('id')
-    .eq('owner_user_id', user.id)
-    .maybeSingle()
-
-  const { data: workplace } = org
-    ? await supabase
-        .from('workplaces')
-        .select('id, name')
-        .eq('org_id', org.id)
-        .maybeSingle()
-    : { data: null }
-
+  // Use the shared helper for org → workplace resolution
+  const workplace = await getActiveWorkplace(supabase)
   const workplaceId = workplace?.id ?? null
 
-  const [{ count: rolesCount }, { count: shiftTypesCount }] = await Promise.all([
-    workplaceId
-      ? supabase.from('roles').select('*', { count: 'exact', head: true }).eq('workplace_id', workplaceId)
-      : Promise.resolve({ count: 0 }),
-    workplaceId
-      ? supabase.from('shift_types').select('*', { count: 'exact', head: true }).eq('workplace_id', workplaceId)
-      : Promise.resolve({ count: 0 }),
-  ])
-
-  // Employees table does not exist yet — hardcoded 0
-  const employeesCount = 0
+  const [{ count: rolesCount }, { count: shiftTypesCount }, { count: employeesCount }] =
+    await Promise.all([
+      workplaceId
+        ? supabase
+            .from('roles')
+            .select('*', { count: 'exact', head: true })
+            .eq('workplace_id', workplaceId)
+        : Promise.resolve({ count: 0 }),
+      workplaceId
+        ? supabase
+            .from('shift_types')
+            .select('*', { count: 'exact', head: true })
+            .eq('workplace_id', workplaceId)
+        : Promise.resolve({ count: 0 }),
+      workplaceId
+        ? supabase
+            .from('employees')
+            .select('*', { count: 'exact', head: true })
+            .eq('workplace_id', workplaceId)
+        : Promise.resolve({ count: 0 }),
+    ])
 
   return (
     <main
@@ -76,7 +75,7 @@ export default async function DashboardPage() {
         <div
           style={{
             marginTop: 20,
-            marginBottom: 28,
+            marginBottom: 20,
             background: 'var(--surface-2)',
             borderRadius: 'var(--r-sm)',
             padding: '14px 18px',
@@ -85,7 +84,43 @@ export default async function DashboardPage() {
             textAlign: 'right',
           }}
         >
-          תפקידים: {rolesCount ?? 0} · סוגי משמרת: {shiftTypesCount ?? 0} · עובדים: {employeesCount}
+          תפקידים: {rolesCount ?? 0} · סוגי משמרת: {shiftTypesCount ?? 0} · עובדים:{' '}
+          {employeesCount ?? 0}
+        </div>
+
+        {/* Navigation */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
+          <Link
+            href="/team"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '14px 18px',
+              background: 'var(--accent-soft)',
+              color: 'var(--accent)',
+              borderRadius: 'var(--r-md)',
+              fontWeight: 700,
+              fontSize: 15,
+              textDecoration: 'none',
+              border: '1px solid transparent',
+            }}
+          >
+            <span>ניהול עובדים</span>
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ transform: 'scaleX(-1)' }}
+            >
+              <path d="M14.5 5 8 12l6.5 7" />
+            </svg>
+          </Link>
         </div>
 
         <form action={signOut}>
