@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/Card'
 import { Avatar } from '@/components/ui/Avatar'
 import { Stat } from '@/components/ui/Stat'
 import { SectionTitle } from '@/components/ui/SectionTitle'
+import { Icon } from '@/components/ui/Icon'
 import { ScopeToggle } from './ScopeToggle'
 import { DashNav } from './DashNav'
 import type { Scope } from '@/lib/stats/types'
@@ -39,13 +40,18 @@ export default async function DashboardPage({
   const maxHours = Math.max(...(stats?.employees.map((e) => e.hours) ?? [1]), 1)
 
   return (
-    <main style={{ minHeight: '100vh', background: 'var(--bg)', padding: '24px 20px', maxWidth: 520, margin: '0 auto', direction: 'rtl' }}>
+    <main style={{ background: 'var(--bg)', padding: '24px 20px', maxWidth: 520, margin: '0 auto', direction: 'rtl' }}>
       {/* Header */}
-      <div style={{ marginBottom: 18 }}>
-        <h1 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 800 }}>
-          {workplace?.name ?? 'דשבורד'}
-        </h1>
-        <p style={{ margin: 0, fontSize: 13, color: 'var(--text-2)' }}>שלום, {user.email}</p>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+        <div>
+          <h1 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 800, letterSpacing: '-0.5px' }}>
+            {workplace?.name ?? 'דשבורד'}
+          </h1>
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--text-2)' }}>שלום, {user.email}</p>
+        </div>
+        <div style={{ width: 40, height: 40, borderRadius: 'var(--r-md)', background: 'var(--accent-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)' }}>
+          <Icon name="chart" size={20} stroke={2} />
+        </div>
       </div>
 
       {/* Scope toggle */}
@@ -64,11 +70,12 @@ export default async function DashboardPage({
         <>
           {/* KPI grid */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
-            <Card pad={14}><Stat value={stats.kpis.activeEmployees} label="עובדים פעילים" /></Card>
-            <Card pad={14}><Stat value={stats.kpis.totalShifts} label={`משמרות ה${scopeLabel}`} sub={undefined} color="#13A98E" /></Card>
-            <Card pad={14}><Stat value={stats.kpis.totalHours.toLocaleString('he-IL')} label={`שעות ה${scopeLabel}`} color="#E0902A" /></Card>
+            <Card pad={14}><Stat icon="users" value={stats.kpis.activeEmployees} label="עובדים פעילים" /></Card>
+            <Card pad={14}><Stat icon="calendar" value={stats.kpis.totalShifts} label={`משמרות ה${scopeLabel}`} color="#13A98E" /></Card>
+            <Card pad={14}><Stat icon="clock" value={stats.kpis.totalHours.toLocaleString('he-IL')} label={`שעות ה${scopeLabel}`} color="#E0902A" /></Card>
             <Card pad={14}>
               <Stat
+                icon="shield"
                 value={stats.kpis.coveragePct != null ? `${stats.kpis.coveragePct}%` : '—'}
                 label="כיסוי השיבוץ"
                 color={stats.kpis.coveragePct != null && stats.kpis.coveragePct >= 95 ? '#13A98E' : '#EB6A4E'}

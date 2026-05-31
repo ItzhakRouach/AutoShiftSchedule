@@ -4,6 +4,7 @@ import { useActionState } from 'react'
 import Link from 'next/link'
 import { signIn, type AuthState } from '../actions'
 import { Field } from '../_components/Field'
+import { Icon } from '@/components/ui/Icon'
 
 const initialState: AuthState = {}
 
@@ -31,28 +32,17 @@ export default function LoginPage() {
           padding: '32px 28px',
           width: '100%',
           maxWidth: 400,
+          direction: 'rtl',
         }}
       >
-        <h1
-          style={{
-            margin: '0 0 6px',
-            fontSize: 26,
-            fontWeight: 800,
-            textAlign: 'center',
-          }}
-        >
-          מִשְׁמֶרֶת
-        </h1>
-        <p
-          style={{
-            margin: '0 0 28px',
-            fontSize: 14,
-            color: 'var(--text-2)',
-            textAlign: 'center',
-          }}
-        >
-          התחברות לחשבון
-        </p>
+        {/* Logo */}
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+          <div style={{ width: 56, height: 56, borderRadius: 16, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px', boxShadow: '0 8px 24px rgba(52,87,240,0.3)' }}>
+            <Icon name="shield" size={28} stroke={1.7} color="#fff" />
+          </div>
+          <h1 style={{ margin: '0 0 4px', fontSize: 26, fontWeight: 800 }}>מִשְׁמֶרֶת</h1>
+          <p style={{ margin: 0, fontSize: 14, color: 'var(--text-2)' }}>התחברות לחשבון</p>
+        </div>
 
         <form action={action} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <Field
@@ -98,32 +88,23 @@ export default function LoginPage() {
               color: 'var(--accent-ink)',
               border: 'none',
               borderRadius: 'var(--r-pill)',
-              padding: '12px 0',
+              padding: '13px 0',
               fontSize: 15,
               fontWeight: 700,
               cursor: pending ? 'not-allowed' : 'pointer',
               opacity: pending ? 0.7 : 1,
               transition: 'opacity .15s',
               fontFamily: 'inherit',
+              boxShadow: '0 4px 14px rgba(52,87,240,0.3)',
             }}
           >
             {pending ? 'מתחבר…' : 'התחברות'}
           </button>
         </form>
 
-        <p
-          style={{
-            marginTop: 20,
-            fontSize: 13,
-            color: 'var(--text-2)',
-            textAlign: 'center',
-          }}
-        >
+        <p style={{ marginTop: 20, fontSize: 13, color: 'var(--text-2)', textAlign: 'center' }}>
           אין לך חשבון?{' '}
-          <Link
-            href="/signup"
-            style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}
-          >
+          <Link href="/signup" style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>
             הרשמה
           </Link>
         </p>
@@ -131,4 +112,3 @@ export default function LoginPage() {
     </main>
   )
 }
-

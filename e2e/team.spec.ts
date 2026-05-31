@@ -19,7 +19,7 @@ async function setupTeam(page: Page) {
   await page.getByRole('button', { name: 'יצירת מקום עבודה' }).click()
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 })
 
-  await page.getByRole('link', { name: 'ניהול עובדים' }).click()
+  await page.goto('/team')
   await expect(page).toHaveURL(/\/team/, { timeout: 10000 })
 }
 

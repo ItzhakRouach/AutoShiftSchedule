@@ -35,7 +35,7 @@ test('schedule image route returns a valid PNG for a published period', async ({
   await signupAndOnboard(page)
 
   // Add employees
-  await page.getByRole('link', { name: 'ניהול עובדים' }).click()
+  await page.goto('/team')
   await expect(page).toHaveURL(/\/team/, { timeout: 10000 })
   await addEmployee(page, 'דנה כהן')
   await addEmployee(page, 'יוסי לוי')

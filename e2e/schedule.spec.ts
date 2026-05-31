@@ -37,7 +37,7 @@ test('manager generates an auto schedule and sees coverage + assignments', async
   await signupAndOnboard(page)
 
   // Go to team and add 3 employees, each with all roles.
-  await page.getByRole('link', { name: 'ניהול עובדים' }).click()
+  await page.goto('/team')
   await expect(page).toHaveURL(/\/team/, { timeout: 10000 })
 
   await addEmployee(page, 'דנה כהן')

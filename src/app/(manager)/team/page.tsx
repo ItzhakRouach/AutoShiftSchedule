@@ -1,5 +1,4 @@
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
 import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveWorkplace } from '@/lib/workplace/current'
@@ -108,7 +107,6 @@ export default async function TeamPage() {
   return (
     <main
       style={{
-        minHeight: '100vh',
         background: 'var(--bg)',
         padding: '24px 20px',
         maxWidth: 520,
@@ -116,35 +114,6 @@ export default async function TeamPage() {
         direction: 'rtl',
       }}
     >
-      <Link
-        href="/dashboard"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          marginBottom: 20,
-          fontSize: 14,
-          fontWeight: 600,
-          color: 'var(--text-2)',
-          textDecoration: 'none',
-        }}
-      >
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.75"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          style={{ transform: 'scaleX(-1)' }}
-        >
-          <path d="M14.5 5 8 12l6.5 7" />
-        </svg>
-        חזרה לדשבורד
-      </Link>
-
       <InvitePanel
         initialCode={latestInvite?.code ?? null}
         workplaceName={workplace.name}

@@ -1,18 +1,23 @@
 import React from 'react'
+import { Icon, type IconName } from '@/components/ui/Icon'
 
 interface StatProps {
   value: string | number
   label: string
   sub?: string
   color?: string
-  icon?: React.ReactNode
+  icon?: IconName | React.ReactNode
 }
 
 export function Stat({ value, label, sub, color, icon }: StatProps) {
+  const iconEl =
+    typeof icon === 'string'
+      ? <Icon name={icon as IconName} size={19} stroke={2} color={color ?? 'var(--accent)'} />
+      : icon
   return (
     <div style={{ flex: 1, minWidth: 0 }}>
-      {icon && (
-        <div style={{ marginBottom: 7, color: color ?? 'var(--accent)' }}>{icon}</div>
+      {iconEl && (
+        <div style={{ marginBottom: 7, color: color ?? 'var(--accent)' }}>{iconEl}</div>
       )}
       <div
         style={{

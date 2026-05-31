@@ -28,7 +28,7 @@ test('manager manually edits a slot and applies a 12h shift', async ({ page }) =
   test.setTimeout(120_000)
   await signupAndOnboard(page)
 
-  await page.getByRole('link', { name: 'ניהול עובדים' }).click()
+  await page.goto('/team')
   await expect(page).toHaveURL(/\/team/, { timeout: 10000 })
   await addEmployee(page, 'דנה כהן')
   await addEmployee(page, 'יוסי לוי')

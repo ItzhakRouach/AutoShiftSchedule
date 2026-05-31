@@ -1,5 +1,4 @@
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveWorkplace } from '@/lib/workplace/current'
 import { DeadlineForm } from './DeadlineForm'
@@ -41,14 +40,8 @@ export default async function SettingsPage() {
   }
 
   return (
-    <main style={{ minHeight: '100vh', padding: 24, background: 'var(--bg)' }}>
+    <main style={{ padding: 24, background: 'var(--bg)' }}>
       <div style={{ maxWidth: 520, margin: '0 auto', direction: 'rtl' }}>
-        <div style={{ marginBottom: 24 }}>
-          <Link href="/dashboard" style={{ color: 'var(--accent)', fontSize: 14, textDecoration: 'none' }}>
-            ← חזרה לדשבורד
-          </Link>
-        </div>
-
         <h1 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 24px', color: 'var(--text)' }}>
           הגדרות
         </h1>

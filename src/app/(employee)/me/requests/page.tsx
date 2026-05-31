@@ -1,5 +1,4 @@
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getEmployeeRequestsContext } from '@/lib/requests/context'
 import { formatHebDate } from '@/lib/dates/week'
@@ -35,30 +34,13 @@ export default async function RequestsPage() {
   return (
     <main
       style={{
-        minHeight: '100vh',
         background: 'var(--bg)',
-        padding: '16px 16px 48px',
+        padding: '16px 16px 24px',
         maxWidth: 540,
         margin: '0 auto',
         direction: 'rtl',
       }}
     >
-      <Link
-        href="/me"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          fontSize: 14,
-          fontWeight: 600,
-          color: 'var(--accent)',
-          textDecoration: 'none',
-          marginBottom: 12,
-        }}
-      >
-        ← חזרה
-      </Link>
-
       <RequestsHeader
         weekLabel={formatHebDate(weekStart)}
         filled={filled}
