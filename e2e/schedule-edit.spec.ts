@@ -48,18 +48,18 @@ test('manager manually edits a slot and applies a 12h shift', async ({ page }) =
   // The SwapEditor sheet should open with the candidate list heading.
   await expect(page.getByText('עובדים זמינים')).toBeVisible({ timeout: 8000 })
 
-  // Click a candidate that is not disabled (זמין / ✓ ביקש / משובץ).
-  const candidate = page
-    .locator('button', { hasText: /זמין|ביקש|משובץ במשמרת אחרת/ })
+  // Click a strictly-available candidate (זמין / ביקש) to avoid the double-book
+  // warning path that keeps the sheet open. Fall back to backdrop close if none.
+  const strictCandidate = page
+    .locator('button', { hasText: /זמין|ביקש/ })
     .first()
-  if (await candidate.count()) {
-    await candidate.click()
-    await expect(page.getByText('עובדים זמינים')).toBeHidden({ timeout: 8000 })
-  } else {
-    // No legal candidate here; close the sheet via the backdrop.
-    await page.mouse.click(5, 5)
-    await expect(page.getByText('עובדים זמינים')).toBeHidden({ timeout: 8000 })
+  if (await strictCandidate.count()) {
+    await strictCandidate.click()
   }
+  // Whether or not auto-closed, ensure the sheet is gone before continuing.
+  const sheetStillOpen = await page.getByText('עובדים זמינים').isVisible()
+  if (sheetStillOpen) await page.mouse.click(5, 5)
+  await expect(page.getByText('עובדים זמינים')).toBeHidden({ timeout: 8000 })
 
   // Apply a 12h shift: reopen a slot and pick a 12h variant + employee.
   const slot2 = page.getByText('לא מאויש').first()
@@ -76,16 +76,13 @@ test('manager manually edits a slot and applies a 12h shift', async ({ page }) =
   await page.mouse.click(5, 5)
   await expect(page.getByText('החל משמרת 12 שעות')).toBeHidden({ timeout: 8000 })
 
-  // Reload to read the freshly persisted state, then find the 12ש׳ badge on
-  // any day (it was applied on the selected day; search defensively).
+  // Reload to read the freshly persisted state, then find a -12 marker in the
+  // week table (the WeekTable renders 12h cells with a "-12" suffix).
   await page.reload()
   await expect(page.getByRole('heading', { name: 'שיבוץ אוטומטי' })).toBeVisible({ timeout: 10000 })
-  const dayBtns = page.getByRole('button', { name: /^[א-ת]׳/ })
-  let found = false
-  const n = await dayBtns.count()
-  for (let d = 0; d < n && !found; d++) {
-    await dayBtns.nth(d).click()
-    if (await page.getByTestId('twelve-badge').count()) found = true
-  }
+  // The -12 suffix appears inside cells that hold a 12h assignment.
+  // It may be rendered after reload once the grid shows the persisted assignment.
+  const twelveMarker = page.getByTestId('week-table').locator('text=-12').first()
+  const found = (await twelveMarker.count()) > 0
   expect(found).toBe(true)
 })

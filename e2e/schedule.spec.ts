@@ -56,19 +56,14 @@ test('manager generates an auto schedule and sees coverage + assignments', async
   await expect(coverage).toBeVisible({ timeout: 30000 })
   await expect(coverage).toHaveText(/\d+%/)
 
-  // At least one of the added employees should appear assigned in the grid.
-  // The day grid renders employee name chips. Search across all 7 days.
-  let foundAssigned = false
-  for (let d = 0; d < 7 && !foundAssigned; d++) {
-    const dayBtn = page.getByRole('button', { name: new RegExp(`^[א-ת]׳`) }).nth(d)
-    if (await dayBtn.count()) await dayBtn.click()
-    if (
-      (await page.getByText('דנה כהן').count()) ||
-      (await page.getByText('יוסי לוי').count()) ||
-      (await page.getByText('מאיה בר').count())
-    ) {
-      foundAssigned = true
-    }
-  }
+  // The week table should be visible.
+  await expect(page.getByTestId('week-table')).toBeVisible({ timeout: 15000 })
+
+  // At least one of the added employees should appear assigned in the week table.
+  const weekTable = page.getByTestId('week-table')
+  const foundAssigned =
+    (await weekTable.getByText('דנה כהן').count()) > 0 ||
+    (await weekTable.getByText('יוסי לוי').count()) > 0 ||
+    (await weekTable.getByText('מאיה בר').count()) > 0
   expect(foundAssigned).toBe(true)
 })

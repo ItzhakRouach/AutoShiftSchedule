@@ -23,8 +23,8 @@ describe('buildSeed', () => {
     expect(seed.settings.allow_12h_fallback).toBe(true)
   })
   it('builds requirement templates for all 7 days, only base shifts, only count>0', () => {
-    // 7 days × (morning:3 + noon:2 + night:2) = 7 × 7 = 49 rows
-    expect(seed.requirements).toHaveLength(49)
+    // 7 days × (morning:3 + noon:3 + night:3) = 7 × 9 = 63 rows
+    expect(seed.requirements).toHaveLength(63)
     expect(seed.requirements.every(r => r.count > 0)).toBe(true)
     expect(seed.requirements.every(r => ['morning', 'noon', 'night'].includes(r.shiftKey))).toBe(true)
     const dows = new Set(seed.requirements.map(r => r.day_of_week))
