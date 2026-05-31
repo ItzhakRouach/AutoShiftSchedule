@@ -4,12 +4,14 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Btn } from '@/components/ui/Btn'
 import { Card } from '@/components/ui/Card'
+import { Segmented } from '@/components/ui/Segmented'
 import type { ScheduleView } from '@/lib/schedule/view-data'
 import type { EditMeta } from '@/lib/schedule/edit-meta'
 import type { Coverage, TwelveHourSuggestion } from '@/lib/scheduling/types'
 import { runSchedule, publishSchedule, hasManualAssignments } from './actions'
 import { FeasibilityBanner } from './FeasibilityBanner'
 import { WeekTable } from './WeekTable'
+import { RequestsOverview } from './RequestsOverview'
 import { SwapEditor, type SlotCtx } from './SwapEditor'
 import { TwelveHourList, Generating } from './parts'
 import { RegenerateConfirm } from './RegenerateConfirm'
@@ -20,6 +22,13 @@ interface Props {
   editMeta: EditMeta | null
 }
 
+type ViewMode = 'schedule' | 'requests'
+
+const VIEW_OPTIONS = [
+  { value: 'schedule', label: 'סידור' },
+  { value: 'requests', label: 'בקשות עובדים' },
+]
+
 export function ScheduleClient({ view, editMeta }: Props) {
   const router = useRouter()
   const [coverage, setCoverage] = useState<Coverage | null>(null)
@@ -28,6 +37,7 @@ export function ScheduleClient({ view, editMeta }: Props) {
   const [published, setPublished] = useState(view.status === 'published')
   const [slot, setSlot] = useState<SlotCtx | null>(null)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [viewMode, setViewMode] = useState<ViewMode>('schedule')
   const [running, startRun] = useTransition()
   const [publishing, startPublish] = useTransition()
 
@@ -78,8 +88,16 @@ export function ScheduleClient({ view, editMeta }: Props) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
         <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>שיבוץ אוטומטי</h1>
         {pct !== null && (
-          <div style={{ textAlign: 'center', background: pct >= 95 ? 'rgba(19,169,142,0.12)' : 'rgba(235,106,78,0.12)', borderRadius: 'var(--r-md)', padding: '8px 13px' }}>
-            <div style={{ fontSize: 20, fontWeight: 800, color: pct >= 95 ? '#13A98E' : '#EB6A4E', lineHeight: 1 }} data-testid="coverage">
+          <div style={{
+            textAlign: 'center',
+            background: pct >= 95 ? 'rgba(19,169,142,0.12)' : 'rgba(235,106,78,0.12)',
+            borderRadius: 'var(--r-md)',
+            padding: '8px 13px',
+          }}>
+            <div
+              style={{ fontSize: 20, fontWeight: 800, color: pct >= 95 ? '#13A98E' : '#EB6A4E', lineHeight: 1 }}
+              data-testid="coverage"
+            >
               {pct}%
             </div>
             <div style={{ fontSize: 10.5, color: 'var(--text-2)', fontWeight: 600, marginTop: 2 }}>כיסוי</div>
@@ -90,7 +108,15 @@ export function ScheduleClient({ view, editMeta }: Props) {
       <FeasibilityBanner feasibility={view.feasibility} />
 
       {error && (
-        <div style={{ padding: '10px 14px', borderRadius: 'var(--r-md)', background: 'rgba(235,106,78,0.1)', color: '#EB6A4E', fontSize: 13.5, fontWeight: 600, marginBottom: 14 }}>
+        <div style={{
+          padding: '10px 14px',
+          borderRadius: 'var(--r-md)',
+          background: 'rgba(235,106,78,0.1)',
+          color: '#EB6A4E',
+          fontSize: 13.5,
+          fontWeight: 600,
+          marginBottom: 14,
+        }}>
           {error}
         </div>
       )}
@@ -108,13 +134,31 @@ export function ScheduleClient({ view, editMeta }: Props) {
         צור סידור אוטומטי
       </Btn>
 
-      {hasResult && (
+      <div style={{ height: 14 }} />
+      <Segmented
+        options={VIEW_OPTIONS}
+        value={viewMode}
+        onChange={(v) => setViewMode(v as ViewMode)}
+      />
+      <div style={{ height: 14 }} />
+
+      {viewMode === 'requests' && (
+        <RequestsOverview view={view} />
+      )}
+
+      {viewMode === 'schedule' && hasResult && (
         <>
-          <div style={{ height: 14 }} />
           <WeekTable view={view} onSlot={editMeta ? setSlot : undefined} />
           <TwelveHourList suggestions={suggestions} roles={view.roles} />
           <div style={{ height: 14 }} />
-          <Btn variant={published ? 'soft' : 'primary'} size="md" icon="check" style={{ width: '100%' }} disabled={publishing} onClick={publish}>
+          <Btn
+            variant={published ? 'soft' : 'primary'}
+            size="md"
+            icon="check"
+            style={{ width: '100%' }}
+            disabled={publishing}
+            onClick={publish}
+          >
             {published ? 'פורסם ✓' : publishing ? 'מפרסם…' : 'פרסם סידור'}
           </Btn>
           {published && (

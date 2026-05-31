@@ -9,6 +9,8 @@ import type { TwelveHourKey } from '@/lib/scheduling/types'
 export interface CellEntry {
   employeeId: string
   is12h: boolean
+  /** True when this assignment matches a shift the employee explicitly requested. */
+  requested: boolean
 }
 
 /** weekGrid[day][shiftKey][roleId] = CellEntry[] */
@@ -20,19 +22,23 @@ export type EmpTotals = Record<string, number>
 /**
  * Build the week grid, expanding 12h assignments into every base-shift they fill.
  * A 12h assignment appears in each covered base-shift cell, flagged `is12h: true`.
+ * The `requested` flag is true when requestedSet contains the matching key.
  */
 export function buildWeekGrid(view: ScheduleView): WeekGrid {
   const grid: WeekGrid = {}
+  const reqSet = view.requestedSet ?? new Set<string>()
 
   // Seed base assignments
   for (let day = 0; day < 7; day++) {
     for (const shift of view.shiftKeys) {
+      const shiftTypeId = view.shiftTypeIdByKey[shift] ?? ''
       const byRole = view.grid[day]?.[shift] ?? {}
       for (const [roleId, empIds] of Object.entries(byRole)) {
         for (const eid of empIds) {
           const d = (grid[day] ??= {})
           const s = (d[shift] ??= {})
-          ;(s[roleId] ??= []).push({ employeeId: eid, is12h: false })
+          const requested = reqSet.has(`${eid}:${day}:${shiftTypeId}`)
+          ;(s[roleId] ??= []).push({ employeeId: eid, is12h: false, requested })
         }
       }
     }
@@ -42,10 +48,15 @@ export function buildWeekGrid(view: ScheduleView): WeekGrid {
   for (const t of view.twelve) {
     const fills = TWELVE_HOUR_FILLS[t.variant as TwelveHourKey]
     if (!fills) continue
+    // For 12h: check if any covered base shift was requested
+    const requested = fills.some((baseShift) => {
+      const stId = view.shiftTypeIdByKey[baseShift] ?? ''
+      return reqSet.has(`${t.employeeId}:${t.day}:${stId}`)
+    })
     for (const baseShift of fills) {
       const d = (grid[t.day] ??= {})
       const s = (d[baseShift] ??= {})
-      ;(s[t.roleId] ??= []).push({ employeeId: t.employeeId, is12h: true })
+      ;(s[t.roleId] ??= []).push({ employeeId: t.employeeId, is12h: true, requested })
     }
   }
 

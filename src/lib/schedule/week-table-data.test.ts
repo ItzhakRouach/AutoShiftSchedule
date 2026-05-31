@@ -36,6 +36,8 @@ function makeView(overrides: Partial<ScheduleView> = {}): ScheduleView {
     shiftTypeIdByKey: { morning: 'st1', noon: 'st2', night: 'st3' },
     hasAssignments: true,
     feasibility: null,
+    requests: [],
+    requestedSet: new Set<string>(),
     ...overrides,
   }
 }
@@ -44,8 +46,8 @@ describe('buildWeekGrid — base assignments', () => {
   it('copies base assignments into grid as is12h:false', () => {
     const view = makeView()
     const grid = buildWeekGrid(view)
-    expect(grid[0]?.morning?.['r-achm']).toEqual([{ employeeId: 'e1', is12h: false }])
-    expect(grid[0]?.noon?.['r-moked']).toEqual([{ employeeId: 'e2', is12h: false }])
+    expect(grid[0]?.morning?.['r-achm']).toEqual([{ employeeId: 'e1', is12h: false, requested: false }])
+    expect(grid[0]?.noon?.['r-moked']).toEqual([{ employeeId: 'e2', is12h: false, requested: false }])
   })
 
   it('empty cell has no entries', () => {
@@ -65,8 +67,8 @@ describe('buildWeekGrid — 12h expansion', () => {
     const grid = buildWeekGrid(view)
     const morn = grid[0]?.morning?.['r-guard'] ?? []
     const noon = grid[0]?.noon?.['r-guard'] ?? []
-    expect(morn).toEqual([{ employeeId: 'e1', is12h: true }])
-    expect(noon).toEqual([{ employeeId: 'e1', is12h: true }])
+    expect(morn).toEqual([{ employeeId: 'e1', is12h: true, requested: false }])
+    expect(noon).toEqual([{ employeeId: 'e1', is12h: true, requested: false }])
     // night should be empty
     expect(grid[0]?.night?.['r-guard'] ?? []).toHaveLength(0)
   })
@@ -78,7 +80,7 @@ describe('buildWeekGrid — 12h expansion', () => {
       twelve: [{ day: 1, variant: 'm12_night', roleId: 'r-achm', employeeId: 'e2' }],
     })
     const grid = buildWeekGrid(view)
-    expect(grid[1]?.night?.['r-achm'] ?? []).toEqual([{ employeeId: 'e2', is12h: true }])
+    expect(grid[1]?.night?.['r-achm'] ?? []).toEqual([{ employeeId: 'e2', is12h: true, requested: false }])
     expect(grid[1]?.morning?.['r-achm'] ?? []).toHaveLength(0)
   })
 })

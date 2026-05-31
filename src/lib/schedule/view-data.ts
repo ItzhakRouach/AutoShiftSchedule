@@ -22,6 +22,14 @@ export interface ViewTwelve {
   employeeId: string
 }
 
+/** One employee's request for a single day. */
+export interface ViewRequest {
+  employeeId: string
+  dayOfWeek: number
+  isOff: boolean
+  preferredShiftIds: string[]
+}
+
 export interface ScheduleView {
   periodId: string
   status: string
@@ -37,9 +45,33 @@ export interface ScheduleView {
   shiftTypeIdByKey: Record<string, string>
   hasAssignments: boolean
   feasibility: FeasibilityResult | null
+  /** All employee requests for this period. */
+  requests: ViewRequest[]
+  /**
+   * Set of "employeeId:day:shiftTypeId" keys where the assignment matches a
+   * requested shift (is_off=false AND preferred_shift_ids includes the assigned
+   * base shift's type id).
+   */
+  requestedSet: Set<string>
 }
 
 const DAY_SHORTS = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳']
+
+/**
+ * Pure helper — builds a Set of "employeeId:day:shiftTypeId" keys where the
+ * employee actively requested that exact shift (is_off=false and the shift id
+ * appears in preferred_shift_ids). Exported for unit testing.
+ */
+export function buildRequestedSet(requests: ViewRequest[]): Set<string> {
+  const set = new Set<string>()
+  for (const r of requests) {
+    if (r.isOff || r.preferredShiftIds.length === 0) continue
+    for (const sid of r.preferredShiftIds) {
+      set.add(`${r.employeeId}:${r.dayOfWeek}:${sid}`)
+    }
+  }
+  return set
+}
 
 /** Resolves all data for /schedule. Returns null on missing workplace/period. */
 export async function getScheduleView(
@@ -60,20 +92,30 @@ export async function getScheduleView(
   const idToKey: Record<string, ShiftKey> = {}
   for (const [key, id] of Object.entries(built.keyToShiftTypeId)) idToKey[id] = key as ShiftKey
 
-  const [{ data: rolesRaw }, { data: empsRaw }, { data: assignsRaw }, { data: reqRaw }, { data: allShiftTypes }] =
-    await Promise.all([
-      supabase.from('roles').select('id, name').eq('workplace_id', workplaceId).order('name'),
-      supabase.from('employees').select('id, name, color').eq('workplace_id', workplaceId).order('name'),
-      supabase
-        .from('assignments')
-        .select('employee_id, day_of_week, shift_type_id, role_id')
-        .eq('period_id', periodId),
-      supabase
-        .from('shift_requirements')
-        .select('day_of_week, shift_type_id, role_id, count')
-        .eq('workplace_id', workplaceId),
-      supabase.from('shift_types').select('id, key').eq('workplace_id', workplaceId),
-    ])
+  const [
+    { data: rolesRaw },
+    { data: empsRaw },
+    { data: assignsRaw },
+    { data: reqRaw },
+    { data: allShiftTypes },
+    { data: requestsRaw },
+  ] = await Promise.all([
+    supabase.from('roles').select('id, name').eq('workplace_id', workplaceId).order('name'),
+    supabase.from('employees').select('id, name, color').eq('workplace_id', workplaceId).order('name'),
+    supabase
+      .from('assignments')
+      .select('employee_id, day_of_week, shift_type_id, role_id')
+      .eq('period_id', periodId),
+    supabase
+      .from('shift_requirements')
+      .select('day_of_week, shift_type_id, role_id, count')
+      .eq('workplace_id', workplaceId),
+    supabase.from('shift_types').select('id, key').eq('workplace_id', workplaceId),
+    supabase
+      .from('requests')
+      .select('employee_id, day_of_week, is_off, preferred_shift_ids')
+      .eq('period_id', periodId),
+  ])
 
   // All shift-type keys (base + 12h) so manual 12h assignments can be surfaced.
   const idToAnyKey: Record<string, string> = {}
@@ -123,6 +165,16 @@ export async function getScheduleView(
     feasibility = null
   }
 
+  // Build requests list + requestedSet for "ביקש" badge.
+  const requests: ViewRequest[] = (requestsRaw ?? []).map((r) => ({
+    employeeId: r.employee_id,
+    dayOfWeek: r.day_of_week,
+    isOff: r.is_off,
+    preferredShiftIds: r.preferred_shift_ids ?? [],
+  }))
+
+  const requestedSet = buildRequestedSet(requests)
+
   return {
     periodId,
     status: built.period.status,
@@ -137,5 +189,7 @@ export async function getScheduleView(
     shiftTypeIdByKey,
     hasAssignments: (assignsRaw ?? []).length > 0,
     feasibility,
+    requests,
+    requestedSet,
   }
 }

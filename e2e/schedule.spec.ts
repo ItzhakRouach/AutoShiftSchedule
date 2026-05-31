@@ -56,7 +56,7 @@ test('manager generates an auto schedule and sees coverage + assignments', async
   await expect(coverage).toBeVisible({ timeout: 30000 })
   await expect(coverage).toHaveText(/\d+%/)
 
-  // The week table should be visible.
+  // The week table should be visible (default view is "סידור").
   await expect(page.getByTestId('week-table')).toBeVisible({ timeout: 15000 })
 
   // At least one of the added employees should appear assigned in the week table.
@@ -66,4 +66,15 @@ test('manager generates an auto schedule and sees coverage + assignments', async
     (await weekTable.getByText('יוסי לוי').count()) > 0 ||
     (await weekTable.getByText('מאיה בר').count()) > 0
   expect(foundAssigned).toBe(true)
+
+  // Toggle to "בקשות עובדים" — requests overview should appear.
+  await page.getByRole('button', { name: 'בקשות עובדים' }).click()
+  await expect(page.getByTestId('requests-overview')).toBeVisible({ timeout: 10000 })
+
+  // The week-table should be hidden while in requests mode.
+  await expect(page.getByTestId('week-table')).toBeHidden()
+
+  // Toggle back to "סידור" — week table reappears.
+  await page.getByRole('button', { name: 'סידור' }).click()
+  await expect(page.getByTestId('week-table')).toBeVisible({ timeout: 10000 })
 })
