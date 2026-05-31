@@ -39,11 +39,11 @@ test('full onboarding flow: signup → create workplace → dashboard with seede
   await page.getByLabel('שם מקום העבודה').fill(workplaceName)
   await page.getByRole('button', { name: 'יצירת מקום עבודה' }).click()
 
-  // Lands on dashboard with the workplace name and seeded counts
+  // Lands on dashboard with the workplace name and scope toggle
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 })
   await expect(page.getByRole('heading', { name: workplaceName })).toBeVisible()
-  await expect(page.getByText('תפקידים: 3')).toBeVisible()
-  await expect(page.getByText('סוגי משמרת: 7')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'שבוע' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'חודש' })).toBeVisible()
 })
 
 test('authenticated user with org is redirected away from /login and /onboarding', async ({
