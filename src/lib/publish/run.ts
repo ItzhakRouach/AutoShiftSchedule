@@ -50,12 +50,14 @@ export async function publishDuePeriods(
 
     if (!isPublishDue(now, publish_dow, publish_time, tz)) continue
 
-    // Find a period in 'locked' or 'draft' status to publish
+    // Publish the earliest not-yet-published period. 'locked' is the normal
+    // case (deadline cron locked it); 'collecting' covers workplaces with no
+    // request deadline configured, so their schedule still goes out on time.
     const { data: periods, error: periodsErr } = await admin
       .from('schedule_periods')
       .select('id, week_start_date')
       .eq('workplace_id', workplace_id)
-      .in('status', ['locked', 'draft'])
+      .in('status', ['locked', 'collecting'])
       .order('week_start_date', { ascending: true })
       .limit(1)
 
