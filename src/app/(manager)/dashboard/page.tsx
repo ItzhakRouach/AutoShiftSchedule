@@ -4,6 +4,42 @@ import { createClient } from '@/lib/supabase/server'
 import { getActiveWorkplace } from '@/lib/workplace/current'
 import { signOut } from '@/app/(auth)/actions'
 
+function NavLink({ href, label, primary }: { href: string; label: string; primary?: boolean }) {
+  return (
+    <Link
+      href={href}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '14px 18px',
+        background: primary ? 'var(--accent-soft)' : 'var(--surface-2)',
+        color: primary ? 'var(--accent)' : 'var(--text)',
+        borderRadius: 'var(--r-md)',
+        fontWeight: 700,
+        fontSize: 15,
+        textDecoration: 'none',
+        border: `1px solid ${primary ? 'transparent' : 'var(--border)'}`,
+      }}
+    >
+      <span>{label}</span>
+      <svg
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        style={{ transform: 'scaleX(-1)' }}
+      >
+        <path d="M14.5 5 8 12l6.5 7" />
+      </svg>
+    </Link>
+  )
+}
+
 export default async function DashboardPage() {
   const supabase = await createClient()
   const {
@@ -90,68 +126,9 @@ export default async function DashboardPage() {
 
         {/* Navigation */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
-          <Link
-            href="/team"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '14px 18px',
-              background: 'var(--accent-soft)',
-              color: 'var(--accent)',
-              borderRadius: 'var(--r-md)',
-              fontWeight: 700,
-              fontSize: 15,
-              textDecoration: 'none',
-              border: '1px solid transparent',
-            }}
-          >
-            <span>ניהול עובדים</span>
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              style={{ transform: 'scaleX(-1)' }}
-            >
-              <path d="M14.5 5 8 12l6.5 7" />
-            </svg>
-          </Link>
-          <Link
-            href="/settings"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '14px 18px',
-              background: 'var(--surface-2)',
-              color: 'var(--text)',
-              borderRadius: 'var(--r-md)',
-              fontWeight: 700,
-              fontSize: 15,
-              textDecoration: 'none',
-              border: '1px solid var(--border)',
-            }}
-          >
-            <span>הגדרות</span>
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              style={{ transform: 'scaleX(-1)' }}
-            >
-              <path d="M14.5 5 8 12l6.5 7" />
-            </svg>
-          </Link>
+          <NavLink href="/team" label="ניהול עובדים" primary />
+          <NavLink href="/schedule" label="שיבוץ" />
+          <NavLink href="/settings" label="הגדרות" />
         </div>
 
         <form action={signOut}>
