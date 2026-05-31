@@ -18,6 +18,9 @@ export interface PeriodInfo {
 export interface BuiltInput {
   input: EngineInput
   keyToShiftTypeId: Record<string, string>
+  /** key → shift_type_id for ALL shift types incl. 12h fallback variants
+   *  (needed to persist auto-assigned 12h coverage rows). */
+  allKeyToShiftTypeId: Record<string, string>
   nameToRoleId: Record<string, string>
   period: PeriodInfo
 }
@@ -48,11 +51,7 @@ export async function buildEngineInput(
     { data: settings },
     { data: requests },
   ] = await Promise.all([
-    supabase
-      .from('shift_types')
-      .select('id, key')
-      .eq('workplace_id', wp)
-      .eq('is_fallback', false),
+    supabase.from('shift_types').select('id, key, is_fallback').eq('workplace_id', wp),
     supabase.from('roles').select('id, name').eq('workplace_id', wp),
     supabase
       .from('employees')
@@ -127,5 +126,7 @@ export async function buildEngineInput(
   }
 
   const { input, keyToShiftTypeId, nameToRoleId } = mapToEngineInput(rows)
-  return { input, keyToShiftTypeId, nameToRoleId, period: period as PeriodInfo }
+  const allKeyToShiftTypeId: Record<string, string> = {}
+  for (const st of shiftTypes ?? []) allKeyToShiftTypeId[st.key] = st.id
+  return { input, keyToShiftTypeId, allKeyToShiftTypeId, nameToRoleId, period: period as PeriodInfo }
 }

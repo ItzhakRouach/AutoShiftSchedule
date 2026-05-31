@@ -28,6 +28,33 @@ export const TWELVE_HOUR_COVERS: Record<TwelveHourKey, ShiftKey[]> = {
   m12_15to3: ['noon', 'night'], // 15–03
 }
 
+/**
+ * The base-shift role requirements a 12h variant FILLS (counts toward coverage).
+ * Distinct from TWELVE_HOUR_COVERS (the windows it physically touches, used for
+ * sacred/availability HARD checks). Aligned to the real windows so the day/night
+ * PAIR cleanly tiles morning+noon+night with no double-count:
+ *   m12_day  (07–19) fills morning + noon
+ *   m12_night(19–07) fills night          (bridges into noon but noon is filled
+ *                                          by m12_day, so it does NOT re-count it)
+ *   m12_15to3(15–03) fills noon + night   (last-resort complement)
+ *   m12_3to15(03–15) fills night + morning(last-resort complement)
+ * Result: {m12_day, m12_night} = full day; {m12_3to15, m12_15to3} = full day.
+ */
+export const TWELVE_HOUR_FILLS: Record<TwelveHourKey, ShiftKey[]> = {
+  m12_day: ['morning', 'noon'],
+  m12_night: ['night'],
+  m12_3to15: ['night', 'morning'],
+  m12_15to3: ['noon', 'night'],
+}
+
+/** Preference order: day/night split first, 03-15/15-03 only as last resort. */
+export const TWELVE_HOUR_PREFERENCE: TwelveHourKey[] = [
+  'm12_day',
+  'm12_night',
+  'm12_3to15',
+  'm12_15to3',
+]
+
 /** Pick the 12h variant that covers a given uncovered base shift. */
 export function variantForShift(shift: ShiftKey): TwelveHourKey {
   switch (shift) {

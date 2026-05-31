@@ -5,9 +5,13 @@ export { checkFeasibility, countRequiredSlots, maxStaffableSlots } from './feasi
 export {
   buildTwelveHourSuggestions,
   TWELVE_HOUR_COVERS,
+  TWELVE_HOUR_FILLS,
+  TWELVE_HOUR_PREFERENCE,
   would12hViolateRest,
   twelveHourInterval,
 } from './fallback'
+export { runTwelveFill } from './twelve-fill'
+export { canTwelve } from './twelve-rules'
 export { maxMatch } from './matching'
 export { mulberry32, shuffle, draw, hashStr, lotteryRank } from './lottery'
 export { restOk, gapHours, shiftStartAbs, shiftEndAbs } from './rest'

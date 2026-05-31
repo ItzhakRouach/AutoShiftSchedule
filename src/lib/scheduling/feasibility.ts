@@ -30,10 +30,14 @@ export function maxStaffableSlots(input: EngineInput): number {
 }
 
 /**
- * Derive feasibility from an already-computed fill (avoids double work when
- * generateSchedule calls it). maxStaffable == filledSlots; status is 'ok' iff
- * every required slot is filled, else 'needs12h' when 12h fallback is on AND
- * suggestions exist for the gaps, else 'short'.
+ * Derive feasibility from the engine's full (8h + 12h) fill. maxStaffable ==
+ * filledSlots of that full fill (so the banner can never contradict the grid).
+ *
+ * Status semantics (per product rules):
+ *  - 'ok'       : the full fill covers EVERY required slot (incl. via 12h).
+ *  - 'needs12h' : 8h-alone is short, but the 12h pass closes MORE slots — i.e.
+ *                 full coverage (or extra coverage) is only achievable WITH 12h.
+ *  - 'short'    : still short after 12h AND 12h did not help (no eligible staff).
  */
 export function feasibilityFromFill(input: EngineInput, st: FillState): FeasibilityResult {
   const requiredSlots = countRequiredSlots(input)
@@ -45,16 +49,20 @@ export function feasibilityFromFill(input: EngineInput, st: FillState): Feasibil
       requiredSlots,
       maxStaffable,
       shortBy: 0,
-      details: 'All required 8h slots can be staffed.',
+      details: 'All required slots can be staffed.',
     }
   }
+  // Measure 8h-ONLY coverage to decide whether 12h is the reason we got further.
+  const eightOnly = countFilled(runFill(input, true))
+  const twelveHelped = input.settings.allow12hFallback && maxStaffable > eightOnly
+  // Even if 12h could not be auto-assigned here, suggestions may still apply.
   const warnings = collectWarnings(input, st.grid)
   const suggestions = buildTwelveHourSuggestions(warnings, input.settings, st.committed)
-  const canUse12h = input.settings.allow12hFallback && suggestions.length > 0
+  const canUse12h = twelveHelped || (input.settings.allow12hFallback && suggestions.length > 0)
   const status = canUse12h ? 'needs12h' : 'short'
   const details = canUse12h
-    ? `Short by ${shortBy} 8h slot(s); 12h fallback shifts needed.`
-    : `Short by ${shortBy} 8h slot(s); not enough available employees.`
+    ? `Short by ${shortBy} slot(s); 12h coverage applied where possible.`
+    : `Short by ${shortBy} slot(s); not enough available employees.`
   return { status, requiredSlots, maxStaffable, shortBy, details }
 }
 

@@ -7,7 +7,7 @@
 // per-day max-matching driven by the FIX-4 candidate precedence. This makes the
 // >=2 (else >=1) request floor hold whenever a per-round matching exists, and
 // fully staffs any day that is feasible in isolation given prior commitments.
-import type { Assignment, DayMeta, Employee, EngineInput, ShiftKey } from './types'
+import type { Assignment, DayMeta, Employee, EngineInput, ShiftKey, TwelveHourAssignment } from './types'
 import { isAssignable, type CheckContext } from './constraints'
 import { compareCandidates, type CandidateState } from './scoring'
 import { maxMatch, type MatchSlot } from './matching'
@@ -18,6 +18,8 @@ export interface FillState {
   committed: Record<string, Assignment[]>
   satisfied: Record<string, number>
   lotteryRank: Record<string, number>
+  /** canonical 12h-coverage records produced by the 12h pass (FIX: full coverage). */
+  twelve?: TwelveHourAssignment[]
 }
 
 function reqOf(input: EngineInput, empId: string, day: number) {

@@ -30,6 +30,7 @@ export function generateSchedule(input: EngineInput): EngineResult {
   return {
     grid: st.grid,
     assignmentsByEmployee: st.committed,
+    twelveHourAssignments: st.twelve ?? [],
     warnings,
     coverage,
     stats,

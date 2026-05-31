@@ -56,8 +56,12 @@ describe('feasibility pre-check', () => {
     const f = checkFeasibility(
       input({ employees: [emp('a')], requirements: req, settings: settings({ allow12hFallback: true }) }),
     )
+    // 8h alone staffs 1 (one shift/day). The 12h pass lets 'a' work one m12 shift
+    // covering 2 windows → 2 staffed; still short by 1 (3rd slot needs a 2nd
+    // person). 12h helped → needs12h.
     expect(f.status).toBe('needs12h')
-    expect(f.shortBy).toBe(2)
+    expect(f.maxStaffable).toBe(2)
+    expect(f.shortBy).toBe(1)
   })
 })
 
@@ -77,9 +81,12 @@ describe('12h fallback suggestions', () => {
     const on = generateSchedule(
       input({ employees: [emp('a')], requirements: req, settings: settings({ allow12hFallback: true }) }),
     )
-    // employee 'a' fills morning day0; noon+night remain → exactly 2 suggestions.
-    expect(on.twelveHourSuggestions).toHaveLength(2)
-    expect(on.twelveHourSuggestions.map((s) => s.variant)).toEqual(['m12_15to3', 'm12_night'])
+    // The 12h pass auto-assigns 'a' to m12_day (morning+noon); only night is
+    // left uncovered → exactly one residual suggestion (m12_night).
+    expect(on.twelveHourAssignments.map((t) => t.variant)).toEqual(['m12_day'])
+    expect(on.coverage.filledSlots).toBe(2)
+    expect(on.twelveHourSuggestions).toHaveLength(1)
+    expect(on.twelveHourSuggestions.map((s) => s.variant)).toEqual(['m12_night'])
     for (const s of on.twelveHourSuggestions) expect(s.day).toBe(0)
   })
 
@@ -92,10 +99,14 @@ describe('12h fallback suggestions', () => {
     const res = generateSchedule(
       input({ employees: [emp('a', { maxShifts: 7 })], requirements: fullGrid, settings: settings({ allow12hFallback: true }) }),
     )
-    // 21 slots, 1 employee fills exactly 7 (one/day) → 14 uncovered → 14 unique
-    // (day,variant,role) suggestions. Each is rest-flagged vs that day's commit.
-    expect(res.coverage.filledSlots).toBe(7)
-    expect(res.twelveHourSuggestions).toHaveLength(14)
+    // 21 slots, 1 employee. 8h fills 7 (one/day); the 12h pass then upgrades a
+    // single day to an m12 (covering 2 windows) → 8 filled total (one extra
+    // person/day is impossible with a single employee). 13 residual unique
+    // (day,variant,role) suggestions remain, each rest-flagged vs that day's
+    // committed shift.
+    expect(res.coverage.filledSlots).toBe(8)
+    expect(res.twelveHourAssignments).toHaveLength(1)
+    expect(res.twelveHourSuggestions).toHaveLength(13)
     expect(res.twelveHourSuggestions.every((s) => s.restConflict)).toBe(true)
   })
 

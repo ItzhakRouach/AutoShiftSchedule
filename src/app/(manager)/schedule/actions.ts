@@ -71,8 +71,30 @@ export async function runSchedule(
     source: string
   }[] = []
   const seen = new Set<string>()
+  // Auto-assigned 12h coverage: persist ONE canonical row per person/day/variant.
+  // The base-shift cells those 12h occupy carry `is12h` and are skipped below.
+  for (const t of result.twelveHourAssignments) {
+    const dayKey = `${t.employeeId}|${t.day}`
+    if (seen.has(dayKey)) continue
+    seen.add(dayKey)
+    if (!replaceManual && preservedSet.has(dayKey)) continue
+    const shiftTypeId = built.allKeyToShiftTypeId[t.variant]
+    // role: the variant fills (possibly two roles); persist the first covered.
+    const firstShift = Object.keys(t.rolesByShift)[0] as keyof typeof t.rolesByShift
+    const roleId = built.nameToRoleId[t.rolesByShift[firstShift] as string]
+    if (!shiftTypeId || !roleId) continue
+    rows.push({
+      period_id: periodId,
+      employee_id: t.employeeId,
+      day_of_week: t.day,
+      shift_type_id: shiftTypeId,
+      role_id: roleId,
+      source: 'auto',
+    })
+  }
   for (const [employeeId, assignments] of Object.entries(result.assignmentsByEmployee)) {
     for (const a of assignments) {
+      if (a.is12h) continue // covered by the canonical 12h row above
       const shiftTypeId = built.keyToShiftTypeId[a.shift]
       const roleId = built.nameToRoleId[a.roleId]
       if (!shiftTypeId || !roleId) continue

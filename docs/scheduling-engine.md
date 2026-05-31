@@ -55,11 +55,50 @@ Consequence: a **below-min** full-timer may pre-empt a part-time requester (step
 full-timer loses to a part-time requester (step 3 decides). Ideal **16h rest** for guards remains a soft
 preference (not a hard cap).
 
-## 12h fallback policy
-Base shifts are 8h (morning/noon/night). When the 8h grid cannot be fully staffed within the hard
-constraints AND `allow_12h_fallback`, propose 12h variants (07–19 / 19–07 / 03–15 / 15–03) only where
-needed, flagged for manager approval. A 12h assignment occupies two adjacent 8h windows and updates
-rest/coverage accordingly.
+## 12h auto-coverage policy (CONFIRMED product rules)
+Base shifts are 8h (morning 07–15 / noon 15–23 / night 23–07). **Full coverage is mandatory.** After the
+normal 8h matching pass, every still-uncovered required (shift, role) slot is auto-covered with 12h shifts
+**up to the limit of what is physically possible** (when `allow_12h_fallback`). A gap remains (warning) only
+when no eligible employee physically remains.
+
+**12h model.** A 12h shift = one person working **two consecutive 8h windows**, filling the required role in
+**each covered window**. **Cross-role is allowed**: the person may fill different roles in the two windows as
+long as they hold the role required for each (e.g. an אחמ״ש who also holds מוקדן covers מוקדן at noon then
+continues into night as אחמ״ש). To cover a role-position across the whole day, **two people work
+complementary 12h shifts** (one relieves the other).
+
+**Variant preference (STRICT).** Prefer 8h. When 12h is needed, prefer the **day/night split**:
+`m12_day` (07–19) + `m12_night` (19–07). Use `m12_3to15` (03–15) / `m12_15to3` (15–03) **ONLY as an absolute
+last resort**, when the day/night variants cannot close the gap (e.g. a single person must bridge a
+morning+night gap, which only `m12_3to15` can do in one shift).
+
+**Covers mapping.** Two distinct maps (`fallback.ts`):
+- `TWELVE_HOUR_COVERS` — windows a variant *physically touches*; used for HARD checks (sacred/availability):
+  `m12_day`→[morning,noon]; `m12_night`→[noon,night]; `m12_3to15`→[night,morning]; `m12_15to3`→[noon,night].
+- `TWELVE_HOUR_FILLS` — base-shift requirements a variant *counts toward* (no double-count so the day/night
+  pair cleanly tiles the day): `m12_day`→[morning,noon]; `m12_night`→[night]; `m12_3to15`→[night,morning];
+  `m12_15to3`→[noon,night]. Thus {m12_day, m12_night} = full day, and {m12_3to15, m12_15to3} = full day.
+
+**Hard constraints on a 12h** (`twelve-rules.ts canTwelve`): rest ≥ `min_rest_hours` using the 12h's real
+duration vs every other committed shift; the 12h is the person's ONE shift that day (no other shift same day,
+incl. absorbing their own same-day 8h); never exceed `max_shifts`; every covered/touched window must be
+allowed by availability; Shabbat/holiday blocks the whole 12h for an observer if ANY touched window is sacred.
+
+**Output.** A 12h assignment occupies each covered base-shift cell in the grid (each flagged `is12h: true`,
+`variant`) AND yields a single canonical record `twelveHourAssignments[]` (employee, day, variant,
+`rolesByShift`) for persistence. `twelveHourSuggestions` are derived from the **residual** warnings that even
+12h auto-coverage could not close (manager hints).
+
+**Algorithm.** The 12h pass (`twelve-fill.ts`) iterates days; per day it greedily assigns the preferred
+day/night variants (ordered by the same candidate precedence as the 8h pass), absorbing an employee's own
+same-day 8h into a 12h where that extends coverage, and performing **monotonic displacement** (free an 8h
+holder so the day/night pair can tile the whole day, only when it yields a net coverage gain → guarantees
+termination). Only after the pair is exhausted does it use the last-resort 03-15/15-03 variants.
+
+## Feasibility (12h-aware)
+`maxStaffable`/`coverage.filledSlots` reflect the **full 8h + 12h** fill. Status: `ok` when everything is
+covered (incl. via 12h); `needs12h` when 8h-alone is short but the 12h pass closes more (only achievable WITH
+12h); `short` when still short and 12h cannot help. A week fully coverable via 12h reports `ok`.
 
 ## Feasibility pre-check (NEW — feature)
 Before/at scheduling time, compute and surface: **"are there enough available employees this week to cover

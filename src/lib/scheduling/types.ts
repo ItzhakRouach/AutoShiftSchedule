@@ -60,6 +60,23 @@ export interface Assignment {
   day: number
   shift: ShiftKey
   roleId: string
+  /** true when this base-shift cell is occupied by a 12h shift (auto-coverage). */
+  is12h?: boolean
+  /** the 12h variant key when is12h; identifies the canonical 12h record. */
+  variant?: TwelveHourKey
+}
+
+/**
+ * Canonical 12h-coverage record (one per person/day/variant). The grid still
+ * shows the person in each covered base-shift cell (flagged is12h); this is the
+ * single record used for persistence.
+ */
+export interface TwelveHourAssignment {
+  employeeId: string
+  day: number
+  variant: TwelveHourKey
+  /** role the employee fills in EACH covered base shift (may differ per shift). */
+  rolesByShift: Partial<Record<ShiftKey, string>>
 }
 
 /** grid[day][shift][roleId] = employeeId[] */
@@ -111,6 +128,8 @@ export interface FeasibilityResult {
 export interface EngineResult {
   grid: Grid
   assignmentsByEmployee: Record<string, Assignment[]>
+  /** canonical 12h records (one per person/day/variant) for persistence. */
+  twelveHourAssignments: TwelveHourAssignment[]
   warnings: Warning[]
   coverage: Coverage
   stats: Record<string, EmployeeStat>

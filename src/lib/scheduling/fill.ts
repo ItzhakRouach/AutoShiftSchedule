@@ -6,6 +6,7 @@ import type { MatchSlot } from './matching'
 import { lotteryRank } from './lottery'
 import { emptyGrid } from './grid'
 import { matchDay, isTopPrecedenceFor, type FillState } from './dayfill'
+import { runTwelveFill } from './twelve-fill'
 
 function reqOf(input: EngineInput, empId: string, day: number) {
   return input.requests[empId]?.[day] ?? { off: false, preferred: [] }
@@ -69,8 +70,13 @@ function generalFill(input: EngineInput, st: FillState, metas: Record<number, Da
  * Run the engine's real fill and return the committed FillState. This is the
  * exact path generateSchedule uses; checkFeasibility reuses it so that
  * feasibility.maxStaffable == coverage.filledSlots ALWAYS.
+ *
+ * When `skipTwelve` is true the 12h auto-coverage pass is NOT run — used to
+ * measure the 8h-ONLY staffable count so feasibility can tell "needs12h" (8h
+ * short but 12h closes more) from "short" (12h cannot help). The default path
+ * runs the full 8h + 12h fill.
  */
-export function runFill(input: EngineInput): FillState {
+export function runFill(input: EngineInput, skipTwelve = false): FillState {
   const st: FillState = {
     grid: emptyGrid(input),
     committed: {},
@@ -87,6 +93,9 @@ export function runFill(input: EngineInput): FillState {
   reservationRound(input, st, metas, 1, true)
   // FIX 2: general max-matching fill of all remaining required slots.
   generalFill(input, st, metas)
+  // NEW: 12h auto-coverage pass closes residual gaps with 12h shifts (day/night
+  // preferred, 03-15/15-03 last resort). Records flow through st.twelve.
+  st.twelve = skipTwelve ? [] : runTwelveFill(input, st)
   return st
 }
 
