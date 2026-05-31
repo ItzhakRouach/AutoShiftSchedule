@@ -13,6 +13,7 @@ import { DayGrid } from './DayGrid'
 import { SwapEditor, type SlotCtx } from './SwapEditor'
 import { DaySelector, TwelveHourList, Generating } from './parts'
 import { RegenerateConfirm } from './RegenerateConfirm'
+import { ShareButton } from './ShareButton'
 
 interface Props {
   view: ScheduleView
@@ -118,6 +119,12 @@ export function ScheduleClient({ view, editMeta }: Props) {
           <Btn variant={published ? 'soft' : 'primary'} size="md" icon="check" style={{ width: '100%' }} disabled={publishing} onClick={publish}>
             {published ? 'פורסם ✓' : publishing ? 'מפרסם…' : 'פרסם סידור'}
           </Btn>
+          {published && (
+            <>
+              <div style={{ height: 10 }} />
+              <ShareButton periodId={view.periodId} weekLabel={view.days[0]?.date ?? ''} />
+            </>
+          )}
         </>
       )}
 
