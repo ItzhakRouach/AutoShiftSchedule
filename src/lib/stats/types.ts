@@ -14,12 +14,12 @@ export interface PeriodKPIs {
   shifts12h: number            // 12h fallback shifts used
   belowMinCount: number        // employees with shifts < min_shifts_per_week
 
-  // Requests
-  requestHonoredPct: number | null   // % of non-off requests honored, null = no requests
+  // Requests — employees with ≥2 honored requests
+  twoRequestsHonoredCount: number  // employees who received ≥2 of their requested shifts
+  twoRequestsHonoredTotal: number  // total employees considered (with ≥1 non-off request)
 
   // Secondary
   activeEmployees: number
-  totalHours: number
 }
 
 export interface EmployeeStat {
@@ -28,13 +28,6 @@ export interface EmployeeStat {
   color: string
   shifts: number
   hours: number
-}
-
-export interface RoleStat {
-  id: string
-  name: string
-  color: string
-  count: number
 }
 
 export interface FairnessStat {
@@ -48,6 +41,5 @@ export interface FairnessStat {
 export interface DashboardStats {
   kpis: PeriodKPIs
   employees: EmployeeStat[]
-  roles: RoleStat[]
   fairness: FairnessStat[]
 }

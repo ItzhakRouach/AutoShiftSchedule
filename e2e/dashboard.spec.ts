@@ -58,31 +58,35 @@ test('dashboard shows new KPIs after schedule is published', async ({ page }) =>
   await page.goto('/dashboard')
   await expect(page).toHaveURL(/\/dashboard/)
 
-  // Coverage card (prominent, new)
+  // Coverage card (prominent)
   await expect(page.getByText('כיסוי השיבוץ')).toBeVisible({ timeout: 10000 })
 
-  // New KPI labels
+  // KPI labels — current set
   await expect(page.getByText('משבצות לא מאוישות')).toBeVisible()
   await expect(page.getByText('משמרות 12 שעות')).toBeVisible()
   await expect(page.getByText('מתחת למינימום')).toBeVisible()
-  await expect(page.getByText('בקשות שכובדו')).toBeVisible()
+  // Below-min clarifying subtitle
+  await expect(page.getByText('עובדים שקיבלו פחות ממינימום המשמרות שהוגדר להם')).toBeVisible()
 
-  // Secondary stats still present
+  // New ≥2 requests KPI
+  await expect(page.getByText('עובדים עם ≥2 בקשות שכובדו')).toBeVisible()
+
+  // Secondary stats — active employees still present
   await expect(page.getByText('עובדים פעילים')).toBeVisible()
-  await expect(page.getByText(/סה״כ שעות ה/)).toBeVisible()
 
-  // Scope toggle: click חודש — secondary hours label updates
+  // Removed metrics must NOT appear
+  await expect(page.getByText(/סה״כ שעות ה/)).not.toBeVisible()
+  await expect(page.getByText(/פילוח לפי תפקיד/)).not.toBeVisible()
+  // Old label must be gone
+  await expect(page.getByText('בקשות שכובדו')).not.toBeVisible()
+
+  // Scope toggle still works
   await page.getByRole('button', { name: 'חודש' }).click()
   await expect(page).toHaveURL(/scope=month/)
-  await expect(page.getByText('סה״כ שעות החודש')).toBeVisible({ timeout: 10000 })
 
-  // Scope toggle: click שנה
   await page.getByRole('button', { name: 'שנה' }).click()
   await expect(page).toHaveURL(/scope=year/)
-  await expect(page.getByText('סה״כ שעות השנה')).toBeVisible({ timeout: 10000 })
 
-  // Back to שבוע
   await page.getByRole('button', { name: 'שבוע' }).click()
   await expect(page).toHaveURL(/scope=week/)
-  await expect(page.getByText('סה״כ שעות השבוע')).toBeVisible({ timeout: 10000 })
 })

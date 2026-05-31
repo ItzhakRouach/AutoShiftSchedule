@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { aggregateKPIs, coverageColor } from './aggregate'
+import { aggregateKPIs, computeTwoRequestsHonored, coverageColor } from './aggregate'
 
 const employees = [
   { id: 'e1', name: 'דנה', color: '#f00', min_shifts_per_week: 3 },
@@ -27,7 +27,7 @@ describe('coverageColor', () => {
 // ─── aggregateKPIs ────────────────────────────────────────────────────────────
 describe('aggregateKPIs', () => {
   it('computes coverage pct and color', () => {
-    const kpis = aggregateKPIs([], [], employees, { filled: 8, required: 10 }, [])
+    const kpis = aggregateKPIs([], employees, { filled: 8, required: 10 }, [])
     expect(kpis.coveragePct).toBe(80)
     expect(kpis.coverageColor).toBe('amber')
     expect(kpis.filledSlots).toBe(8)
@@ -35,24 +35,24 @@ describe('aggregateKPIs', () => {
   })
 
   it('handles zero requirements without divide-by-zero (null coverage)', () => {
-    const kpis = aggregateKPIs([], [], employees, { filled: 0, required: 0 }, [])
+    const kpis = aggregateKPIs([], employees, { filled: 0, required: 0 }, [])
     expect(kpis.coveragePct).toBeNull()
     expect(kpis.uncoveredSlots).toBe(0)
   })
 
   it('handles null requirementSummary', () => {
-    const kpis = aggregateKPIs([], [], employees, null, [])
+    const kpis = aggregateKPIs([], employees, null, [])
     expect(kpis.coveragePct).toBeNull()
     expect(kpis.uncoveredSlots).toBe(0)
   })
 
   it('computes uncoveredSlots = required − filled', () => {
-    const kpis = aggregateKPIs([], [], employees, { filled: 7, required: 10 }, [])
+    const kpis = aggregateKPIs([], employees, { filled: 7, required: 10 }, [])
     expect(kpis.uncoveredSlots).toBe(3)
   })
 
   it('uncoveredSlots is 0 when filled >= required', () => {
-    const kpis = aggregateKPIs([], [], employees, { filled: 12, required: 10 }, [])
+    const kpis = aggregateKPIs([], employees, { filled: 12, required: 10 }, [])
     expect(kpis.uncoveredSlots).toBe(0)
   })
 
@@ -62,7 +62,7 @@ describe('aggregateKPIs', () => {
       mkAssign('e1', 1, 'st8', 'r1', 8, false),
       mkAssign('e2', 0, 'st12', 'r2', 12, true),
     ]
-    const kpis = aggregateKPIs(periodAssignments, periodAssignments, employees, null, [])
+    const kpis = aggregateKPIs(periodAssignments, employees, null, [])
     expect(kpis.shifts12h).toBe(2)
   })
 
@@ -73,7 +73,7 @@ describe('aggregateKPIs', () => {
       mkAssign('e2', 0, 'st1', 'r2', 8),
       mkAssign('e2', 1, 'st1', 'r2', 8),
     ]
-    const kpis = aggregateKPIs(periodAssignments, periodAssignments, employees, null, [])
+    const kpis = aggregateKPIs(periodAssignments, employees, null, [])
     expect(kpis.belowMinCount).toBe(1)
   })
 
@@ -85,46 +85,97 @@ describe('aggregateKPIs', () => {
       mkAssign('e2', 0, 'st1', 'r2', 8),
       mkAssign('e2', 1, 'st1', 'r2', 8),
     ]
-    const kpis = aggregateKPIs(periodAssignments, periodAssignments, employees, null, [])
+    const kpis = aggregateKPIs(periodAssignments, employees, null, [])
     expect(kpis.belowMinCount).toBe(0)
   })
 
-  it('computes requestHonoredPct across all non-off requests', () => {
-    const periodAssignments = [
+  it('exposes activeEmployees', () => {
+    const kpis = aggregateKPIs([], employees, null, [])
+    expect(kpis.activeEmployees).toBe(2)
+  })
+})
+
+// ─── computeTwoRequestsHonored ────────────────────────────────────────────────
+describe('computeTwoRequestsHonored', () => {
+  it('counts employees with ≥2 honored requests as passing', () => {
+    // e1 has 3 requests, 2 honored → passes
+    // e2 has 2 requests, 1 honored → fails
+    const assignments = [
       mkAssign('e1', 0, 'st_morning', 'r1', 8),
-      mkAssign('e2', 0, 'st_night', 'r2', 8),
+      mkAssign('e1', 1, 'st_morning', 'r1', 8),
+      mkAssign('e2', 0, 'st_morning', 'r2', 8),
     ]
     const requests = [
       { employee_id: 'e1', period_id: 'p1', day_of_week: 0, is_off: false, preferred_shift_ids: ['st_morning'] },
+      { employee_id: 'e1', period_id: 'p1', day_of_week: 1, is_off: false, preferred_shift_ids: ['st_morning'] },
+      { employee_id: 'e1', period_id: 'p1', day_of_week: 2, is_off: false, preferred_shift_ids: ['st_night'] },
       { employee_id: 'e2', period_id: 'p1', day_of_week: 0, is_off: false, preferred_shift_ids: ['st_morning'] },
+      { employee_id: 'e2', period_id: 'p1', day_of_week: 1, is_off: false, preferred_shift_ids: ['st_night'] },
     ]
-    const kpis = aggregateKPIs(periodAssignments, periodAssignments, employees, null, requests)
-    expect(kpis.requestHonoredPct).toBe(50)
+    const result = computeTwoRequestsHonored(assignments, requests, employees)
+    expect(result.count).toBe(1)
+    expect(result.total).toBe(2)
   })
 
-  it('requestHonoredPct is null when no non-off requests exist', () => {
+  it('edge case: employee with exactly 1 request passes if that 1 is honored', () => {
+    const assignments = [mkAssign('e1', 0, 'st_morning', 'r1', 8)]
+    const requests = [
+      { employee_id: 'e1', period_id: 'p1', day_of_week: 0, is_off: false, preferred_shift_ids: ['st_morning'] },
+    ]
+    const result = computeTwoRequestsHonored(assignments, requests, employees)
+    expect(result.count).toBe(1)
+    expect(result.total).toBe(1)
+  })
+
+  it('edge case: employee with exactly 1 request fails if not honored', () => {
+    const assignments = [mkAssign('e1', 0, 'st_night', 'r1', 8)]
+    const requests = [
+      { employee_id: 'e1', period_id: 'p1', day_of_week: 0, is_off: false, preferred_shift_ids: ['st_morning'] },
+    ]
+    const result = computeTwoRequestsHonored(assignments, requests, employees)
+    expect(result.count).toBe(0)
+    expect(result.total).toBe(1)
+  })
+
+  it('employees with no non-off requests are excluded from total (divide-by-zero guard)', () => {
     const requests = [
       { employee_id: 'e1', period_id: 'p1', day_of_week: 0, is_off: true, preferred_shift_ids: null },
     ]
-    const kpis = aggregateKPIs([], [], employees, null, requests)
-    expect(kpis.requestHonoredPct).toBeNull()
+    const result = computeTwoRequestsHonored([], requests, employees)
+    expect(result.count).toBe(0)
+    expect(result.total).toBe(0)
   })
 
-  it('requestHonoredPct null for empty preferred_shift_ids (divide-by-zero guard)', () => {
+  it('employees with empty preferred_shift_ids are excluded from total', () => {
     const requests = [
       { employee_id: 'e1', period_id: 'p1', day_of_week: 0, is_off: false, preferred_shift_ids: [] },
     ]
-    const kpis = aggregateKPIs([], [], employees, null, requests)
-    expect(kpis.requestHonoredPct).toBeNull()
+    const result = computeTwoRequestsHonored([], requests, employees)
+    expect(result.count).toBe(0)
+    expect(result.total).toBe(0)
   })
 
-  it('sums totalHours from allAssignments', () => {
-    const all = [
-      mkAssign('e1', 0, 'st1', 'r1', 8),
-      mkAssign('e2', 0, 'st1', 'r2', 12),
+  it('all employees pass when all have ≥2 honored', () => {
+    const assignments = [
+      mkAssign('e1', 0, 'st_morning', 'r1', 8),
+      mkAssign('e1', 1, 'st_morning', 'r1', 8),
+      mkAssign('e2', 0, 'st_morning', 'r2', 8),
+      mkAssign('e2', 1, 'st_morning', 'r2', 8),
     ]
-    const kpis = aggregateKPIs([], all, employees, null, [])
-    expect(kpis.totalHours).toBe(20)
-    expect(kpis.activeEmployees).toBe(2)
+    const requests = [
+      { employee_id: 'e1', period_id: 'p1', day_of_week: 0, is_off: false, preferred_shift_ids: ['st_morning'] },
+      { employee_id: 'e1', period_id: 'p1', day_of_week: 1, is_off: false, preferred_shift_ids: ['st_morning'] },
+      { employee_id: 'e2', period_id: 'p1', day_of_week: 0, is_off: false, preferred_shift_ids: ['st_morning'] },
+      { employee_id: 'e2', period_id: 'p1', day_of_week: 1, is_off: false, preferred_shift_ids: ['st_morning'] },
+    ]
+    const result = computeTwoRequestsHonored(assignments, requests, employees)
+    expect(result.count).toBe(2)
+    expect(result.total).toBe(2)
+  })
+
+  it('returns 0/0 when no employees at all', () => {
+    const result = computeTwoRequestsHonored([], [], [])
+    expect(result.count).toBe(0)
+    expect(result.total).toBe(0)
   })
 })

@@ -12,7 +12,6 @@ import { CoverageCard } from './CoverageCard'
 import { DashPanels } from './DashPanels'
 import type { Scope } from '@/lib/stats/types'
 
-const SCOPE_LABEL: Record<Scope, string> = { week: 'שבוע', month: 'חודש', year: 'שנה' }
 function isScope(v: unknown): v is Scope { return v === 'week' || v === 'month' || v === 'year' }
 
 export default async function DashboardPage({
@@ -27,11 +26,19 @@ export default async function DashboardPage({
   const workplace = await getActiveWorkplace(supabase)
   const sp = await searchParams
   const scope: Scope = isScope(sp?.scope) ? sp.scope as Scope : 'week'
-  const scopeLabel = SCOPE_LABEL[scope]
 
   const stats = workplace ? await fetchDashboardStats(supabase, workplace.id, scope) : null
   const maxHours = Math.max(...(stats?.employees.map((e) => e.hours) ?? [1]), 1)
   const kpis = stats?.kpis
+
+  // ≥2-requests-honored display
+  const twoCount = kpis?.twoRequestsHonoredCount ?? 0
+  const twoTotal = kpis?.twoRequestsHonoredTotal ?? 0
+  const twoValue = twoTotal > 0 ? `${twoCount} / ${twoTotal}` : '—'
+  const twoColor =
+    twoTotal === 0 ? 'var(--text-3)'
+    : twoCount / twoTotal >= 0.75 ? '#13A98E'
+    : '#E0902A'
 
   return (
     <main style={{ background: 'var(--bg)', padding: '24px 20px', maxWidth: 520, margin: '0 auto', direction: 'rtl' }}>
@@ -77,24 +84,20 @@ export default async function DashboardPage({
             </Card>
             <Card pad={14}>
               <Stat icon="users" value={kpis?.belowMinCount ?? 0} label="מתחת למינימום"
-                sub="עובדים"
+                sub="עובדים שקיבלו פחות ממינימום המשמרות שהוגדר להם"
                 color={kpis?.belowMinCount ? '#EB6A4E' : '#13A98E'} />
             </Card>
             <Card pad={14}>
               <Stat icon="checkCircle"
-                value={kpis?.requestHonoredPct != null ? `${kpis.requestHonoredPct}%` : '—'}
-                label="בקשות שכובדו"
-                sub={kpis?.requestHonoredPct != null ? 'מבקשות העובדים' : 'אין בקשות'}
-                color={
-                  kpis?.requestHonoredPct != null && kpis.requestHonoredPct >= 80 ? '#13A98E'
-                  : kpis?.requestHonoredPct != null ? '#E0902A'
-                  : 'var(--text-3)'
-                } />
+                value={twoValue}
+                label="עובדים עם ≥2 בקשות שכובדו"
+                sub={twoTotal > 0 ? 'קיבלו ≥2 מהמשמרות שביקשו' : 'אין בקשות'}
+                color={twoColor} />
             </Card>
           </div>
 
-          {/* Secondary stats row */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+          {/* Secondary stats row — active employees */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10, marginBottom: 16 }}>
             <Card pad={12} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <Icon name="users" size={17} stroke={2} color="var(--accent)" />
               <div>
@@ -102,20 +105,11 @@ export default async function DashboardPage({
                 <div style={{ fontSize: 11.5, color: 'var(--text-2)', marginTop: 2, fontWeight: 500 }}>עובדים פעילים</div>
               </div>
             </Card>
-            <Card pad={12} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <Icon name="clock" size={17} stroke={2} color="var(--accent)" />
-              <div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', lineHeight: 1 }}>{kpis?.totalHours.toLocaleString('he-IL')}</div>
-                <div style={{ fontSize: 11.5, color: 'var(--text-2)', marginTop: 2, fontWeight: 500 }}>{`סה״כ שעות ה${scopeLabel}`}</div>
-              </div>
-            </Card>
           </div>
 
           <DashPanels
             employees={stats.employees}
-            roles={stats.roles}
             fairness={stats.fairness}
-            scopeLabel={scopeLabel}
             maxHours={maxHours}
           />
         </>

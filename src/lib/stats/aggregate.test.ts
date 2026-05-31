@@ -1,14 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { aggregateEmployees, aggregateRoles, aggregateFairness } from './aggregate'
+import { aggregateEmployees, aggregateFairness } from './aggregate'
 
 const employees = [
   { id: 'e1', name: 'דנה', color: '#f00', min_shifts_per_week: 3 },
   { id: 'e2', name: 'יוסי', color: '#0f0', min_shifts_per_week: 2 },
-]
-
-const roles = [
-  { id: 'r1', name: 'מאבטח', color: '#13A98E' },
-  { id: 'r2', name: 'מוקדן', color: '#3D6BF5' },
 ]
 
 const mkAssign = (
@@ -39,22 +34,6 @@ describe('aggregateEmployees', () => {
   it('returns zero for employees with no assignments', () => {
     const result = aggregateEmployees([], employees)
     expect(result.every((e) => e.hours === 0 && e.shifts === 0)).toBe(true)
-  })
-})
-
-// ─── aggregateRoles ───────────────────────────────────────────────────────────
-describe('aggregateRoles', () => {
-  it('counts assignments per role', () => {
-    const assignments = [
-      mkAssign('e1', 0, 'st1', 'r1', 8),
-      mkAssign('e1', 1, 'st1', 'r1', 8),
-      mkAssign('e2', 0, 'st1', 'r2', 8),
-    ]
-    const result = aggregateRoles(assignments, roles)
-    const r1 = result.find((r) => r.id === 'r1')!
-    const r2 = result.find((r) => r.id === 'r2')!
-    expect(r1.count).toBe(2)
-    expect(r2.count).toBe(1)
   })
 })
 

@@ -1,17 +1,15 @@
 import { Card } from '@/components/ui/Card'
 import { Avatar } from '@/components/ui/Avatar'
 import { SectionTitle } from '@/components/ui/SectionTitle'
-import type { EmployeeStat, RoleStat, FairnessStat } from '@/lib/stats/types'
+import type { EmployeeStat, FairnessStat } from '@/lib/stats/types'
 
 interface Props {
   employees: EmployeeStat[]
-  roles: RoleStat[]
   fairness: FairnessStat[]
-  scopeLabel: string
   maxHours: number
 }
 
-export function DashPanels({ employees, roles, fairness, scopeLabel, maxHours }: Props) {
+export function DashPanels({ employees, fairness, maxHours }: Props) {
   return (
     <>
       {/* Hours per employee */}
@@ -32,24 +30,6 @@ export function DashPanels({ employees, roles, fairness, scopeLabel, maxHours }:
           </div>
         ))}
       </Card>
-
-      {/* Role distribution */}
-      {roles.length > 0 && (
-        <>
-          <SectionTitle>{`פילוח לפי תפקיד · ה${scopeLabel}`}</SectionTitle>
-          <Card style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-            {roles.map((role, i) => (
-              <div key={role.id} style={{ display: 'flex', flex: 1, gap: 8 }}>
-                {i > 0 && <div style={{ width: 1, background: 'var(--border)', flexShrink: 0 }} />}
-                <div style={{ flex: 1, textAlign: 'center' }}>
-                  <div style={{ fontSize: 24, fontWeight: 800, color: role.color, letterSpacing: '-0.5px' }}>{role.count}</div>
-                  <div style={{ fontSize: 12.5, color: 'var(--text-2)', marginTop: 3, fontWeight: 600 }}>{role.name}</div>
-                </div>
-              </div>
-            ))}
-          </Card>
-        </>
-      )}
 
       {/* Fairness panel */}
       {fairness.length > 0 && (

@@ -1,4 +1,4 @@
-import type { PeriodKPIs, EmployeeStat, RoleStat, FairnessStat, CoverageColor } from './types'
+import type { PeriodKPIs, EmployeeStat, FairnessStat, CoverageColor } from './types'
 
 export interface AssignmentRow {
   employee_id: string
@@ -24,12 +24,6 @@ interface EmployeeRow {
   min_shifts_per_week: number
 }
 
-interface RoleRow {
-  id: string
-  name: string
-  color: string
-}
-
 interface RequirementCount {
   filled: number
   required: number
@@ -42,9 +36,55 @@ export function coverageColor(pct: number | null): CoverageColor {
   return 'red'
 }
 
+/**
+ * For each employee, count how many of their assignments fell on a shift they
+ * requested (non-off, preferred_shift_ids includes the assigned shift_type_id,
+ * same day_of_week). An employee "passes" if that count ≥ 2.
+ *
+ * Edge case: employees who have fewer than 2 non-off requests are counted in
+ * `total` only if they have ≥1 such request; their threshold is
+ * min(2, theirRequestCount), so an employee with exactly 1 request passes if
+ * that 1 request was honored.
+ */
+export function computeTwoRequestsHonored(
+  periodAssignments: AssignmentRow[],
+  requests: RequestRow[],
+  employees: EmployeeRow[],
+): { count: number; total: number } {
+  let count = 0
+  let total = 0
+
+  for (const emp of employees) {
+    const empReqs = requests.filter(
+      (r) =>
+        r.employee_id === emp.id &&
+        !r.is_off &&
+        r.preferred_shift_ids &&
+        r.preferred_shift_ids.length > 0,
+    )
+    if (empReqs.length === 0) continue
+    total += 1
+
+    let honored = 0
+    for (const req of empReqs) {
+      const matched = periodAssignments.some(
+        (a) =>
+          a.employee_id === emp.id &&
+          a.day_of_week === req.day_of_week &&
+          req.preferred_shift_ids!.includes(a.shift_type_id),
+      )
+      if (matched) honored++
+    }
+
+    const threshold = Math.min(2, empReqs.length)
+    if (honored >= threshold) count++
+  }
+
+  return { count, total }
+}
+
 export function aggregateKPIs(
-  periodAssignments: AssignmentRow[],   // assignments for the CURRENT period
-  allAssignments: AssignmentRow[],      // assignments for the scope (for hours total)
+  periodAssignments: AssignmentRow[],
   employees: EmployeeRow[],
   requirementSummary: RequirementCount | null,
   requests: RequestRow[],
@@ -68,26 +108,8 @@ export function aggregateKPIs(
     (e) => (shiftsPerEmployee.get(e.id) ?? 0) < e.min_shifts_per_week,
   ).length
 
-  // Request honored % across all employees with non-off requests
-  const nonOffRequests = requests.filter(
-    (r) => !r.is_off && r.preferred_shift_ids && r.preferred_shift_ids.length > 0,
-  )
-  let honored = 0
-  for (const req of nonOffRequests) {
-    const matched = periodAssignments.some(
-      (a) =>
-        a.employee_id === req.employee_id &&
-        req.preferred_shift_ids!.includes(a.shift_type_id) &&
-        a.day_of_week === req.day_of_week,
-    )
-    if (matched) honored++
-  }
-  const requestHonoredPct =
-    nonOffRequests.length > 0
-      ? Math.round((honored / nonOffRequests.length) * 100)
-      : null
-
-  const totalHours = allAssignments.reduce((s, a) => s + (a.hours ?? 0), 0)
+  const { count: twoRequestsHonoredCount, total: twoRequestsHonoredTotal } =
+    computeTwoRequestsHonored(periodAssignments, requests, employees)
 
   return {
     coveragePct,
@@ -97,9 +119,9 @@ export function aggregateKPIs(
     uncoveredSlots,
     shifts12h,
     belowMinCount,
-    requestHonoredPct,
+    twoRequestsHonoredCount,
+    twoRequestsHonoredTotal,
     activeEmployees: employees.length,
-    totalHours,
   }
 }
 
@@ -122,16 +144,6 @@ export function aggregateEmployees(
       return { id: e.id, name: e.name, color: e.color, shifts: s.shifts, hours: s.hours }
     })
     .sort((a, b) => b.hours - a.hours)
-}
-
-export function aggregateRoles(assignments: AssignmentRow[], roles: RoleRow[]): RoleStat[] {
-  const map = new Map<string, number>()
-  for (const a of assignments) {
-    if (a.role_id) map.set(a.role_id, (map.get(a.role_id) ?? 0) + 1)
-  }
-  return roles
-    .map((r) => ({ id: r.id, name: r.name, color: r.color, count: map.get(r.id) ?? 0 }))
-    .sort((a, b) => b.count - a.count)
 }
 
 const NIGHT_SHIFT_KEYS = new Set(['night', 'm12_night'])
