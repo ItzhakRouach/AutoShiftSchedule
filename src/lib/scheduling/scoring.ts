@@ -22,39 +22,43 @@ export interface CandidateState {
 }
 
 /**
- * Comparator implementing the soft-objective priority order:
- * 1. request-satisfaction floor (employees with fewer satisfied requests first,
- *    but only matters when this is a requested slot — handled by `requested`),
- * 2. mustAccept requested,
- * 3. requested over not-requested,
- * 4. employment-type ordering (full > part > student),
- * 5. reach min shifts (under-min first),
- * 6. fewer total shifts,
- * 7. deterministic lottery rank (tie-break).
+ * Candidate precedence (FIX 4 — explicit, per the user's rule). Lower comparator
+ * output = HIGHER priority. The order, highest first, is EXACTLY:
+ *   1. mustAccept-requested  (their off is already hard; their request wins).
+ *   2. Employment tier: full (0) < part (1) < student (2)  — full-time FIRST.
+ *   3. Requested-this-shift   (requested before non-requested).
+ *   4. >=2-floor rank         (fewer satisfied requests first — see floorRank).
+ *   5. Below min-shifts first.
+ *   6. Fewer total assigned shifts (load balance).
+ *   7. Lottery rank (FIX 1) as the final deterministic tie-break.
+ *
+ * NOTE: per the user's explicit instruction "always fill full-time first, then
+ * part-time, then student", employment tier (2) outranks request status (3): a
+ * full-time non-requester beats a part-time requester for a scarce slot.
  */
 export function compareCandidates(a: CandidateState, b: CandidateState): number {
-  // 2. mustAccept requested wins outright.
+  // 1. mustAccept requested wins outright.
   const am = a.mustAcceptRequested ? 0 : 1
   const bm = b.mustAcceptRequested ? 0 : 1
   if (am !== bm) return am - bm
+
+  // 2. employment-type ordering (full > part > student).
+  const ae = EMPLOYMENT_RANK[a.emp.employmentType]
+  const be = EMPLOYMENT_RANK[b.emp.employmentType]
+  if (ae !== be) return ae - be
 
   // 3. requested over not-requested.
   const ar = a.requested ? 0 : 1
   const br = b.requested ? 0 : 1
   if (ar !== br) return ar - br
 
-  // 1. request-satisfaction floor: among requesters, boost those below 2 then
-  // below 1 satisfied requests.
+  // 4. request-satisfaction floor: fewer satisfied requests first (below 2,
+  // then below 1). Applied among requesters to drive the >=2 (else >=1) floor.
   if (a.requested && b.requested) {
     const af = floorRank(a.requestsSatisfied)
     const bf = floorRank(b.requestsSatisfied)
     if (af !== bf) return af - bf
   }
-
-  // 4. employment-type ordering.
-  const ae = EMPLOYMENT_RANK[a.emp.employmentType]
-  const be = EMPLOYMENT_RANK[b.emp.employmentType]
-  if (ae !== be) return ae - be
 
   // 5. reach min shifts: under-min first.
   const au = a.current.length < a.emp.minShifts ? 0 : 1

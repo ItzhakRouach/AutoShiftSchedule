@@ -77,7 +77,9 @@ describe('12h fallback suggestions', () => {
     const on = generateSchedule(
       input({ employees: [emp('a')], requirements: req, settings: settings({ allow12hFallback: true }) }),
     )
-    expect(on.twelveHourSuggestions.length).toBeGreaterThan(0)
+    // employee 'a' fills morning day0; noon+night remain → exactly 2 suggestions.
+    expect(on.twelveHourSuggestions).toHaveLength(2)
+    expect(on.twelveHourSuggestions.map((s) => s.variant)).toEqual(['m12_15to3', 'm12_night'])
     for (const s of on.twelveHourSuggestions) expect(s.day).toBe(0)
   })
 
@@ -90,8 +92,11 @@ describe('12h fallback suggestions', () => {
     const res = generateSchedule(
       input({ employees: [emp('a', { maxShifts: 7 })], requirements: fullGrid, settings: settings({ allow12hFallback: true }) }),
     )
-    // 21 slots, 1 employee can take ~7 → ~14 uncovered → suggestions for the gaps
-    expect(res.twelveHourSuggestions.length).toBeGreaterThan(7)
+    // 21 slots, 1 employee fills exactly 7 (one/day) → 14 uncovered → 14 unique
+    // (day,variant,role) suggestions. Each is rest-flagged vs that day's commit.
+    expect(res.coverage.filledSlots).toBe(7)
+    expect(res.twelveHourSuggestions).toHaveLength(14)
+    expect(res.twelveHourSuggestions.every((s) => s.restConflict)).toBe(true)
   })
 
   it('isolated single understaffed shift → exactly one suggestion', () => {

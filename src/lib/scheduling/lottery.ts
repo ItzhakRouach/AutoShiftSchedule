@@ -31,3 +31,25 @@ export function draw<T>(items: T[], count: number, rng: () => number): T[] {
   if (count >= items.length) return items.slice()
   return shuffle(items, rng).slice(0, count)
 }
+
+/**
+ * FNV-1a 32-bit string hash. Deterministic, pure, no dependence on array order.
+ * Used to derive a per-employee lottery seed from the employee id.
+ */
+export function hashStr(s: string): number {
+  let h = 0x811c9dc5
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i)
+    h = Math.imul(h, 0x01000193)
+  }
+  return h >>> 0
+}
+
+/**
+ * Stable per-employee lottery rank in [0,1). Depends ONLY on (seed, id) — never
+ * on the position of the employee within any array. A single mulberry32 draw
+ * seeded by `(seed ^ hashStr(id)) >>> 0`. Lower value = higher lottery priority.
+ */
+export function lotteryRank(seed: number, id: string): number {
+  return mulberry32((seed ^ hashStr(id)) >>> 0)()
+}

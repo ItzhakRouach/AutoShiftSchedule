@@ -79,6 +79,8 @@ export interface TwelveHourSuggestion {
   /** base shifts this 12h variant would cover */
   covers: ShiftKey[]
   reason: string
+  /** FIX 6: true if this variant overlaps/under-rests an adjacent committed shift. */
+  restConflict: boolean
 }
 
 export interface EmployeeStat {

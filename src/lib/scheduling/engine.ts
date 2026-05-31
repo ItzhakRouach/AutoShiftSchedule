@@ -5,38 +5,20 @@ import type {
   Employee,
   EngineInput,
   EngineResult,
-  Grid,
   ShiftKey,
 } from './types'
-import { isAssignable, type CheckContext } from './constraints'
-import { compareCandidates, type CandidateState } from './scoring'
-import { mulberry32, shuffle } from './lottery'
+import { isAssignable } from './constraints'
+import { lotteryRank } from './lottery'
 import { checkFeasibility } from './feasibility'
 import { buildTwelveHourSuggestions } from './fallback'
-import {
-  collectWarnings,
-  computeCoverage,
-  computeStats,
-  emptyGrid,
-  forEachRequirement,
-} from './grid'
+import { collectWarnings, computeCoverage, computeStats, emptyGrid } from './grid'
+import { matchDay, isTopPrecedenceFor, type FillState } from './dayfill'
+import type { MatchSlot } from './matching'
 
-interface State {
-  grid: Grid
-  committed: Record<string, Assignment[]>
-  satisfied: Record<string, number>
-  lotteryRank: Record<string, number>
-}
-
-/** Deterministic per-employee lottery ranks from the seed. */
+/** Deterministic per-employee lottery ranks: pure fn of (seed, id) (FIX 1). */
 function buildLotteryRanks(input: EngineInput): Record<string, number> {
-  const rng = mulberry32(input.seed)
-  const order = shuffle(
-    input.employees.map((e) => e.id),
-    rng,
-  )
   const ranks: Record<string, number> = {}
-  order.forEach((id, i) => (ranks[id] = i))
+  for (const e of input.employees) ranks[e.id] = lotteryRank(input.seed, e.id)
   return ranks
 }
 
@@ -44,87 +26,58 @@ function reqOf(input: EngineInput, empId: string, day: number) {
   return input.requests[empId]?.[day] ?? { off: false, preferred: [] }
 }
 
-function ctxFor(
-  input: EngineInput,
-  emp: Employee,
-  meta: DayMeta,
-  shift: ShiftKey,
-  roleId: string,
-  st: State,
-): CheckContext {
-  return {
-    emp,
-    meta,
-    shift,
-    roleId,
-    request: reqOf(input, emp.id, meta.index),
-    current: st.committed[emp.id],
-    settings: input.settings,
-  }
+function metaMap(input: EngineInput): Record<number, DayMeta> {
+  const m: Record<number, DayMeta> = {}
+  for (const d of input.days) m[d.index] = d
+  return m
 }
 
-function pickWinner(
-  input: EngineInput,
-  meta: DayMeta,
-  shift: ShiftKey,
-  roleId: string,
-  st: State,
-  requireRequested: boolean,
-): Employee | null {
-  const candidates: { emp: Employee; cs: CandidateState }[] = []
-  for (const emp of input.employees) {
-    const req = reqOf(input, emp.id, meta.index)
-    const requested = req.preferred.includes(shift)
-    if (requireRequested && !requested) continue
-    if (!isAssignable(ctxFor(input, emp, meta, shift, roleId, st))) continue
-    candidates.push({
-      emp,
-      cs: {
-        emp,
-        requested,
-        mustAcceptRequested: emp.mustAccept && requested,
-        current: st.committed[emp.id],
-        requestsSatisfied: st.satisfied[emp.id],
-        lotteryRank: st.lotteryRank[emp.id],
-      },
-    })
-  }
-  if (candidates.length === 0) return null
-  candidates.sort((a, b) => compareCandidates(a.cs, b.cs))
-  return candidates[0].emp
+/** A slot is "requested" by emp if it's in their preferred list that day. */
+function requestsSlot(input: EngineInput, e: Employee, slot: MatchSlot): boolean {
+  return reqOf(input, e.id, slot.day).preferred.includes(slot.shift)
 }
 
-function assign(
-  st: State,
-  emp: Employee,
-  meta: DayMeta,
-  shift: ShiftKey,
-  roleId: string,
-  requested: boolean,
+/**
+ * Reservation pre-pass (FIX 5): before general fill, run per-day matching rounds
+ * restricted to each employee's REQUESTED slots, capping each employee at a total
+ * weekly reservation budget. `targetEach` rounds give every employee up to that
+ * many requested slots; `onlyIfZero` restricts the round to employees who still
+ * have no satisfied request (used to guarantee >=1 where >=2 is infeasible).
+ */
+function reservationRound(
+  input: EngineInput,
+  st: FillState,
+  metas: Record<number, DayMeta>,
+  budget: number,
+  onlyIfZero: boolean,
 ): void {
-  st.grid[meta.index][shift][roleId].push(emp.id)
-  st.committed[emp.id].push({ employeeId: emp.id, day: meta.index, shift, roleId })
-  if (requested) st.satisfied[emp.id]++
+  for (const d of input.days) {
+    const meta = metas[d.index]
+    matchDay(
+      input,
+      meta,
+      st,
+      (e) => {
+        const have = st.satisfied[e.id]
+        if (onlyIfZero && have > 0) return 0
+        return have < budget ? 1 : 0
+      },
+      // Reserve a REQUESTED slot only if the employee is the top-precedence
+      // candidate for it (so full-time-first still wins contended slots, FIX 4).
+      (e, slot) =>
+        requestsSlot(input, e, slot) && isTopPrecedenceFor(input, meta, st, e, slot),
+    )
+  }
 }
 
-function fill(input: EngineInput, st: State): void {
-  const metaByIndex: Record<number, DayMeta> = {}
-  for (const m of input.days) metaByIndex[m.index] = m
-  for (const requireRequested of [true, false]) {
-    forEachRequirement(input, (day, shift, roleId, need) => {
-      const meta = metaByIndex[day]
-      while (st.grid[day][shift][roleId].length < need) {
-        const winner = pickWinner(input, meta, shift, roleId, st, requireRequested)
-        if (!winner) break
-        const requested = reqOf(input, winner.id, day).preferred.includes(shift)
-        assign(st, winner, meta, shift, roleId, requested)
-      }
-    })
+function generalFill(input: EngineInput, st: FillState, metas: Record<number, DayMeta>): void {
+  for (const d of input.days) {
+    matchDay(input, metas[d.index], st, () => 1, () => true)
   }
 }
 
 export function generateSchedule(input: EngineInput): EngineResult {
-  const st: State = {
+  const st: FillState = {
     grid: emptyGrid(input),
     committed: {},
     satisfied: {},
@@ -135,7 +88,12 @@ export function generateSchedule(input: EngineInput): EngineResult {
     st.satisfied[e.id] = 0
   }
 
-  fill(input, st)
+  const metas = metaMap(input)
+  // FIX 5: reserve up to 2 requested slots each, then ensure >=1 for anyone at 0.
+  reservationRound(input, st, metas, 2, false)
+  reservationRound(input, st, metas, 1, true)
+  // FIX 2: general max-matching fill of all remaining required slots.
+  generalFill(input, st, metas)
 
   const warnings = collectWarnings(input, st.grid)
   const feasibility = checkFeasibility(input)
@@ -149,7 +107,7 @@ export function generateSchedule(input: EngineInput): EngineResult {
     coverage,
     stats,
     feasibility,
-    twelveHourSuggestions: buildTwelveHourSuggestions(warnings, input.settings),
+    twelveHourSuggestions: buildTwelveHourSuggestions(warnings, input.settings, st.committed),
   }
 }
 

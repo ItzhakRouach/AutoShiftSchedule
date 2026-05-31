@@ -8,12 +8,9 @@ import {
   type ShiftKey,
 } from './types'
 import { isAssignable } from './constraints'
+import { maxMatch, type MatchSlot } from './matching'
 
-interface Slot {
-  day: number
-  shift: ShiftKey
-  roleId: string
-}
+type Slot = MatchSlot
 
 /** Count total required role-slots across the week. */
 export function countRequiredSlots(input: EngineInput): number {
@@ -47,35 +44,41 @@ function expandSlots(input: EngineInput): Slot[] {
 }
 
 /**
- * Greedy estimate of how many required 8h slots can be staffed under hard
- * constraints alone (an upper-bound-ish feasibility probe; deterministic).
+ * Maximum number of required 8h slots that can be staffed under hard constraints
+ * (FIX 3). For each day we compute a bipartite MAX-matching (Kuhn) between that
+ * day's required role-slots and eligible employees — capacity 1/day (one shift
+ * per day) — committing the result so rest is honored against prior days. Days
+ * are processed in order. This removes the first-fit false "short"/"needs12h".
  */
 export function maxStaffableSlots(input: EngineInput): number {
-  const slots = expandSlots(input)
   const committed: Record<string, Assignment[]> = {}
   for (const e of input.employees) committed[e.id] = []
   let filled = 0
-  for (const slot of slots) {
-    const metaByIndex = input.days.find((d) => d.index === slot.day)!
-    const winner = input.employees.find((emp) =>
-      isAssignable({
-        emp,
-        meta: metaByIndex,
-        shift: slot.shift,
-        roleId: slot.roleId,
-        request: input.requests[emp.id]?.[slot.day] ?? { off: false, preferred: [] },
-        current: committed[emp.id],
-        settings: input.settings,
-      }),
-    )
-    if (winner) {
-      committed[winner.id].push({
-        employeeId: winner.id,
-        day: slot.day,
-        shift: slot.shift,
-        roleId: slot.roleId,
-      })
-      filled++
+  for (const meta of input.days) {
+    const slots: Slot[] = expandSlots(input).filter((s) => s.day === meta.index)
+    if (slots.length === 0) continue
+    const res = maxMatch({
+      slots,
+      employees: input.employees,
+      idOf: (e) => e.id,
+      capacityOf: () => 1,
+      eligible: (emp, slot) =>
+        isAssignable({
+          emp,
+          meta,
+          shift: slot.shift,
+          roleId: slot.roleId,
+          request: input.requests[emp.id]?.[slot.day] ?? { off: false, preferred: [] },
+          current: committed[emp.id],
+          settings: input.settings,
+        }),
+    })
+    for (let si = 0; si < slots.length; si++) {
+      const id = res.assignment.get(si)
+      if (id != null) {
+        committed[id].push({ employeeId: id, day: slots[si].day, shift: slots[si].shift, roleId: slots[si].roleId })
+        filled++
+      }
     }
   }
   return filled
