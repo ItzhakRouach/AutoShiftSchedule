@@ -7,9 +7,34 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const { count: workplaceCount } = await supabase
-    .from('workplaces')
-    .select('*', { count: 'exact', head: true })
+  // Fetch org → workplace
+  const { data: org } = await supabase
+    .from('organizations')
+    .select('id')
+    .eq('owner_user_id', user!.id)
+    .maybeSingle()
+
+  const { data: workplace } = org
+    ? await supabase
+        .from('workplaces')
+        .select('id, name')
+        .eq('org_id', org.id)
+        .maybeSingle()
+    : { data: null }
+
+  const workplaceId = workplace?.id ?? null
+
+  const [{ count: rolesCount }, { count: shiftTypesCount }] = await Promise.all([
+    workplaceId
+      ? supabase.from('roles').select('*', { count: 'exact', head: true }).eq('workplace_id', workplaceId)
+      : Promise.resolve({ count: 0 }),
+    workplaceId
+      ? supabase.from('shift_types').select('*', { count: 'exact', head: true }).eq('workplace_id', workplaceId)
+      : Promise.resolve({ count: 0 }),
+  ])
+
+  // Employees table does not exist yet — hardcoded 0
+  const employeesCount = 0
 
   return (
     <main
@@ -28,18 +53,33 @@ export default async function DashboardPage() {
           boxShadow: 'var(--shadow)',
           borderRadius: 'var(--r-lg)',
           padding: 32,
-          maxWidth: 480,
+          maxWidth: 520,
           width: '100%',
-          textAlign: 'center',
+          direction: 'rtl',
         }}
       >
-        <h1 style={{ margin: '0 0 8px', fontSize: 24, fontWeight: 800 }}>דשבורד</h1>
-        <p style={{ margin: '0 0 4px', color: 'var(--text-2)', fontSize: 14 }}>
+        <h1 style={{ margin: '0 0 6px', fontSize: 24, fontWeight: 800, textAlign: 'right' }}>
+          {workplace?.name ?? 'דשבורד'}
+        </h1>
+        <p style={{ margin: '0 0 4px', color: 'var(--text-2)', fontSize: 13, textAlign: 'right' }}>
           שלום, {user?.email}
         </p>
-        <p style={{ margin: '0 0 28px', color: 'var(--text-3)', fontSize: 13 }}>
-          מקומות עבודה: {workplaceCount ?? 0}
-        </p>
+
+        <div
+          style={{
+            marginTop: 20,
+            marginBottom: 28,
+            background: 'var(--surface-2)',
+            borderRadius: 'var(--r-sm)',
+            padding: '14px 18px',
+            fontSize: 14,
+            color: 'var(--text)',
+            textAlign: 'right',
+          }}
+        >
+          תפקידים: {rolesCount ?? 0} · סוגי משמרת: {shiftTypesCount ?? 0} · עובדים: {employeesCount}
+        </div>
+
         <form action={signOut}>
           <button
             type="submit"

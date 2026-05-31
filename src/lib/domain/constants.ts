@@ -29,6 +29,14 @@ export interface ShiftMeta {
 export const SHIFT_ORDER: ShiftId[] = ['morning', 'noon', 'night']
 export const FALLBACK_12H_ORDER: ShiftId[] = ['m12_day', 'm12_night', 'm12_3to15', 'm12_15to3']
 
+// Default staffing per BASE shift × role (ported from DesignTemplate/data.jsx).
+// Applied to every day of the week on workplace creation. Only counts > 0 create rows.
+export const DEFAULT_REQUIREMENTS: Record<'morning' | 'noon' | 'night', Partial<Record<RoleName, number>>> = {
+  morning: { 'אחמ״ש': 1, 'מוקדן': 1, 'מאבטח': 1 },
+  noon:    { 'מוקדן': 1, 'מאבטח': 1 },
+  night:   { 'אחמ״ש': 1, 'מאבטח': 1 },
+}
+
 export const SHIFT_META: Record<ShiftId, ShiftMeta> = {
   morning:   { id: 'morning', name: 'בוקר',   time: '07:00–15:00', start: 7,  hours: 8,  color: '#F2A93B', soft: 'rgba(242,169,59,0.13)', icon: 'sun',    isFallback: false },
   noon:      { id: 'noon',    name: 'צהריים', time: '15:00–23:00', start: 15, hours: 8,  color: '#EB6A4E', soft: 'rgba(235,106,78,0.13)', icon: 'sunset', isFallback: false },
