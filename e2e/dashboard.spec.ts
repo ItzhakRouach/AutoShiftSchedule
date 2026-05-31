@@ -30,14 +30,11 @@ async function addEmployee(page: Page, name: string) {
 
 test('dashboard KPI cards render after fresh onboarding (empty state)', async ({ page }) => {
   await signupAndOnboard(page)
-  // With no employees yet the empty state card should be visible
   await expect(page).toHaveURL(/\/dashboard/)
   await expect(page.getByText('אין נתונים להצגה עדיין')).toBeVisible({ timeout: 10000 })
 })
 
-test('dashboard shows KPIs and week/month/year toggle after schedule is published', async ({
-  page,
-}) => {
+test('dashboard shows new KPIs after schedule is published', async ({ page }) => {
   test.setTimeout(150_000)
   await signupAndOnboard(page)
 
@@ -50,9 +47,7 @@ test('dashboard shows KPIs and week/month/year toggle after schedule is publishe
 
   // Generate + publish schedule
   await page.goto('/schedule')
-  await expect(page.getByRole('heading', { name: 'שיבוץ אוטומטי' })).toBeVisible({
-    timeout: 10000,
-  })
+  await expect(page.getByRole('heading', { name: 'שיבוץ אוטומטי' })).toBeVisible({ timeout: 10000 })
   await page.getByRole('button', { name: 'צור סידור אוטומטי' }).click()
   const coverage = page.getByTestId('coverage')
   await expect(coverage).toBeVisible({ timeout: 30000 })
@@ -63,24 +58,31 @@ test('dashboard shows KPIs and week/month/year toggle after schedule is publishe
   await page.goto('/dashboard')
   await expect(page).toHaveURL(/\/dashboard/)
 
-  // KPI cards should be present
-  await expect(page.getByText('עובדים פעילים')).toBeVisible({ timeout: 10000 })
-  await expect(page.getByText(/משמרות ה/)).toBeVisible()
-  await expect(page.getByText(/שעות ה/)).toBeVisible()
-  await expect(page.getByText('כיסוי השיבוץ')).toBeVisible()
+  // Coverage card (prominent, new)
+  await expect(page.getByText('כיסוי השיבוץ')).toBeVisible({ timeout: 10000 })
 
-  // Scope toggle: click חודש
+  // New KPI labels
+  await expect(page.getByText('משבצות לא מאוישות')).toBeVisible()
+  await expect(page.getByText('משמרות 12 שעות')).toBeVisible()
+  await expect(page.getByText('מתחת למינימום')).toBeVisible()
+  await expect(page.getByText('בקשות שכובדו')).toBeVisible()
+
+  // Secondary stats still present
+  await expect(page.getByText('עובדים פעילים')).toBeVisible()
+  await expect(page.getByText(/סה״כ שעות ה/)).toBeVisible()
+
+  // Scope toggle: click חודש — secondary hours label updates
   await page.getByRole('button', { name: 'חודש' }).click()
   await expect(page).toHaveURL(/scope=month/)
-  await expect(page.getByText('משמרות החודש')).toBeVisible({ timeout: 10000 })
+  await expect(page.getByText('סה״כ שעות החודש')).toBeVisible({ timeout: 10000 })
 
   // Scope toggle: click שנה
   await page.getByRole('button', { name: 'שנה' }).click()
   await expect(page).toHaveURL(/scope=year/)
-  await expect(page.getByText('משמרות השנה')).toBeVisible({ timeout: 10000 })
+  await expect(page.getByText('סה״כ שעות השנה')).toBeVisible({ timeout: 10000 })
 
   // Back to שבוע
   await page.getByRole('button', { name: 'שבוע' }).click()
   await expect(page).toHaveURL(/scope=week/)
-  await expect(page.getByText('משמרות השבוע')).toBeVisible({ timeout: 10000 })
+  await expect(page.getByText('סה״כ שעות השבוע')).toBeVisible({ timeout: 10000 })
 })

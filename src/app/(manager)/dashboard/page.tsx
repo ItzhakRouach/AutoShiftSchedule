@@ -4,19 +4,16 @@ import { createClient } from '@/lib/supabase/server'
 import { getActiveWorkplace } from '@/lib/workplace/current'
 import { fetchDashboardStats } from '@/lib/stats/fetch'
 import { Card } from '@/components/ui/Card'
-import { Avatar } from '@/components/ui/Avatar'
 import { Stat } from '@/components/ui/Stat'
-import { SectionTitle } from '@/components/ui/SectionTitle'
 import { Icon } from '@/components/ui/Icon'
 import { ScopeToggle } from './ScopeToggle'
 import { DashNav } from './DashNav'
+import { CoverageCard } from './CoverageCard'
+import { DashPanels } from './DashPanels'
 import type { Scope } from '@/lib/stats/types'
 
 const SCOPE_LABEL: Record<Scope, string> = { week: 'שבוע', month: 'חודש', year: 'שנה' }
-
-function isScope(v: unknown): v is Scope {
-  return v === 'week' || v === 'month' || v === 'year'
-}
+function isScope(v: unknown): v is Scope { return v === 'week' || v === 'month' || v === 'year' }
 
 export default async function DashboardPage({
   searchParams,
@@ -29,15 +26,12 @@ export default async function DashboardPage({
 
   const workplace = await getActiveWorkplace(supabase)
   const sp = await searchParams
-  const rawScope = sp?.scope
-  const scope: Scope = isScope(rawScope) ? rawScope : 'week'
+  const scope: Scope = isScope(sp?.scope) ? sp.scope as Scope : 'week'
   const scopeLabel = SCOPE_LABEL[scope]
 
-  const stats = workplace
-    ? await fetchDashboardStats(supabase, workplace.id, scope)
-    : null
-
+  const stats = workplace ? await fetchDashboardStats(supabase, workplace.id, scope) : null
   const maxHours = Math.max(...(stats?.employees.map((e) => e.hours) ?? [1]), 1)
+  const kpis = stats?.kpis
 
   return (
     <main style={{ background: 'var(--bg)', padding: '24px 20px', maxWidth: 520, margin: '0 auto', direction: 'rtl' }}>
@@ -56,9 +50,7 @@ export default async function DashboardPage({
 
       {/* Scope toggle */}
       <div style={{ marginBottom: 18 }}>
-        <Suspense>
-          <ScopeToggle scope={scope} />
-        </Suspense>
+        <Suspense><ScopeToggle scope={scope} /></Suspense>
       </div>
 
       {!stats || stats.kpis.activeEmployees === 0 ? (
@@ -68,79 +60,64 @@ export default async function DashboardPage({
         </Card>
       ) : (
         <>
-          {/* KPI grid */}
+          {/* Prominent coverage indicator */}
+          {kpis && <CoverageCard kpis={kpis} />}
+
+          {/* KPI grid — 2×2 */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
-            <Card pad={14}><Stat icon="users" value={stats.kpis.activeEmployees} label="עובדים פעילים" /></Card>
-            <Card pad={14}><Stat icon="calendar" value={stats.kpis.totalShifts} label={`משמרות ה${scopeLabel}`} color="#13A98E" /></Card>
-            <Card pad={14}><Stat icon="clock" value={stats.kpis.totalHours.toLocaleString('he-IL')} label={`שעות ה${scopeLabel}`} color="#E0902A" /></Card>
             <Card pad={14}>
-              <Stat
-                icon="shield"
-                value={stats.kpis.coveragePct != null ? `${stats.kpis.coveragePct}%` : '—'}
-                label="כיסוי השיבוץ"
-                color={stats.kpis.coveragePct != null && stats.kpis.coveragePct >= 95 ? '#13A98E' : '#EB6A4E'}
-              />
+              <Stat icon="alert" value={kpis?.uncoveredSlots ?? 0} label="משבצות לא מאוישות"
+                sub={kpis?.uncoveredSlots ? 'דורש טיפול' : 'הכל מכוסה'}
+                color={kpis?.uncoveredSlots ? '#EB6A4E' : '#13A98E'} />
+            </Card>
+            <Card pad={14}>
+              <Stat icon="clock" value={kpis?.shifts12h ?? 0} label="משמרות 12 שעות"
+                sub="עומס אפשרי"
+                color={kpis && kpis.shifts12h > 0 ? '#E0902A' : 'var(--text-3)'} />
+            </Card>
+            <Card pad={14}>
+              <Stat icon="users" value={kpis?.belowMinCount ?? 0} label="מתחת למינימום"
+                sub="עובדים"
+                color={kpis?.belowMinCount ? '#EB6A4E' : '#13A98E'} />
+            </Card>
+            <Card pad={14}>
+              <Stat icon="checkCircle"
+                value={kpis?.requestHonoredPct != null ? `${kpis.requestHonoredPct}%` : '—'}
+                label="בקשות שכובדו"
+                sub={kpis?.requestHonoredPct != null ? 'מבקשות העובדים' : 'אין בקשות'}
+                color={
+                  kpis?.requestHonoredPct != null && kpis.requestHonoredPct >= 80 ? '#13A98E'
+                  : kpis?.requestHonoredPct != null ? '#E0902A'
+                  : 'var(--text-3)'
+                } />
             </Card>
           </div>
 
-          {/* Hours per employee */}
-          <SectionTitle>שעות עבודה לפי עובד</SectionTitle>
-          <Card style={{ display: 'flex', flexDirection: 'column', gap: 13, marginBottom: 16 }}>
-            {stats.employees.map((emp) => (
-              <div key={emp.id} style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
-                <Avatar name={emp.name} color={emp.color} size={32} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                    <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{emp.name}</span>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-2)', flexShrink: 0 }}>{emp.hours} ש׳ · {emp.shifts} מ׳</span>
-                  </div>
-                  <div style={{ height: 7, borderRadius: 99, background: 'var(--surface-sunk)', overflow: 'hidden' }}>
-                    <div style={{ width: `${(emp.hours / maxHours) * 100}%`, height: '100%', borderRadius: 99, background: emp.color, transition: 'width .5s ease' }} />
-                  </div>
-                </div>
+          {/* Secondary stats row */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+            <Card pad={12} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Icon name="users" size={17} stroke={2} color="var(--accent)" />
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', lineHeight: 1 }}>{kpis?.activeEmployees}</div>
+                <div style={{ fontSize: 11.5, color: 'var(--text-2)', marginTop: 2, fontWeight: 500 }}>עובדים פעילים</div>
               </div>
-            ))}
-          </Card>
+            </Card>
+            <Card pad={12} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Icon name="clock" size={17} stroke={2} color="var(--accent)" />
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', lineHeight: 1 }}>{kpis?.totalHours.toLocaleString('he-IL')}</div>
+                <div style={{ fontSize: 11.5, color: 'var(--text-2)', marginTop: 2, fontWeight: 500 }}>{`סה״כ שעות ה${scopeLabel}`}</div>
+              </div>
+            </Card>
+          </div>
 
-          {/* Role distribution */}
-          {stats.roles.length > 0 && (
-            <>
-              <SectionTitle>{`פילוח לפי תפקיד · ה${scopeLabel}`}</SectionTitle>
-              <Card style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-                {stats.roles.map((role, i) => (
-                  <div key={role.id} style={{ display: 'flex', flex: 1, gap: 8 }}>
-                    {i > 0 && <div style={{ width: 1, background: 'var(--border)', flexShrink: 0 }} />}
-                    <div style={{ flex: 1, textAlign: 'center' }}>
-                      <div style={{ fontSize: 24, fontWeight: 800, color: role.color, letterSpacing: '-0.5px' }}>{role.count}</div>
-                      <div style={{ fontSize: 12.5, color: 'var(--text-2)', marginTop: 3, fontWeight: 600 }}>{role.name}</div>
-                    </div>
-                  </div>
-                ))}
-              </Card>
-            </>
-          )}
-
-          {/* Fairness panel */}
-          {stats.fairness.length > 0 && (
-            <>
-              <SectionTitle>הוגנות</SectionTitle>
-              <Card pad={0} style={{ overflow: 'hidden', marginBottom: 16 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', padding: '8px 14px', borderBottom: '1px solid var(--border)', fontSize: 11, fontWeight: 700, color: 'var(--text-3)' }}>
-                  <span>עובד</span><span style={{ textAlign: 'center' }}>לילה</span><span style={{ textAlign: 'center' }}>סוף שבוע</span><span style={{ textAlign: 'center' }}>בקשות</span>
-                </div>
-                {stats.fairness.map((f, i) => (
-                  <div key={f.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', padding: '10px 14px', borderBottom: i < stats.fairness.length - 1 ? '1px solid var(--border)' : 'none', fontSize: 13, alignItems: 'center' }}>
-                    <span style={{ fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
-                    <span style={{ textAlign: 'center', fontWeight: 700, color: 'var(--text-2)' }}>{f.nightShifts}</span>
-                    <span style={{ textAlign: 'center', fontWeight: 700, color: 'var(--text-2)' }}>{f.weekendShifts}</span>
-                    <span style={{ textAlign: 'center', fontWeight: 700, color: f.requestHonoredPct != null && f.requestHonoredPct >= 80 ? '#13A98E' : 'var(--text-2)' }}>
-                      {f.requestHonoredPct != null ? `${f.requestHonoredPct}%` : '—'}
-                    </span>
-                  </div>
-                ))}
-              </Card>
-            </>
-          )}
+          <DashPanels
+            employees={stats.employees}
+            roles={stats.roles}
+            fairness={stats.fairness}
+            scopeLabel={scopeLabel}
+            maxHours={maxHours}
+          />
         </>
       )}
 

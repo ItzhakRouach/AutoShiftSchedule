@@ -1,10 +1,25 @@
 export type Scope = 'week' | 'month' | 'year'
 
-export interface KPIs {
+export type CoverageColor = 'green' | 'amber' | 'red'
+
+export interface PeriodKPIs {
+  // Coverage
+  coveragePct: number | null   // filled/required %, null = no period
+  coverageColor: CoverageColor
+  filledSlots: number
+  requiredSlots: number
+
+  // Gaps / strain
+  uncoveredSlots: number       // required − filled (act-on items)
+  shifts12h: number            // 12h fallback shifts used
+  belowMinCount: number        // employees with shifts < min_shifts_per_week
+
+  // Requests
+  requestHonoredPct: number | null   // % of non-off requests honored, null = no requests
+
+  // Secondary
   activeEmployees: number
-  totalShifts: number
   totalHours: number
-  coveragePct: number | null // null = no published period yet
 }
 
 export interface EmployeeStat {
@@ -31,7 +46,7 @@ export interface FairnessStat {
 }
 
 export interface DashboardStats {
-  kpis: KPIs
+  kpis: PeriodKPIs
   employees: EmployeeStat[]
   roles: RoleStat[]
   fairness: FairnessStat[]

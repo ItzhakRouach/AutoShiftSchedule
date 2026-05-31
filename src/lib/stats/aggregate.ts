@@ -1,12 +1,12 @@
-import type { KPIs, EmployeeStat, RoleStat, FairnessStat } from './types'
+import type { PeriodKPIs, EmployeeStat, RoleStat, FairnessStat, CoverageColor } from './types'
 
-interface AssignmentRow {
+export interface AssignmentRow {
   employee_id: string
   day_of_week: number
   shift_type_id: string
   role_id: string | null
-  hours: number // joined from shift_types
-  is_fallback: boolean
+  hours: number         // joined from shift_types
+  is_fallback: boolean  // true when shift_type hours === 12 (or key contains '12h')
 }
 
 interface RequestRow {
@@ -21,6 +21,7 @@ interface EmployeeRow {
   id: string
   name: string
   color: string
+  min_shifts_per_week: number
 }
 
 interface RoleRow {
@@ -34,23 +35,71 @@ interface RequirementCount {
   required: number
 }
 
+export function coverageColor(pct: number | null): CoverageColor {
+  if (pct === null) return 'red'
+  if (pct >= 100) return 'green'
+  if (pct >= 80) return 'amber'
+  return 'red'
+}
+
 export function aggregateKPIs(
-  assignments: AssignmentRow[],
+  periodAssignments: AssignmentRow[],   // assignments for the CURRENT period
+  allAssignments: AssignmentRow[],      // assignments for the scope (for hours total)
   employees: EmployeeRow[],
   requirementSummary: RequirementCount | null,
-): KPIs {
-  const totalShifts = assignments.length
-  const totalHours = assignments.reduce((s, a) => s + (a.hours ?? 0), 0)
+  requests: RequestRow[],
+): PeriodKPIs {
+  const filled = requirementSummary?.filled ?? 0
+  const required = requirementSummary?.required ?? 0
+
   const coveragePct =
-    requirementSummary && requirementSummary.required > 0
-      ? Math.round((requirementSummary.filled / requirementSummary.required) * 100)
+    required > 0 ? Math.round((filled / required) * 100) : null
+
+  const uncoveredSlots = required > 0 ? Math.max(0, required - filled) : 0
+
+  const shifts12h = periodAssignments.filter((a) => a.is_fallback).length
+
+  // Employees with fewer period assignments than min_shifts_per_week
+  const shiftsPerEmployee = new Map<string, number>()
+  for (const a of periodAssignments) {
+    shiftsPerEmployee.set(a.employee_id, (shiftsPerEmployee.get(a.employee_id) ?? 0) + 1)
+  }
+  const belowMinCount = employees.filter(
+    (e) => (shiftsPerEmployee.get(e.id) ?? 0) < e.min_shifts_per_week,
+  ).length
+
+  // Request honored % across all employees with non-off requests
+  const nonOffRequests = requests.filter(
+    (r) => !r.is_off && r.preferred_shift_ids && r.preferred_shift_ids.length > 0,
+  )
+  let honored = 0
+  for (const req of nonOffRequests) {
+    const matched = periodAssignments.some(
+      (a) =>
+        a.employee_id === req.employee_id &&
+        req.preferred_shift_ids!.includes(a.shift_type_id) &&
+        a.day_of_week === req.day_of_week,
+    )
+    if (matched) honored++
+  }
+  const requestHonoredPct =
+    nonOffRequests.length > 0
+      ? Math.round((honored / nonOffRequests.length) * 100)
       : null
 
+  const totalHours = allAssignments.reduce((s, a) => s + (a.hours ?? 0), 0)
+
   return {
-    activeEmployees: employees.length,
-    totalShifts,
-    totalHours,
     coveragePct,
+    coverageColor: coverageColor(coveragePct),
+    filledSlots: filled,
+    requiredSlots: required,
+    uncoveredSlots,
+    shifts12h,
+    belowMinCount,
+    requestHonoredPct,
+    activeEmployees: employees.length,
+    totalHours,
   }
 }
 
@@ -85,14 +134,13 @@ export function aggregateRoles(assignments: AssignmentRow[], roles: RoleRow[]): 
     .sort((a, b) => b.count - a.count)
 }
 
-// night shift: start hour 23 or 19 (is_fallback night)
 const NIGHT_SHIFT_KEYS = new Set(['night', 'm12_night'])
 
 export function aggregateFairness(
   assignments: AssignmentRow[],
   requests: RequestRow[],
   employees: EmployeeRow[],
-  shiftKeyById: Map<string, string>, // shift_type_id → key
+  shiftKeyById: Map<string, string>,
 ): FairnessStat[] {
   return employees.map((e) => {
     const empAssignments = assignments.filter((a) => a.employee_id === e.id)
@@ -103,7 +151,6 @@ export function aggregateFairness(
       (a) => a.day_of_week === 5 || a.day_of_week === 6,
     ).length
 
-    // Request honored pct
     const empRequests = requests.filter((r) => r.employee_id === e.id && !r.is_off)
     let honored = 0
     let total = 0
