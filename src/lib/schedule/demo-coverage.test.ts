@@ -47,8 +47,8 @@ suite('demo-coverage: real DB → adapter → engine', { timeout: 30000 }, () =>
     result = generateSchedule(input)
   })
 
-  it('builds engine input via the SAME adapter the app uses (9 employees, 63 slots)', () => {
-    expect(input.employees.length).toBe(9)
+  it('builds engine input via the SAME adapter the app uses (63 required slots)', () => {
+    expect(input.employees.length).toBeGreaterThanOrEqual(9)
     let required = 0
     forEachRequirement(input, (_d, _s, _r, need) => { required += need })
     expect(required).toBe(63)

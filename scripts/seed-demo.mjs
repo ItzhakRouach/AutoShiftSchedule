@@ -46,6 +46,13 @@ const EMP = [
   { name: 'עומר דהן', roles: ['אחמ״ש', 'מאבטח'], type: 'full', min: 5, mustAccept: true, color: '#C0598F' },
   { name: 'ליאת אזולאי', roles: ['מוקדן', 'מאבטח'], type: 'part', min: 2, max: 4, color: '#7A8B3D' },
   { name: 'מאור גבאי', roles: ['אחמ״ש', 'מאבטח'], type: 'full', min: 5, shabbat: true, color: '#5B61D6' },
+  { name: 'טל אבני', roles: ['אחמ״ש', 'מוקדן', 'מאבטח'], type: 'full', min: 5, color: '#2BB3C0' },
+  { name: 'רון שלו', roles: ['מוקדן', 'מאבטח'], type: 'full', min: 5, color: '#D08A2E' },
+  { name: 'גיא נחמיאס', roles: ['מאבטח'], type: 'full', min: 5, color: '#13A98E' },
+  { name: 'אורי כץ', roles: ['אחמ״ש', 'מאבטח'], type: 'full', min: 5, color: '#E0902A' },
+  { name: 'מיכל רז', roles: ['מוקדן', 'מאבטח'], type: 'part', min: 3, max: 5, color: '#9B5DE0' },
+  { name: 'עידן בר', roles: ['אחמ״ש', 'מוקדן', 'מאבטח'], type: 'full', min: 5, color: '#3D6BF5' },
+  { name: 'נטע גל', roles: ['מוקדן', 'מאבטח'], type: 'full', min: 5, color: '#C0598F' },
 ]
 
 function upcomingSundayISO() {
