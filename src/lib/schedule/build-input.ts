@@ -76,9 +76,20 @@ export async function buildEngineInput(
   ])
 
   const employeeIds = (employees ?? []).map((e) => e.id)
-  const [{ data: employeeRoles }, { data: availability }, { data: vacations }] =
+  // For holiday-eve detection on the last day we need the day after the week ends.
+  const weekDatesArr = weekDatesFrom(period.week_start_date)
+  const lastDate = weekDatesArr[6]
+  const [y, m, d] = lastDate.split('-').map(Number)
+  const dayAfter = new Date(Date.UTC(y, m - 1, d))
+  dayAfter.setUTCDate(dayAfter.getUTCDate() + 1)
+  const dayAfterISO = `${dayAfter.getUTCFullYear()}-${String(dayAfter.getUTCMonth() + 1).padStart(2, '0')}-${String(dayAfter.getUTCDate()).padStart(2, '0')}`
+
+  const [
+    [{ data: employeeRoles }, { data: availability }, { data: vacations }],
+    { data: holidayRows },
+  ] = await Promise.all([
     employeeIds.length > 0
-      ? await Promise.all([
+      ? Promise.all([
           supabase.from('employee_roles').select('employee_id, role_id').in('employee_id', employeeIds),
           supabase
             .from('employee_availability')
@@ -89,10 +100,19 @@ export async function buildEngineInput(
             .select('employee_id, date_from, date_to')
             .in('employee_id', employeeIds),
         ])
-      : [{ data: [] }, { data: [] }, { data: [] }]
+      : Promise.resolve([{ data: [] as never[] }, { data: [] as never[] }, { data: [] as never[] }]),
+    supabase
+      .from('holidays')
+      .select('date')
+      .eq('workplace_id', wp)
+      .gte('date', weekDatesArr[0])
+      .lte('date', dayAfterISO),
+  ])
+
+  const holidayDates = new Set<string>((holidayRows ?? []).map((h: { date: string }) => h.date))
 
   const rows: MapInput = {
-    weekDates: weekDatesFrom(period.week_start_date),
+    weekDates: weekDatesArr,
     shiftTypes: shiftTypes ?? [],
     roles: roles ?? [],
     employees: employees ?? [],
@@ -103,6 +123,7 @@ export async function buildEngineInput(
     requirements: requirements ?? [],
     settings: settings ?? null,
     seed: seedFromUuid(period.id),
+    holidayDates,
   }
 
   const { input, keyToShiftTypeId, nameToRoleId } = mapToEngineInput(rows)

@@ -141,6 +141,24 @@ describe('mapToEngineInput', () => {
     expect(input.days).toHaveLength(7)
     expect(input.days.every((d) => !d.isHoliday && !d.isHolidayEve)).toBe(true)
   })
+
+  it('sets isHoliday and isHolidayEve from holidayDates; holiday-observer gets correct meta', () => {
+    // Week: 2026-06-07..13. d2=2026-06-09=holiday, d1=eve.
+    const { input } = mapToEngineInput(
+      baseRows({
+        holidayDates: new Set(['2026-06-09']),
+        employees: [{
+          id: 'e1', employment_type: 'full', min_shifts_per_week: 2,
+          max_shifts_per_week: 5, observes_shabbat: false, observes_holidays: true, must_accept: false,
+        }],
+      }),
+    )
+    expect(input.days[2].isHoliday).toBe(true)
+    expect(input.days[1].isHolidayEve).toBe(true)
+    expect(input.days[0].isHoliday).toBe(false)
+    expect(input.days[0].isHolidayEve).toBe(false)
+    expect(input.employees[0].observesHolidays).toBe(true)
+  })
 })
 
 describe('seedFromUuid', () => {

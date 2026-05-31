@@ -11,6 +11,7 @@ import type {
   Settings,
   ShiftKey,
 } from '@/lib/scheduling/types'
+import { buildHolidayMeta } from '@/lib/holidays/day-meta'
 
 // ── Row shapes (mirror the DB columns we read) ─────────────────────────────────
 export interface ShiftTypeRow { id: string; key: string }
@@ -58,6 +59,8 @@ export interface MapInput {
   requirements: RequirementRow[]
   settings: SettingsRow | null
   seed: number
+  /** Set of holiday dates (YYYY-MM-DD) covering the week + the day after (for eve detection). */
+  holidayDates?: Set<string>
 }
 
 const VALID_EMP: EmploymentType[] = ['full', 'part', 'student']
@@ -168,11 +171,11 @@ export function mapToEngineInput(rows: MapInput): MapResult {
     byRole[roleName] = (byRole[roleName] ?? 0) + r.count
   }
 
+  const holidayMeta = buildHolidayMeta(rows.weekDates, rows.holidayDates ?? new Set())
   const days: DayMeta[] = Array.from({ length: 7 }, (_, index) => ({
     index,
-    // TODO: holidays — no holidays table exists yet; Shabbat handled by engine via index 5/6.
-    isHolidayEve: false,
-    isHoliday: false,
+    isHolidayEve: holidayMeta[index].isHolidayEve,
+    isHoliday: holidayMeta[index].isHoliday,
   }))
 
   const settings: Settings = {
