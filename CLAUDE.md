@@ -59,7 +59,7 @@ DesignTemplate/     # REFERENCE prototype — read for design/logic, do NOT ship
    requires near-100% confidence / no bugs.
 4. **Free-tier only** until distribution: no paid APIs (WhatsApp = free link/code + optional GreenAPI).
 5. **Don't touch `DesignTemplate/`** — it's the reference, not the product.
-6. Keep files focused (one responsibility); split when they grow unwieldy.
+6. **Every page/component file ≤200 lines.** Split proactively into focused sub-components, hooks, and helpers — one clear responsibility each. Code quality, control, and flow come first.
 
 ## Domain Quick Reference
 - **Roles:** אחמ״ש, מוקדן, מאבטח (employees may hold several). **Base shifts (8h):** בוקר 07–15,
