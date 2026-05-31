@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveWorkplace } from '@/lib/workplace/current'
 import { getScheduleView } from '@/lib/schedule/view-data'
+import { getEditMeta } from '@/lib/schedule/edit-meta'
 import { ScheduleClient } from './ScheduleClient'
 
 export default async function SchedulePage() {
@@ -14,6 +15,7 @@ export default async function SchedulePage() {
   if (!workplace) redirect('/onboarding')
 
   const view = await getScheduleView(supabase, workplace.id)
+  const editMeta = view ? await getEditMeta(supabase, workplace.id, view.periodId) : null
 
   return (
     <main
@@ -56,7 +58,7 @@ export default async function SchedulePage() {
       </Link>
 
       {view ? (
-        <ScheduleClient view={view} />
+        <ScheduleClient view={view} editMeta={editMeta} />
       ) : (
         <p style={{ textAlign: 'right', color: 'var(--text-2)' }}>
           לא ניתן לטעון את נתוני השיבוץ כרגע.

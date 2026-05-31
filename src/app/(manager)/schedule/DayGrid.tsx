@@ -4,20 +4,29 @@ import { Card } from '@/components/ui/Card'
 import { Avatar } from '@/components/ui/Avatar'
 import { Icon } from '@/components/ui/Icon'
 import { RoleChip } from '@/components/ui/RoleChip'
-import { SHIFT_META } from '@/lib/domain/constants'
+import { SHIFT_META, type ShiftId } from '@/lib/domain/constants'
 import type { ScheduleView } from '@/lib/schedule/view-data'
+import type { SlotCtx } from './SwapEditor'
 import type { ShiftKey } from '@/lib/scheduling/types'
 
 interface Props {
   view: ScheduleView
   selDay: number
+  onSlot?: (slot: SlotCtx) => void
 }
 
 /** Per-shift cards for the selected day, showing each role's required count
- *  and assigned employees, with red markers for unfilled slots. */
-export function DayGrid({ view, selDay }: Props) {
+ *  and assigned employees, with red markers for unfilled slots. Slots open the
+ *  SwapEditor via onSlot when provided. */
+export function DayGrid({ view, selDay, onSlot }: Props) {
   const empById = new Map(view.employees.map((e) => [e.id, e]))
   const roleById = new Map(view.roles.map((r) => [r.id, r]))
+  const open = (shift: ShiftKey, roleId: string, assignedIds: string[]) => {
+    if (!onSlot) return
+    const shiftTypeId = view.shiftTypeIdByKey[shift]
+    if (!shiftTypeId) return
+    onSlot({ day: selDay, shiftKey: shift as ShiftId, shiftTypeId, roleId, roleName: roleById.get(roleId)?.name ?? '', assignedIds })
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
@@ -80,6 +89,7 @@ export function DayGrid({ view, selDay }: Props) {
                         return (
                           <span
                             key={eid}
+                            onClick={() => open(shift, roleId, filled)}
                             style={{
                               display: 'inline-flex',
                               alignItems: 'center',
@@ -88,6 +98,7 @@ export function DayGrid({ view, selDay }: Props) {
                               borderRadius: 99,
                               border: '1px solid var(--border)',
                               background: 'var(--surface-2)',
+                              cursor: onSlot ? 'pointer' : 'default',
                             }}
                           >
                             <Avatar name={e?.name ?? '?'} color={e?.color ?? '#888'} size={24} />
@@ -100,6 +111,7 @@ export function DayGrid({ view, selDay }: Props) {
                       {Array.from({ length: missing }).map((_, k) => (
                         <span
                           key={'e' + k}
+                          onClick={() => open(shift, roleId, filled)}
                           style={{
                             display: 'inline-flex',
                             alignItems: 'center',
@@ -111,6 +123,7 @@ export function DayGrid({ view, selDay }: Props) {
                             color: '#EB6A4E',
                             fontSize: 13,
                             fontWeight: 600,
+                            cursor: onSlot ? 'pointer' : 'default',
                           }}
                         >
                           <Icon name="plus" size={15} stroke={2.2} /> לא מאויש
@@ -124,6 +137,34 @@ export function DayGrid({ view, selDay }: Props) {
           </Card>
         )
       })}
+
+      {view.twelve.filter((t) => t.day === selDay).length > 0 && (
+        <Card pad={0} style={{ overflow: 'hidden' }}>
+          <div style={{ padding: '10px 14px', fontSize: 14, fontWeight: 800 }}>משמרות 12 שעות</div>
+          <div style={{ padding: '0 14px 12px', display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+            {view.twelve
+              .filter((t) => t.day === selDay)
+              .map((t, i) => {
+                const e = empById.get(t.employeeId)
+                return (
+                  <span
+                    key={i}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 7,
+                      padding: '5px 11px 5px 7px', borderRadius: 99,
+                      border: '1px solid var(--accent)', background: 'var(--accent-soft)',
+                    }}
+                    data-testid="twelve-badge"
+                  >
+                    <Avatar name={e?.name ?? '?'} color={e?.color ?? '#888'} size={24} />
+                    <span style={{ fontSize: 13, fontWeight: 600 }}>{e?.name ?? 'לא ידוע'}</span>
+                    <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--accent)' }}>12ש׳</span>
+                  </span>
+                )
+              })}
+          </div>
+        </Card>
+      )}
     </div>
   )
 }

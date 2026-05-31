@@ -14,6 +14,14 @@ export type ViewGrid = Record<number, Record<string, Record<string, string[]>>>
 /** requirements[day][shiftKey][roleId] = count */
 export type ViewReq = Record<number, Record<string, Record<string, number>>>
 
+/** A persisted 12h assignment, surfaced separately so it renders distinctly. */
+export interface ViewTwelve {
+  day: number
+  variant: string // ShiftId (12h key)
+  roleId: string
+  employeeId: string
+}
+
 export interface ScheduleView {
   periodId: string
   status: string
@@ -24,6 +32,9 @@ export interface ScheduleView {
   employees: ViewEmployee[]
   requirements: ViewReq
   grid: ViewGrid
+  twelve: ViewTwelve[]
+  /** base shiftKey → shift_type_id (for opening the editor on a base slot). */
+  shiftTypeIdByKey: Record<string, string>
   hasAssignments: boolean
   feasibility: FeasibilityResult | null
 }
@@ -45,10 +56,11 @@ export async function getScheduleView(
   const built = await buildEngineInput(supabase, periodId)
   if (!built) return null
 
+  const baseKeys = new Set(['morning', 'noon', 'night'])
   const idToKey: Record<string, ShiftKey> = {}
   for (const [key, id] of Object.entries(built.keyToShiftTypeId)) idToKey[id] = key as ShiftKey
 
-  const [{ data: rolesRaw }, { data: empsRaw }, { data: assignsRaw }, { data: reqRaw }] =
+  const [{ data: rolesRaw }, { data: empsRaw }, { data: assignsRaw }, { data: reqRaw }, { data: allShiftTypes }] =
     await Promise.all([
       supabase.from('roles').select('id, name').eq('workplace_id', workplaceId).order('name'),
       supabase.from('employees').select('id, name, color').eq('workplace_id', workplaceId).order('name'),
@@ -60,11 +72,26 @@ export async function getScheduleView(
         .from('shift_requirements')
         .select('day_of_week, shift_type_id, role_id, count')
         .eq('workplace_id', workplaceId),
+      supabase.from('shift_types').select('id, key').eq('workplace_id', workplaceId),
     ])
 
-  // Grid from persisted assignments
+  // All shift-type keys (base + 12h) so manual 12h assignments can be surfaced.
+  const idToAnyKey: Record<string, string> = {}
+  const shiftTypeIdByKey: Record<string, string> = {}
+  for (const st of allShiftTypes ?? []) {
+    idToAnyKey[st.id] = st.key
+    shiftTypeIdByKey[st.key] = st.id
+  }
+
+  // Grid (base shifts) + separate 12h list from persisted assignments.
   const grid: ViewGrid = {}
+  const twelve: ViewTwelve[] = []
   for (const a of assignsRaw ?? []) {
+    const anyKey = idToAnyKey[a.shift_type_id]
+    if (anyKey && !baseKeys.has(anyKey)) {
+      twelve.push({ day: a.day_of_week, variant: anyKey, roleId: a.role_id, employeeId: a.employee_id })
+      continue
+    }
     const key = idToKey[a.shift_type_id]
     if (!key) continue
     const day = (grid[a.day_of_week] ??= {})
@@ -106,6 +133,8 @@ export async function getScheduleView(
     employees: (empsRaw ?? []).map((e) => ({ id: e.id, name: e.name, color: e.color })),
     requirements,
     grid,
+    twelve,
+    shiftTypeIdByKey,
     hasAssignments: (assignsRaw ?? []).length > 0,
     feasibility,
   }

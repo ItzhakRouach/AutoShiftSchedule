@@ -5,23 +5,27 @@ import { useRouter } from 'next/navigation'
 import { Btn } from '@/components/ui/Btn'
 import { Card } from '@/components/ui/Card'
 import type { ScheduleView } from '@/lib/schedule/view-data'
+import type { EditMeta } from '@/lib/schedule/edit-meta'
 import type { Coverage, TwelveHourSuggestion } from '@/lib/scheduling/types'
 import { runSchedule, publishSchedule } from './actions'
 import { FeasibilityBanner } from './FeasibilityBanner'
 import { DayGrid } from './DayGrid'
+import { SwapEditor, type SlotCtx } from './SwapEditor'
 import { DaySelector, TwelveHourList, Generating } from './parts'
 
 interface Props {
   view: ScheduleView
+  editMeta: EditMeta | null
 }
 
-export function ScheduleClient({ view }: Props) {
+export function ScheduleClient({ view, editMeta }: Props) {
   const router = useRouter()
   const [selDay, setSelDay] = useState(0)
   const [coverage, setCoverage] = useState<Coverage | null>(null)
   const [suggestions, setSuggestions] = useState<TwelveHourSuggestion[]>([])
   const [error, setError] = useState<string | null>(null)
   const [published, setPublished] = useState(view.status === 'published')
+  const [slot, setSlot] = useState<SlotCtx | null>(null)
   const [running, startRun] = useTransition()
   const [publishing, startPublish] = useTransition()
 
@@ -122,7 +126,7 @@ export function ScheduleClient({ view }: Props) {
         <>
           <div style={{ height: 14 }} />
           <DaySelector view={view} selDay={selDay} setSelDay={setSelDay} />
-          <DayGrid view={view} selDay={selDay} />
+          <DayGrid view={view} selDay={selDay} onSlot={editMeta ? setSlot : undefined} />
           <TwelveHourList suggestions={suggestions} roles={view.roles} />
           <div style={{ height: 14 }} />
           <Btn
@@ -136,6 +140,10 @@ export function ScheduleClient({ view }: Props) {
             {published ? 'פורסם ✓' : publishing ? 'מפרסם…' : 'פרסם סידור'}
           </Btn>
         </>
+      )}
+
+      {editMeta && (
+        <SwapEditor slot={slot} onClose={() => setSlot(null)} view={view} meta={editMeta} />
       )}
     </div>
   )
