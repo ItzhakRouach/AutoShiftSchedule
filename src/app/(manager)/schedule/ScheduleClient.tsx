@@ -7,11 +7,12 @@ import { Card } from '@/components/ui/Card'
 import type { ScheduleView } from '@/lib/schedule/view-data'
 import type { EditMeta } from '@/lib/schedule/edit-meta'
 import type { Coverage, TwelveHourSuggestion } from '@/lib/scheduling/types'
-import { runSchedule, publishSchedule } from './actions'
+import { runSchedule, publishSchedule, hasManualAssignments } from './actions'
 import { FeasibilityBanner } from './FeasibilityBanner'
 import { DayGrid } from './DayGrid'
 import { SwapEditor, type SlotCtx } from './SwapEditor'
 import { DaySelector, TwelveHourList, Generating } from './parts'
+import { RegenerateConfirm } from './RegenerateConfirm'
 
 interface Props {
   view: ScheduleView
@@ -26,33 +27,34 @@ export function ScheduleClient({ view, editMeta }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [published, setPublished] = useState(view.status === 'published')
   const [slot, setSlot] = useState<SlotCtx | null>(null)
+  const [showConfirm, setShowConfirm] = useState(false)
   const [running, startRun] = useTransition()
   const [publishing, startPublish] = useTransition()
 
   const hasResult = view.hasAssignments || coverage !== null
 
-  function generate() {
+  async function triggerGenerate(replaceManual: boolean) {
+    setShowConfirm(false)
     setError(null)
     startRun(async () => {
-      const res = await runSchedule(view.periodId)
-      if (!res.ok) {
-        setError(res.error ?? 'שגיאה')
-        return
-      }
+      const res = await runSchedule(view.periodId, { replaceManual })
+      if (!res.ok) { setError(res.error ?? 'שגיאה'); return }
       setCoverage(res.coverage ?? null)
       setSuggestions(res.twelveHourSuggestions ?? [])
       router.refresh()
     })
   }
 
+  async function handleGenerateClick() {
+    const manual = view.hasAssignments ? await hasManualAssignments(view.periodId) : false
+    if (manual) { setShowConfirm(true) } else { await triggerGenerate(false) }
+  }
+
   function publish() {
     setError(null)
     startPublish(async () => {
       const res = await publishSchedule(view.periodId)
-      if (!res.ok) {
-        setError(res.error ?? 'שגיאה')
-        return
-      }
+      if (!res.ok) { setError(res.error ?? 'שגיאה'); return }
       setPublished(true)
       router.refresh()
     })
@@ -64,26 +66,20 @@ export function ScheduleClient({ view, editMeta }: Props) {
 
   return (
     <div>
+      {showConfirm && (
+        <RegenerateConfirm
+          busy={running}
+          onKeep={() => triggerGenerate(false)}
+          onReplace={() => triggerGenerate(true)}
+          onCancel={() => setShowConfirm(false)}
+        />
+      )}
+
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
         <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>שיבוץ אוטומטי</h1>
         {pct !== null && (
-          <div
-            style={{
-              textAlign: 'center',
-              background: pct >= 95 ? 'rgba(19,169,142,0.12)' : 'rgba(235,106,78,0.12)',
-              borderRadius: 'var(--r-md)',
-              padding: '8px 13px',
-            }}
-          >
-            <div
-              style={{
-                fontSize: 20,
-                fontWeight: 800,
-                color: pct >= 95 ? '#13A98E' : '#EB6A4E',
-                lineHeight: 1,
-              }}
-              data-testid="coverage"
-            >
+          <div style={{ textAlign: 'center', background: pct >= 95 ? 'rgba(19,169,142,0.12)' : 'rgba(235,106,78,0.12)', borderRadius: 'var(--r-md)', padding: '8px 13px' }}>
+            <div style={{ fontSize: 20, fontWeight: 800, color: pct >= 95 ? '#13A98E' : '#EB6A4E', lineHeight: 1 }} data-testid="coverage">
               {pct}%
             </div>
             <div style={{ fontSize: 10.5, color: 'var(--text-2)', fontWeight: 600, marginTop: 2 }}>כיסוי</div>
@@ -94,17 +90,7 @@ export function ScheduleClient({ view, editMeta }: Props) {
       <FeasibilityBanner feasibility={view.feasibility} />
 
       {error && (
-        <div
-          style={{
-            padding: '10px 14px',
-            borderRadius: 'var(--r-md)',
-            background: 'rgba(235,106,78,0.1)',
-            color: '#EB6A4E',
-            fontSize: 13.5,
-            fontWeight: 600,
-            marginBottom: 14,
-          }}
-        >
+        <div style={{ padding: '10px 14px', borderRadius: 'var(--r-md)', background: 'rgba(235,106,78,0.1)', color: '#EB6A4E', fontSize: 13.5, fontWeight: 600, marginBottom: 14 }}>
           {error}
         </div>
       )}
@@ -118,7 +104,7 @@ export function ScheduleClient({ view, editMeta }: Props) {
         </Card>
       )}
 
-      <Btn variant="primary" size="lg" icon="check" style={{ width: '100%' }} onClick={generate}>
+      <Btn variant="primary" size="lg" icon="check" style={{ width: '100%' }} onClick={handleGenerateClick}>
         צור סידור אוטומטי
       </Btn>
 
@@ -129,14 +115,7 @@ export function ScheduleClient({ view, editMeta }: Props) {
           <DayGrid view={view} selDay={selDay} onSlot={editMeta ? setSlot : undefined} />
           <TwelveHourList suggestions={suggestions} roles={view.roles} />
           <div style={{ height: 14 }} />
-          <Btn
-            variant={published ? 'soft' : 'primary'}
-            size="md"
-            icon="check"
-            style={{ width: '100%' }}
-            disabled={publishing}
-            onClick={publish}
-          >
+          <Btn variant={published ? 'soft' : 'primary'} size="md" icon="check" style={{ width: '100%' }} disabled={publishing} onClick={publish}>
             {published ? 'פורסם ✓' : publishing ? 'מפרסם…' : 'פרסם סידור'}
           </Btn>
         </>

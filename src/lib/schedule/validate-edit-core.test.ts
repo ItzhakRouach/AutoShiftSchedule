@@ -17,6 +17,11 @@ const meta: DayMeta = { index: 2, isHolidayEve: false, isHoliday: false }
 const settings: Settings = { minRestHours: 8, idealRestHours: 16, allow12hFallback: true }
 const noReq: DayRequest = { off: false, preferred: [] }
 
+// Saturday = index 6
+const satMeta: DayMeta = { index: 6, isHolidayEve: false, isHoliday: false }
+// Wednesday = index 3 (no sacred overlap)
+const wedMeta: DayMeta = { index: 3, isHolidayEve: false, isHoliday: false }
+
 function args(over: Partial<ValidateCoreArgs> = {}): ValidateCoreArgs {
   return { emp, meta, shiftKey: 'morning', roleId: 'מאבטח', request: noReq, others: [], settings, ...over }
 }
@@ -89,6 +94,46 @@ describe('validateAssignmentCore', () => {
   it('accepts a 12h shift with adequate rest', () => {
     const v = validateAssignmentCore(
       args({ shiftKey: 'm12_day', isTwelveHour: true, others: [{ day: 0, shiftKey: 'morning', roleId: 'מאבטח' }] }),
+    )
+    expect(v.ok).toBe(true)
+  })
+
+  // --- FIX 1: 12h Shabbat/holiday + availability ---
+
+  it('blocks Shabbat-observer on m12_day (morning+noon) on Saturday', () => {
+    // Saturday: morning & noon are both shabbat-blocked → m12_day must be rejected.
+    const shabbatEmp: Employee = { ...emp, observesShabbat: true }
+    const v = validateAssignmentCore(
+      args({ emp: shabbatEmp, meta: satMeta, shiftKey: 'm12_day', isTwelveHour: true }),
+    )
+    expect(v.ok).toBe(false)
+    if (!v.ok) expect(v.reason).toContain('שבת')
+  })
+
+  it('allows Shabbat-observer on m12_day on a weekday with no overlap', () => {
+    // Wednesday (index 3): no Shabbat block → m12_day is permitted.
+    const shabbatEmp: Employee = { ...emp, observesShabbat: true }
+    const v = validateAssignmentCore(
+      args({ emp: shabbatEmp, meta: wedMeta, shiftKey: 'm12_day', isTwelveHour: true }),
+    )
+    expect(v.ok).toBe(true)
+  })
+
+  it('blocks availability-restricted employee on 12h whose covered shifts are not allowed', () => {
+    // Employee allowed only night on day 3; m12_day covers morning+noon → blocked.
+    const restricted: Employee = { ...emp, availability: { 3: ['night'] } }
+    const v = validateAssignmentCore(
+      args({ emp: restricted, meta: wedMeta, shiftKey: 'm12_day', isTwelveHour: true }),
+    )
+    expect(v.ok).toBe(false)
+    if (!v.ok) expect(v.reason).toContain('זמין')
+  })
+
+  it('allows availability-restricted employee on 12h when all covered shifts are permitted', () => {
+    // Employee allowed morning+noon on day 3; m12_day covers exactly that.
+    const permitted: Employee = { ...emp, availability: { 3: ['morning', 'noon'] } }
+    const v = validateAssignmentCore(
+      args({ emp: permitted, meta: wedMeta, shiftKey: 'm12_day', isTwelveHour: true }),
     )
     expect(v.ok).toBe(true)
   })

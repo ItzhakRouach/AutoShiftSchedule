@@ -18,6 +18,8 @@ export interface SlotCtx {
   roleId: string
   roleName: string
   assignedIds: string[]
+  /** Optional day metadata for holiday-aware checks. */
+  dayMeta?: { isHolidayEve: boolean; isHoliday: boolean }
 }
 
 interface Props {
@@ -48,7 +50,6 @@ export function SwapEditor({ slot, onClose, view, meta }: Props) {
           return
         }
         if (res.warning) setMsg(res.warning)
-        // Refresh outside any transition so the disabled state always clears.
         start(() => router.refresh())
         if (!res.warning) onClose()
       } finally {
@@ -95,6 +96,7 @@ export function SwapEditor({ slot, onClose, view, meta }: Props) {
             roleId: slot.roleId,
             minRestHours: meta.minRestHours,
             requestedPreferred: em.preferred[slot.day],
+            dayMeta: slot.dayMeta,
           })
           return (
             <button
@@ -138,17 +140,39 @@ export function SwapEditor({ slot, onClose, view, meta }: Props) {
       </div>
       {variant && twelveId && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {view.employees.map((e) => (
-            <Btn
-              key={e.id}
-              variant="ghost"
-              size="sm"
-              disabled={busy}
-              onClick={() => run(() => assignTwelveHour(view.periodId, slot.day, twelveId, slot.roleId, e.id))}
-            >
-              {e.name} — 12ש׳
-            </Btn>
-          ))}
+          {view.employees.map((e) => {
+            const em = meta.employees[e.id]
+            if (!em) return null
+            const cand = candidateStatus({
+              emp: em,
+              day: slot.day,
+              shiftKey: variant,
+              roleId: slot.roleId,
+              minRestHours: meta.minRestHours,
+              dayMeta: slot.dayMeta,
+            })
+            return (
+              <button
+                key={e.id}
+                disabled={cand.disabled || busy}
+                onClick={() => run(() => assignTwelveHour(view.periodId, slot.day, twelveId, slot.roleId, e.id))}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                  padding: '8px 11px', borderRadius: 12, border: '1px solid var(--border)',
+                  background: 'var(--surface)', cursor: cand.disabled ? 'default' : 'pointer',
+                  opacity: cand.disabled ? 0.5 : 1, fontFamily: 'var(--font)',
+                }}
+              >
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  <Avatar name={e.name} color={e.color} size={26} />
+                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{e.name}</span>
+                </span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: cand.disabled ? '#EB6A4E' : 'var(--accent)' }}>
+                  {cand.disabled ? cand.label : `${e.name} — 12ש׳`}
+                </span>
+              </button>
+            )
+          })}
         </div>
       )}
     </Sheet>

@@ -18,8 +18,19 @@ export interface RunResult {
 }
 
 const GENERIC_ERROR = 'אירעה שגיאה בעת יצירת הסידור. נסו שוב.'
+const MANUAL_SOURCES = ['manual', 'fallback_12h'] as const
 
-export async function runSchedule(periodId: string): Promise<RunResult> {
+export interface RunOptions {
+  /** When false (default), manual/fallback_12h rows are preserved and auto rows
+   *  are regenerated around them. When true, ALL rows are wiped first. */
+  replaceManual?: boolean
+}
+
+export async function runSchedule(
+  periodId: string,
+  opts: RunOptions = {},
+): Promise<RunResult> {
+  const { replaceManual = false } = opts
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -28,9 +39,18 @@ export async function runSchedule(periodId: string): Promise<RunResult> {
   if (!workplace) return { ok: false, error: 'לא נמצא מקום עבודה.' }
 
   const built = await buildEngineInput(supabase, periodId)
-  // Defensive: RLS ensures the period belongs to the manager; verify ownership.
-  if (!built || built.period.workplace_id !== workplace.id) {
+  if (!built || built.period.workplace_id !== workplace.id)
     return { ok: false, error: GENERIC_ERROR }
+
+  // When preserving manual rows: fetch them first so we can skip collisions.
+  let preservedRows: { employee_id: string; day_of_week: number }[] = []
+  if (!replaceManual) {
+    const { data } = await supabase
+      .from('assignments')
+      .select('employee_id, day_of_week')
+      .eq('period_id', periodId)
+      .in('source', MANUAL_SOURCES)
+    preservedRows = data ?? []
   }
 
   let result
@@ -40,7 +60,8 @@ export async function runSchedule(periodId: string): Promise<RunResult> {
     return { ok: false, error: GENERIC_ERROR }
   }
 
-  // Build assignment rows from the engine's per-employee assignments.
+  // Build auto rows, skipping any (employee, day) already held by a preserved row.
+  const preservedSet = new Set(preservedRows.map((r) => `${r.employee_id}|${r.day_of_week}`))
   const rows: {
     period_id: string
     employee_id: string
@@ -49,9 +70,6 @@ export async function runSchedule(periodId: string): Promise<RunResult> {
     role_id: string
     source: string
   }[] = []
-
-  // DB enforces UNIQUE(period_id, employee_id, day_of_week): at most one shift per
-  // employee per day. Dedupe defensively (keep first) to never violate it.
   const seen = new Set<string>()
   for (const [employeeId, assignments] of Object.entries(result.assignmentsByEmployee)) {
     for (const a of assignments) {
@@ -61,6 +79,8 @@ export async function runSchedule(periodId: string): Promise<RunResult> {
       const dayKey = `${employeeId}|${a.day}`
       if (seen.has(dayKey)) continue
       seen.add(dayKey)
+      // Skip slot if the employee already has a preserved manual/12h row that day.
+      if (!replaceManual && preservedSet.has(dayKey)) continue
       rows.push({
         period_id: periodId,
         employee_id: employeeId,
@@ -72,8 +92,21 @@ export async function runSchedule(periodId: string): Promise<RunResult> {
     }
   }
 
-  const { error: delError } = await supabase.from('assignments').delete().eq('period_id', periodId)
-  if (delError) return { ok: false, error: GENERIC_ERROR }
+  // Delete only auto rows (preserve manual/12h) unless replaceManual=true.
+  if (replaceManual) {
+    const { error: delError } = await supabase
+      .from('assignments')
+      .delete()
+      .eq('period_id', periodId)
+    if (delError) return { ok: false, error: GENERIC_ERROR }
+  } else {
+    const { error: delError } = await supabase
+      .from('assignments')
+      .delete()
+      .eq('period_id', periodId)
+      .eq('source', 'auto')
+    if (delError) return { ok: false, error: GENERIC_ERROR }
+  }
 
   if (rows.length > 0) {
     const { error: insError } = await supabase.from('assignments').insert(rows)
@@ -110,4 +143,16 @@ export async function publishSchedule(periodId: string): Promise<RunResult> {
 
   revalidatePath('/schedule')
   return { ok: true }
+}
+
+/** Returns true if the period has any manual/12h assignments. */
+export async function hasManualAssignments(periodId: string): Promise<boolean> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('assignments')
+    .select('id')
+    .eq('period_id', periodId)
+    .in('source', MANUAL_SOURCES)
+    .limit(1)
+  return (data ?? []).length > 0
 }

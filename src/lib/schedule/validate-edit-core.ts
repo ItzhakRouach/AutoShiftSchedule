@@ -1,7 +1,7 @@
 // PURE manual-assignment validation. NO Supabase/IO imports — unit-tested with
 // plain objects. Reuses the engine's hard-constraint predicates for base shifts
 // and absolute-hour rest math (SHIFT_META) for 12h variants.
-import { SHIFT_META, type ShiftId } from '@/lib/domain/constants'
+import type { ShiftId } from '@/lib/domain/constants'
 import {
   availabilityAllows,
   holdsRole,
@@ -10,6 +10,8 @@ import {
   worksThatDay,
 } from '@/lib/scheduling/constraints'
 import { isSacredBlocked } from '@/lib/scheduling/shabbat-holiday'
+import { TWELVE_HOUR_COVERS } from '@/lib/scheduling/fallback'
+import { shiftInterval, gapBetween } from '@/lib/schedule/rest-util'
 import type {
   Assignment,
   DayMeta,
@@ -30,19 +32,8 @@ export interface CommittedSlot {
   roleId: string
 }
 
-/** Absolute [start,end) hours a shift (base or 12h) occupies starting on `day`. */
-export function shiftInterval(day: number, shiftKey: ShiftId): [number, number] {
-  const m = SHIFT_META[shiftKey]
-  const start = day * 24 + m.start
-  return [start, start + m.hours]
-}
-
-/** Rest gap in hours between two intervals; -1 if they overlap. */
-function gapBetween(a: [number, number], b: [number, number]): number {
-  if (b[0] >= a[1]) return b[0] - a[1]
-  if (a[0] >= b[1]) return a[0] - b[1]
-  return -1
-}
+// Re-export for consumers that imported shiftInterval from here directly.
+export { shiftInterval } from '@/lib/schedule/rest-util'
 
 export interface ValidateCoreArgs {
   emp: Employee
@@ -70,14 +61,33 @@ export function validateAssignmentCore(args: ValidateCoreArgs): Verdict {
   if (isOff(request))
     return { ok: false, severity: 'hard', reason: 'העובד ביקש יום חופש ביום זה' }
 
-  // Availability + Shabbat/holiday are defined per base shift. For 12h, check the
-  // base shifts the block spans implicitly via its start window (best-effort: the
-  // morning/evening base key of the same start hour).
   if (!args.isTwelveHour) {
+    // Base-shift checks: availability and Shabbat/holiday per single shift.
     if (!availabilityAllows(emp, meta.index, shiftKey as ShiftKey))
       return { ok: false, severity: 'hard', reason: 'העובד אינו זמין במשמרת זו' }
     if (isSacredBlocked(emp, meta, shiftKey as ShiftKey))
       return { ok: false, severity: 'hard', reason: 'חסום עקב שבת או חג' }
+  } else {
+    // 12h checks: validate EVERY covered base shift for Shabbat/holiday and
+    // availability. A 12h variant spans two adjacent base shifts; if either is
+    // blocked the whole block must be rejected.
+    const covered = TWELVE_HOUR_COVERS[shiftKey as keyof typeof TWELVE_HOUR_COVERS]
+    if (covered) {
+      for (const baseShift of covered) {
+        if (isSacredBlocked(emp, meta, baseShift as ShiftKey))
+          return {
+            ok: false,
+            severity: 'hard',
+            reason: 'משמרת 12 שעות חופפת לשבת/חג של העובד',
+          }
+        if (emp.availability !== null && !availabilityAllows(emp, meta.index, baseShift as ShiftKey))
+          return {
+            ok: false,
+            severity: 'hard',
+            reason: 'העובד אינו זמין במשמרת 12 שעות זו',
+          }
+      }
+    }
   }
 
   if (worksThatDay(others as unknown as Assignment[], meta.index))
