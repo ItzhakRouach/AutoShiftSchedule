@@ -77,8 +77,10 @@ test('dashboard shows new KPIs after schedule is published', async ({ page }) =>
   // Removed metrics must NOT appear
   await expect(page.getByText(/סה״כ שעות ה/)).not.toBeVisible()
   await expect(page.getByText(/פילוח לפי תפקיד/)).not.toBeVisible()
-  // Old label must be gone
-  await expect(page.getByText('בקשות שכובדו')).not.toBeVisible()
+  // Old standalone "%-honored" label must be gone (the new KPI legitimately
+  // contains this substring: "עובדים עם ≥2 בקשות שכובדו", so match exactly).
+  await expect(page.getByText('בקשות שכובדו', { exact: true })).not.toBeVisible()
+  await expect(page.getByText(/עובדים עם ≥2 בקשות שכובדו/)).toBeVisible()
 
   // Scope toggle still works
   await page.getByRole('button', { name: 'חודש' }).click()

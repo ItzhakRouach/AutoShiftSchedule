@@ -75,6 +75,6 @@ test('manager generates an auto schedule and sees coverage + assignments', async
   await expect(page.getByTestId('week-table')).toBeHidden()
 
   // Toggle back to "סידור" — week table reappears.
-  await page.getByRole('button', { name: 'סידור' }).click()
+  await page.getByRole('button', { name: 'סידור', exact: true }).click()
   await expect(page.getByTestId('week-table')).toBeVisible({ timeout: 10000 })
 })
