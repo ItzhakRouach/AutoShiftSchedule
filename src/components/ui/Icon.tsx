@@ -14,6 +14,13 @@ export type IconName =
   | 'arrowLeft'
   | 'edit'
   | 'logout'
+  | 'info'
+  | 'plane'
+  | 'sunset'
+  | 'checkCircle'
+  | 'bell'
+  | 'clock'
+  | 'calendar'
 
 interface IconProps {
   name: IconName
@@ -75,6 +82,59 @@ export function Icon({ name, size = 22, stroke = 1.75, color = 'currentColor', s
       <>
         <path {...p} d="M15 5h-5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h5" />
         <path {...p} d="M18 12H9.5M15.5 9 18 12l-2.5 3" />
+      </>
+    ),
+    info: (
+      <>
+        <circle {...p} cx="12" cy="12" r="9" />
+        <path {...p} d="M12 11v5M12 8v.1" />
+      </>
+    ),
+    plane: (
+      <path
+        {...p}
+        d="M21 15.5 3.5 11V8.8l2 .6L8 7.2l-1.5-4 2-1 3.2 3.7 5.3-1.4a1.8 1.8 0 0 1 1 3.4L13 11.8l1 5.7-1.8 1-2-4.3-4 2.4Z"
+      />
+    ),
+    sunset: (
+      <path
+        {...p}
+        d="M12 4v6M9 7l3 3 3-3M3 17h2.5M18.5 17H21M6.5 17a5.5 5.5 0 0 1 11 0M3 21h18"
+      />
+    ),
+    checkCircle: (
+      <>
+        <circle {...p} cx="12" cy="12" r="9" />
+        <path {...p} d="M8 12.2 11 15.2 16.2 9.4" />
+      </>
+    ),
+    bell: (
+      <>
+        <path {...p} d="M6.5 10a5.5 5.5 0 0 1 11 0c0 5 1.5 6.5 1.5 6.5H5s1.5-1.5 1.5-6.5Z" />
+        <path {...p} d="M10 19.5a2 2 0 0 0 4 0" />
+      </>
+    ),
+    clock: (
+      <>
+        <circle {...p} cx="12" cy="12" r="8.5" />
+        <path {...p} d="M12 7v5.2l3.4 2" />
+      </>
+    ),
+    calendar: (
+      <>
+        <rect
+          x="3.5"
+          y="5"
+          width="17"
+          height="15"
+          rx="3"
+          fill="none"
+          stroke={color}
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path {...p} d="M3.5 9.5h17M8 3v3.5M16 3v3.5" />
       </>
     ),
   }

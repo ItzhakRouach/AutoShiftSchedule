@@ -1,0 +1,84 @@
+import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import { createClient } from '@/lib/supabase/server'
+import { getEmployeeRequestsContext } from '@/lib/requests/context'
+import { formatHebDate } from '@/lib/dates/week'
+import { RequestsHeader } from './RequestsHeader'
+import { DayList } from './DayList'
+import { VacationSection } from './VacationSection'
+
+export default async function RequestsPage() {
+  const supabase = await createClient()
+  const ctx = await getEmployeeRequestsContext(supabase)
+
+  if (!ctx) redirect('/login')
+
+  const { employee, weekStart, period, shiftTypes, requestsByDay, vacations } = ctx
+  const isReadOnly = !period || period.status !== 'collecting'
+
+  const weekStartDate = new Date(weekStart + 'T00:00:00')
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(weekStartDate)
+    d.setDate(weekStartDate.getDate() + i)
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    return {
+      dayOfWeek: i,
+      dateLabel: formatHebDate(iso),
+      request: requestsByDay[i] ?? null,
+    }
+  })
+
+  const filled = days.filter(
+    (d) => d.request?.is_off || (d.request?.preferred_shift_ids?.length ?? 0) > 0,
+  ).length
+
+  return (
+    <main
+      style={{
+        minHeight: '100vh',
+        background: 'var(--bg)',
+        padding: '16px 16px 48px',
+        maxWidth: 540,
+        margin: '0 auto',
+        direction: 'rtl',
+      }}
+    >
+      <Link
+        href="/me"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+          fontSize: 14,
+          fontWeight: 600,
+          color: 'var(--accent)',
+          textDecoration: 'none',
+          marginBottom: 12,
+        }}
+      >
+        ← חזרה
+      </Link>
+
+      <RequestsHeader
+        weekLabel={formatHebDate(weekStart)}
+        filled={filled}
+        total={7}
+        isReadOnly={isReadOnly}
+      />
+
+      <DayList
+        days={days}
+        shiftTypes={shiftTypes}
+        periodId={period?.id ?? ''}
+        employeeId={employee.id}
+        isReadOnly={isReadOnly}
+      />
+
+      <VacationSection
+        employeeId={employee.id}
+        vacations={vacations}
+        isReadOnly={isReadOnly}
+      />
+    </main>
+  )
+}

@@ -1,0 +1,87 @@
+'use server'
+
+import { revalidatePath } from 'next/cache'
+import { createClient } from '@/lib/supabase/server'
+import { saveDayRequestSchema, addVacationSchema } from '@/lib/validation/request'
+
+export type ActionResult = { ok: true } | { error: string }
+
+export async function saveDayRequest(input: unknown): Promise<ActionResult> {
+  const parsed = saveDayRequestSchema.safeParse(input)
+  if (!parsed.success) {
+    return { error: 'נתונים לא תקינים' }
+  }
+  const { periodId, employeeId, dayOfWeek, isOff, preferredShiftIds } = parsed.data
+
+  const supabase = await createClient()
+
+  // Guard: period must be 'collecting'
+  const { data: period } = await supabase
+    .from('schedule_periods')
+    .select('status')
+    .eq('id', periodId)
+    .maybeSingle()
+
+  if (!period) return { error: 'תקופה לא נמצאה' }
+  if (period.status !== 'collecting') {
+    return { error: 'הבקשות נעולות — חלון ההגשה נסגר' }
+  }
+
+  const { error } = await supabase.from('requests').upsert(
+    {
+      period_id: periodId,
+      employee_id: employeeId,
+      day_of_week: dayOfWeek,
+      is_off: isOff,
+      preferred_shift_ids: preferredShiftIds,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'period_id,employee_id,day_of_week' },
+  )
+
+  if (error) return { error: 'שגיאה בשמירת הבקשה' }
+
+  revalidatePath('/me/requests')
+  return { ok: true }
+}
+
+export async function addVacation(input: unknown): Promise<ActionResult> {
+  const parsed = addVacationSchema.safeParse(input)
+  if (!parsed.success) {
+    const first = parsed.error.issues[0]
+    return { error: first?.message ?? 'נתונים לא תקינים' }
+  }
+  const { employeeId, dateFrom, dateTo } = parsed.data
+
+  const supabase = await createClient()
+
+  const { error } = await supabase.from('employee_vacations').insert({
+    employee_id: employeeId,
+    date_from: dateFrom,
+    date_to: dateTo,
+  })
+
+  if (error) return { error: 'שגיאה בהוספת חופשה' }
+
+  revalidatePath('/me/requests')
+  return { ok: true }
+}
+
+export async function removeVacation(id: string): Promise<ActionResult> {
+  if (!id) return { error: 'מזהה חופשה חסר' }
+
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('employee_vacations')
+    .delete()
+    .eq('id', id)
+    .select('id')
+
+  if (error || !data || data.length === 0) {
+    return { error: 'שגיאה במחיקת חופשה' }
+  }
+
+  revalidatePath('/me/requests')
+  return { ok: true }
+}

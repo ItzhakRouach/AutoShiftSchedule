@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { signOut } from '@/app/(auth)/actions'
 
@@ -58,20 +59,38 @@ export default async function MePage() {
           {workplaceName}
         </p>
 
-        <div
+        <Link
+          href="/me/requests"
           style={{
-            padding: '18px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '14px 18px',
+            background: 'var(--accent-soft)',
+            color: 'var(--accent)',
             borderRadius: 'var(--r-md)',
-            background: 'var(--surface-2)',
-            border: '1px solid var(--border)',
-            color: 'var(--text-2)',
-            fontSize: 14,
+            fontWeight: 700,
+            fontSize: 15,
+            textDecoration: 'none',
+            border: '1px solid transparent',
             marginBottom: 24,
-            textAlign: 'center',
           }}
         >
-          הסידור והבקשות שלך — בקרוב
-        </div>
+          <span>הגשת בקשות לשבוע הקרוב</span>
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ transform: 'scaleX(-1)' }}
+          >
+            <path d="M14.5 5 8 12l6.5 7" />
+          </svg>
+        </Link>
 
         <form action={signOut}>
           <button
