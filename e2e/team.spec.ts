@@ -117,29 +117,44 @@ test('edit employee — toggle availability ON, mark a cell, save, reload and ve
   const firstRoleSwitch = page.getByRole('switch').first()
   await firstRoleSwitch.click()
   await page.getByRole('button', { name: 'הוספת עובד' }).click()
-  await expect(page.getByText(empName)).toBeVisible({ timeout: 10000 })
+  // Wait for the sheet heading to disappear before checking the list
+  await expect(page.getByRole('heading', { name: 'עובד חדש' })).toBeHidden({ timeout: 10000 })
+  await expect(page.locator('span').filter({ hasText: empName })).toBeVisible({ timeout: 10000 })
 
   // Open edit
-  await page.getByText(empName).click()
+  await page.locator('span').filter({ hasText: empName }).click()
   await expect(page.getByRole('heading', { name: empName })).toBeVisible({ timeout: 5000 })
 
-  // Turn on custom availability
-  // Availability toggle is after the 3 role switches (index 3)
-  const availSwitch = page.getByRole('switch').nth(3)
+  // Turn on custom availability (the toggle has aria-label="זמינות מותאמת אישית")
+  const availSwitch = page.getByRole('switch', { name: 'זמינות מותאמת אישית' })
   await availSwitch.click()
   await expect(availSwitch).toHaveAttribute('aria-checked', 'true')
 
+  // Mark a cell (Sunday / first shift column) so the availability row is saved to the DB.
+  // Onboarding seeds 3 shift types (morning, noon, night); the grid renders them all.
+  // We click the first available cell in the grid (day=ראשון, first shift type).
+  const firstCell = page.getByRole('button', { name: /^ראשון/ }).first()
+  await expect(firstCell).toBeVisible({ timeout: 5000 })
+  await firstCell.click()
+  await expect(firstCell).toHaveAttribute('aria-pressed', 'true')
+
   // Save
   await page.getByRole('button', { name: 'שמירת שינויים' }).click()
-  await expect(page.getByText(empName)).toBeVisible({ timeout: 10000 })
+  // Wait for the sheet to close (heading disappears) before asserting the list card
+  await expect(page.getByRole('heading', { name: empName })).toBeHidden({ timeout: 10000 })
+  await expect(page.locator('span').filter({ hasText: empName })).toBeVisible({ timeout: 10000 })
 
   // Reload and re-open
   await page.reload()
-  await expect(page.getByText(empName)).toBeVisible({ timeout: 10000 })
-  await page.getByText(empName).click()
+  await expect(page.locator('span').filter({ hasText: empName })).toBeVisible({ timeout: 10000 })
+  await page.locator('span').filter({ hasText: empName }).click()
   await expect(page.getByRole('heading', { name: empName })).toBeVisible({ timeout: 5000 })
 
-  // Availability toggle should still be ON
-  const reloadedSwitch = page.getByRole('switch').nth(3)
+  // Availability toggle should still be ON (persisted because at least one DB row exists)
+  const reloadedSwitch = page.getByRole('switch', { name: 'זמינות מותאמת אישית' })
   await expect(reloadedSwitch).toHaveAttribute('aria-checked', 'true')
+
+  // The marked cell should still be marked
+  const reloadedCell = page.getByRole('button', { name: /^ראשון/ }).first()
+  await expect(reloadedCell).toHaveAttribute('aria-pressed', 'true')
 })

@@ -89,7 +89,7 @@ export function AvailabilityGrid({ shiftTypes, availability, onChange }: Availab
             {customOn ? 'בחרו אילו משמרות העובד יכול לעבוד' : 'כבוי — זמין לכל המשמרות'}
           </div>
         </div>
-        <Toggle checked={customOn} onChange={handleToggleCustom} />
+        <Toggle checked={customOn} onChange={handleToggleCustom} aria-label="זמינות מותאמת אישית" />
       </div>
 
       {/* Grid */}
