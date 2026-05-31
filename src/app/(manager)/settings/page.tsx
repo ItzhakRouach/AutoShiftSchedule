@@ -4,6 +4,7 @@ import { getActiveWorkplace } from '@/lib/workplace/current'
 import { DeadlineForm } from './DeadlineForm'
 import { HolidaysSection } from './HolidaysSection'
 import { PublishSettings } from './PublishSettings'
+import { RequirementsSection } from './RequirementsSection'
 
 export default async function SettingsPage() {
   const supabase = await createClient()
@@ -13,7 +14,13 @@ export default async function SettingsPage() {
   const workplace = await getActiveWorkplace(supabase)
   if (!workplace) redirect('/onboarding')
 
-  const [{ data: settings }, { data: holidays }] = await Promise.all([
+  const [
+    { data: settings },
+    { data: holidays },
+    { data: shiftTypes },
+    { data: roles },
+    { data: requirements },
+  ] = await Promise.all([
     supabase
       .from('workplace_settings')
       .select(
@@ -26,9 +33,28 @@ export default async function SettingsPage() {
       .select('id, date, name')
       .eq('workplace_id', workplace.id)
       .order('date', { ascending: true }),
+    supabase
+      .from('shift_types')
+      .select('id, key, name, color, sort')
+      .eq('workplace_id', workplace.id)
+      .eq('is_fallback', false)
+      .order('sort', { ascending: true }),
+    supabase
+      .from('roles')
+      .select('id, name')
+      .eq('workplace_id', workplace.id)
+      .order('name', { ascending: true }),
+    supabase
+      .from('shift_requirements')
+      .select('shift_type_id, role_id, count')
+      .eq('workplace_id', workplace.id)
+      .eq('day_of_week', 0),
   ])
 
   const currentYear = new Date().getFullYear()
+  const baseShifts = shiftTypes ?? []
+  const baseRoles = roles ?? []
+  const baseRequirements = requirements ?? []
 
   const section = {
     background: 'var(--surface)',
@@ -45,6 +71,13 @@ export default async function SettingsPage() {
         <h1 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 24px', color: 'var(--text)' }}>
           הגדרות
         </h1>
+
+        {/* Staffing requirements */}
+        <RequirementsSection
+          shiftTypes={baseShifts}
+          roles={baseRoles}
+          requirements={baseRequirements}
+        />
 
         {/* Request deadline */}
         <section style={section}>
