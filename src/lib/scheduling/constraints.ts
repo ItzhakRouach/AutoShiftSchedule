@@ -56,9 +56,14 @@ export function worksThatDay(current: Assignment[], day: number): boolean {
   return current.some((a) => a.day === day)
 }
 
-/** 8. Never exceed maxShifts (if set). */
+/** 8. Never exceed maxShifts (if set). Counts distinct WORK DAYS, not raw
+ *  assignment rows: a 12h shift pushes one row per covered base window
+ *  (see commitTwelve), but it is ONE shift toward the weekly cap. One-shift-
+ *  per-day (constraint 7) makes distinct days the correct shift count. */
 export function underMax(emp: Employee, current: Assignment[]): boolean {
-  return emp.maxShifts == null || current.length < emp.maxShifts
+  if (emp.maxShifts == null) return true
+  const days = new Set(current.map((a) => a.day))
+  return days.size < emp.maxShifts
 }
 
 /** All hard constraints combined. Returns true if the assignment is legal. */

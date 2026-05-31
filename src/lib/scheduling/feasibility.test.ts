@@ -99,14 +99,17 @@ describe('12h fallback suggestions', () => {
     const res = generateSchedule(
       input({ employees: [emp('a', { maxShifts: 7 })], requirements: fullGrid, settings: settings({ allow12hFallback: true }) }),
     )
-    // 21 slots, 1 employee. 8h fills 7 (one/day); the 12h pass then upgrades a
-    // single day to an m12 (covering 2 windows) → 8 filled total (one extra
-    // person/day is impossible with a single employee). 13 residual unique
-    // (day,variant,role) suggestions remain, each rest-flagged vs that day's
-    // committed shift.
-    expect(res.coverage.filledSlots).toBe(8)
-    expect(res.twelveHourAssignments).toHaveLength(1)
-    expect(res.twelveHourSuggestions).toHaveLength(13)
+    // 21 slots, 1 employee, maxShifts:7. The 8h pass fills 7 (one/day); the 12h
+    // pass then upgrades EVERY day to an m12_day (covers morning+noon) — a 12h is
+    // ONE shift toward the weekly cap (underMax counts distinct work-days), so all
+    // 7 days can be 12h → 14 windows filled. Each day's night stays uncovered
+    // (one-shift-per-day blocks a 2nd assignment) → 7 residual m12_night
+    // suggestions, each rest-flagged vs that day's committed 12h block.
+    expect(res.coverage.filledSlots).toBe(14)
+    expect(res.twelveHourAssignments).toHaveLength(7)
+    expect(res.twelveHourAssignments.every((t) => t.variant === 'm12_day')).toBe(true)
+    expect(res.twelveHourSuggestions).toHaveLength(7)
+    expect(res.twelveHourSuggestions.every((s) => s.variant === 'm12_night')).toBe(true)
     expect(res.twelveHourSuggestions.every((s) => s.restConflict)).toBe(true)
   })
 
