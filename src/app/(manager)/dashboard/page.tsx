@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { signOut } from '@/app/(auth)/actions'
 
@@ -7,11 +8,18 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // The (manager) layout already guards user+org, but this page can render
+  // concurrently with the layout (and before its redirect resolves), so it must
+  // be self-safe and never dereference a null user.
+  if (!user) {
+    redirect('/login')
+  }
+
   // Fetch org → workplace
   const { data: org } = await supabase
     .from('organizations')
     .select('id')
-    .eq('owner_user_id', user!.id)
+    .eq('owner_user_id', user.id)
     .maybeSingle()
 
   const { data: workplace } = org

@@ -72,7 +72,9 @@ export async function signUp(prevState: AuthState, formData: FormData): Promise<
     return { error: 'נשלח אימייל אימות. אנא אשרו את האימייל ואז התחברו.' }
   }
 
-  redirect('/dashboard')
+  // A brand-new user has no organization yet — send them to onboarding.
+  // The (manager) guard would otherwise bounce them here anyway.
+  redirect('/onboarding')
 }
 
 export async function signOut(): Promise<void> {
