@@ -1,4 +1,7 @@
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { resolveUserRole } from '@/lib/auth/role'
 import { joinWithInvite } from './actions'
 import { JoinForm } from './JoinForm'
 
@@ -8,6 +11,17 @@ interface JoinPageProps {
 
 export default async function JoinPage({ params }: JoinPageProps) {
   const { code } = await params
+
+  // Guard: an already-authenticated user must not see the join form (which
+  // would create a duplicate/orphan employee row). Send them to their home.
+  const supabase = await createClient()
+  const { user, role } = await resolveUserRole(supabase)
+  if (user) {
+    if (role === 'manager') redirect('/dashboard')
+    if (role === 'employee') redirect('/me')
+    redirect('/onboarding')
+  }
+
   const admin = createAdminClient()
 
   const now = new Date().toISOString()
@@ -92,7 +106,7 @@ export default async function JoinPage({ params }: JoinPageProps) {
           צור חשבון כדי להצטרף לצוות
         </p>
 
-        <JoinForm code={code} action={boundAction} />
+        <JoinForm action={boundAction} />
       </div>
     </main>
   )

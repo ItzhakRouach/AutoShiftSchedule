@@ -5,3 +5,11 @@ body {
   color: var(--text);
   font-family: var(--font-assistant), sans-serif;
 }
+
+/* Press-scale feedback for interactive Cards (server-render safe; CSS only). */
+.card-interactive {
+  cursor: pointer;
+}
+.card-interactive:active {
+  transform: scale(0.985);
+}

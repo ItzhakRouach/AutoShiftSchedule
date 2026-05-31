@@ -4,7 +4,6 @@ import React, { useActionState } from 'react'
 import type { JoinState } from './actions'
 
 interface JoinFormProps {
-  code: string
   action: (prevState: JoinState, formData: FormData) => Promise<JoinState>
 }
 
@@ -36,13 +35,11 @@ const errorStyle: React.CSSProperties = {
   marginTop: 4,
 }
 
-export function JoinForm({ code, action }: JoinFormProps) {
+export function JoinForm({ action }: JoinFormProps) {
   const [state, formAction, isPending] = useActionState<JoinState, FormData>(action, {})
 
   return (
     <form action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <input type="hidden" name="code" value={code} />
-
       {state.error && (
         <div
           style={{

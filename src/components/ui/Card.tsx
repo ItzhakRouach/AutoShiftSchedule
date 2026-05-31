@@ -5,16 +5,20 @@ interface CardProps {
   style?: React.CSSProperties
   pad?: number
   onClick?: () => void
-  /** When true, adds a subtle press scale animation via onMouseDown/Up/Leave */
+  /** When true, adds a subtle CSS press-scale animation on :active. */
   interactive?: boolean
   className?: string
 }
 
-export function Card({ children, style, pad = 16, onClick, className }: CardProps) {
+export function Card({ children, style, pad = 16, onClick, interactive, className }: CardProps) {
+  const classes = [interactive ? 'card-interactive' : null, className]
+    .filter(Boolean)
+    .join(' ')
+
   return (
     <div
       onClick={onClick}
-      className={className}
+      className={classes || undefined}
       style={{
         background: 'var(--surface)',
         borderRadius: 'var(--r-lg)',

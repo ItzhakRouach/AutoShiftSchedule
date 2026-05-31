@@ -1,19 +1,12 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getUserRole } from '@/lib/auth/role'
+import { resolveUserRole } from '@/lib/auth/role'
 
 export default async function ManagerLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { user, role } = await resolveUserRole(supabase)
 
-  if (!user) {
-    redirect('/login')
-  }
-
-  const role = await getUserRole(supabase)
-
+  if (!user) redirect('/login')
   if (role === 'employee') redirect('/me')
   if (role === 'none') redirect('/onboarding')
 

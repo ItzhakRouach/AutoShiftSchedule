@@ -3,20 +3,16 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { pickRandomColor } from '@/lib/employees/colors'
 
 export type JoinState = {
   error?: string
   fieldErrors?: Record<string, string>
 }
 
-const EMPLOYEE_COLORS = [
-  '#3D6BF5', '#13A98E', '#E0902A', '#EB6A4E',
-  '#5B61D6', '#B05AB5', '#2E9E6B', '#D94F6A',
-]
-
-function pickColor(): string {
-  return EMPLOYEE_COLORS[Math.floor(Math.random() * EMPLOYEE_COLORS.length)]
-}
+// NOTE: invite codes are intentionally REUSABLE — a single workplace-level
+// code can be redeemed by many employees until it expires. We do NOT consume
+// or single-use the code here; only expiry gates redemption.
 
 function validateFields(name: string, email: string, password: string): Record<string, string> | null {
   const errors: Record<string, string> = {}
@@ -41,6 +37,16 @@ export async function joinWithInvite(
   const fieldErrors = validateFields(name, email, password)
   if (fieldErrors) return { fieldErrors }
 
+  // Defensive: this flow creates a brand-new account. If someone is already
+  // authenticated, refuse — they should be routed by their role, not join here.
+  const supabaseAuth = await createClient()
+  const {
+    data: { user: currentUser },
+  } = await supabaseAuth.auth.getUser()
+  if (currentUser) {
+    return { error: 'אתה כבר מחובר. התנתק כדי להצטרף עם חשבון אחר.' }
+  }
+
   const admin = createAdminClient()
 
   // Re-validate invite
@@ -59,7 +65,7 @@ export async function joinWithInvite(
   const workplaceId = invite.workplace_id
 
   // Sign up or sign in via the auth'd client
-  const supabase = await createClient()
+  const supabase = supabaseAuth
 
   const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
     email,
@@ -112,7 +118,7 @@ export async function joinWithInvite(
       user_id: userId,
       name,
       status: 'active',
-      color: pickColor(),
+      color: pickRandomColor(),
     })
 
     if (empError) {

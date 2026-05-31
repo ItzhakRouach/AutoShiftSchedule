@@ -7,22 +7,7 @@ import { getActiveWorkplace } from '@/lib/workplace/current'
 import { employeeSchema } from '@/lib/validation/employee'
 import { parseFormData, buildFieldErrors } from '@/lib/employees/form'
 import { syncEmployeeRoles } from '@/lib/employees/roles'
-
-// A small color palette for auto-assigning employee avatar colors
-const EMPLOYEE_COLORS = [
-  '#3D6BF5',
-  '#13A98E',
-  '#E0902A',
-  '#EB6A4E',
-  '#5B61D6',
-  '#B05AB5',
-  '#2E9E6B',
-  '#D94F6A',
-]
-
-function pickColor(index: number): string {
-  return EMPLOYEE_COLORS[index % EMPLOYEE_COLORS.length]
-}
+import { pickColorByIndex } from '@/lib/employees/colors'
 
 export type EmployeeActionState = {
   ok?: boolean
@@ -61,7 +46,7 @@ export async function createEmployee(
       workplace_id: workplace.id,
       name,
       phone: phone || null,
-      color: pickColor(count ?? 0),
+      color: pickColorByIndex(count ?? 0),
       min_shifts_per_week: minShifts,
       observes_shabbat: observesShabbat,
       observes_holidays: observesHolidays,
@@ -72,7 +57,7 @@ export async function createEmployee(
     .single()
 
   if (empError || !emp) {
-    return { error: 'שגיאה ביצירת עובד: ' + (empError?.message ?? 'שגיאה לא ידועה') }
+    return { error: 'שגיאה בשמירת העובד' }
   }
 
   const { error: rolesError } = await supabase
@@ -130,7 +115,7 @@ export async function updateEmployee(
     })
     .eq('id', id)
 
-  if (updateError) return { error: 'שגיאה בעדכון עובד: ' + updateError.message }
+  if (updateError) return { error: 'שגיאה בשמירת העובד' }
 
   const syncError = await syncEmployeeRoles(supabase, id, roleIds)
   if (syncError) return { error: syncError }
@@ -146,8 +131,15 @@ export async function deleteEmployee(id: string): Promise<EmployeeActionState> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { error } = await supabase.from('employees').delete().eq('id', id)
-  if (error) return { error: 'שגיאה במחיקת עובד: ' + error.message }
+  // .select('id') returns the deleted rows; under RLS a non-owned row deletes
+  // 0 rows silently — treat an empty result as "not found" to avoid a false success.
+  const { data: deleted, error } = await supabase
+    .from('employees')
+    .delete()
+    .eq('id', id)
+    .select('id')
+  if (error) return { error: 'שגיאה במחיקת עובד' }
+  if (!deleted || deleted.length === 0) return { error: 'העובד לא נמצא' }
 
   revalidatePath('/team')
   return { ok: true }

@@ -43,7 +43,7 @@ export function InvitePanel({ initialCode, workplaceName, baseUrl }: InvitePanel
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
-      // fallback: select text
+      setError('ההעתקה נכשלה. העתיקו את הלינק ידנית.')
     }
   }
 

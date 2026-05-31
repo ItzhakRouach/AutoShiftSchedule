@@ -16,6 +16,9 @@ function generateCode(): string {
     .join('')
 }
 
+// Invite codes are workplace-level and intentionally REUSABLE: a single code
+// may be redeemed by many employees until `expires_at`. There is no per-use
+// consumption — managers can also generate a fresh code at any time.
 export type InviteActionResult = { code: string } | { error: string }
 
 export async function createInvite(): Promise<InviteActionResult> {
@@ -54,7 +57,7 @@ export async function createInvite(): Promise<InviteActionResult> {
     const isUniqueViolation =
       error?.code === '23505' || error?.message?.includes('unique')
     if (!isUniqueViolation) {
-      return { error: 'שגיאה ביצירת הזמנה: ' + (error?.message ?? 'שגיאה לא ידועה') }
+      return { error: 'שגיאה ביצירת הזמנה' }
     }
   }
 

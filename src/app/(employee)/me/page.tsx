@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
 import { signOut } from '@/app/(auth)/actions'
 
 export default async function MePage() {
@@ -20,9 +19,9 @@ export default async function MePage() {
 
   if (!employee) redirect('/onboarding')
 
-  // Use admin client to read workplace name — employees may not have RLS access.
-  const admin = createAdminClient()
-  const { data: workplace } = await admin
+  // Employees can read their own workplace via RLS policy `workplaces_employee_select`
+  // (see migration 20260531000005). No admin/service-role bypass needed.
+  const { data: workplace } = await supabase
     .from('workplaces')
     .select('name')
     .eq('id', employee.workplace_id)

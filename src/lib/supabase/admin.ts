@@ -3,6 +3,7 @@
 // Use ONLY for operations that cannot go through the anon/auth'd client
 // (e.g., invite redemption where the joining user is not yet authenticated).
 
+import 'server-only'
 import { createClient } from '@supabase/supabase-js'
 
 export function createAdminClient() {
