@@ -62,6 +62,12 @@ function upcomingSundayISO() {
   return d.toISOString().slice(0, 10)
 }
 
+// Optional: limit the number of seeded employees via CLI arg, e.g.
+//   node scripts/seed-demo.mjs 9   → seeds the first 9 employees (for testing
+// the scheduler at different staffing levels). Default = all.
+const EMP_COUNT = Number.parseInt(process.argv[2] ?? '', 10)
+const EMPLOYEES = Number.isFinite(EMP_COUNT) && EMP_COUNT > 0 ? EMP.slice(0, EMP_COUNT) : EMP
+
 async function main() {
   // 1. cleanup prior demo manager (cascades org → everything)
   const { data: list } = await db.auth.admin.listUsers({ perPage: 1000 })
@@ -100,7 +106,7 @@ async function main() {
 
   // 6. employees + roles + availability
   const empIds = []
-  for (const e of EMP) {
+  for (const e of EMPLOYEES) {
     const { data: emp } = await db.from('employees').insert({
       workplace_id: W, name: e.name, color: e.color, status: 'active',
       employment_type: e.type, min_shifts_per_week: e.min ?? 0, max_shifts_per_week: e.max ?? null,
@@ -133,7 +139,7 @@ async function main() {
 
   console.log('\n✅ Demo seeded.')
   console.log('   Manager login →  email: ' + DEMO_EMAIL + '   password: ' + DEMO_PASSWORD)
-  console.log('   Workplace: מוקד ראשי · employees: ' + EMP.length + ' · requirements + a week of requests ready.')
+  console.log('   Workplace: מוקד ראשי · employees: ' + EMPLOYEES.length + ' · requirements + a week of requests ready.')
   console.log('   Log in, open שיבוץ, press "צור סידור אוטומטי", then פרסם — and check the dashboard.')
 }
 main().catch((e) => { console.error(e); process.exit(1) })
