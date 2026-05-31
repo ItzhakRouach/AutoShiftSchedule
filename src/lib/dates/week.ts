@@ -1,6 +1,7 @@
 /**
  * Returns the ISO date string (YYYY-MM-DD) of the upcoming Sunday.
- * If `today` is already Sunday (getDay() === 0), returns today itself.
+ * If `today` is already Sunday (getDay() === 0), returns today itself
+ * (i.e. on Sunday the "upcoming" week is the one that begins today).
  * Pure function — takes `today` as a param for testability.
  */
 export function upcomingWeekStartISO(today: Date): string {

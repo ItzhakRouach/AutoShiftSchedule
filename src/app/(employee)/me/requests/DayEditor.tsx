@@ -115,9 +115,20 @@ export function DayEditor({ shiftTypes, request, periodId, employeeId, dayOfWeek
       )}
 
       <div style={{ height: 18 }} />
-      <Btn variant="primary" size="lg" style={{ width: '100%' }} onClick={handleSave} disabled={isPending}>
+      <Btn
+        variant="primary"
+        size="lg"
+        style={{ width: '100%' }}
+        onClick={handleSave}
+        disabled={isPending || (!isOff && selectedIds.length === 0)}
+      >
         {isPending ? 'שומר...' : 'שמירה'}
       </Btn>
+      {!isOff && selectedIds.length === 0 && !isPending && (
+        <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-3)', marginTop: 6 }}>
+          יש לבחור משמרת אחת לפחות או לסמן יום חופש
+        </div>
+      )}
     </div>
   )
 }

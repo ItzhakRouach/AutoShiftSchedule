@@ -29,14 +29,14 @@ export async function syncEmployeeRoles(
       .delete()
       .eq('employee_id', employeeId)
       .in('role_id', toDelete)
-    if (error) return 'שגיאה בעדכון תפקידים: ' + error.message
+    if (error) return 'שגיאה בעדכון התפקידים'
   }
 
   if (toInsert.length > 0) {
     const { error } = await supabase
       .from('employee_roles')
       .insert(toInsert.map((role_id) => ({ employee_id: employeeId, role_id })))
-    if (error) return 'שגיאה בהוספת תפקידים: ' + error.message
+    if (error) return 'שגיאה בעדכון התפקידים'
   }
 
   return null

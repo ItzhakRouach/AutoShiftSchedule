@@ -1,67 +1,74 @@
 import { describe, it, expect } from 'vitest'
 import { deadlineDateTime, isPastDeadline } from './compute'
 
-// Fixture: weekStart = Sunday 2026-06-07, dow=4 (Thursday), time='18:00'
-// Deadline = Thu 2026-06-04 18:00 local
-// weekStart (2026-06-07) - 7 days = 2026-05-31 (previous Sunday)
-// 2026-05-31 + 4 days = 2026-06-04 (Thursday) @ 18:00
+/**
+ * Fixture: weekStart = 2026-06-07 (Sunday), dow=4 (Thursday), time='18:00', tz='Asia/Jerusalem'
+ * Deadline date = 2026-06-07 − 7 + 4 = 2026-06-04 (Thursday)
+ * Israel is in IDT (UTC+3) during June → 18:00 IDT = 15:00 UTC
+ * Expected UTC instant: "2026-06-04T15:00:00.000Z"
+ *
+ * Fixture 2: wintertime — 2026-01-11 (Sunday), dow=4 (Thu), time='18:00'
+ * Deadline date = 2026-01-11 − 7 + 4 = 2026-01-08 (Thursday)
+ * Israel is in IST (UTC+2) during January → 18:00 IST = 16:00 UTC
+ * Expected UTC instant: "2026-01-08T16:00:00.000Z"
+ */
 
-describe('deadlineDateTime', () => {
-  it('computes Thursday 18:00 deadline for week starting 2026-06-07', () => {
-    const d = deadlineDateTime('2026-06-07', 4, '18:00')
-    expect(d.getFullYear()).toBe(2026)
-    expect(d.getMonth()).toBe(5) // June = 5 (0-indexed)
-    expect(d.getDate()).toBe(4)
-    expect(d.getHours()).toBe(18)
-    expect(d.getMinutes()).toBe(0)
+describe('deadlineDateTime (timezone-correct)', () => {
+  it('summer (IDT, UTC+3): Thu 18:00 Asia/Jerusalem → 2026-06-04T15:00:00.000Z', () => {
+    const d = deadlineDateTime('2026-06-07', 4, '18:00', 'Asia/Jerusalem')
+    expect(d.toISOString()).toBe('2026-06-04T15:00:00.000Z')
   })
 
-  it('computes Sunday 09:00 deadline for week starting 2026-06-07 (dow=0)', () => {
-    // weekStart - 7 = 2026-05-31, + 0 = 2026-05-31 Sun @ 09:00
-    const d = deadlineDateTime('2026-06-07', 0, '09:00')
-    expect(d.getFullYear()).toBe(2026)
-    expect(d.getMonth()).toBe(4) // May = 4
-    expect(d.getDate()).toBe(31)
-    expect(d.getHours()).toBe(9)
-    expect(d.getMinutes()).toBe(0)
+  it('winter (IST, UTC+2): Thu 18:00 Asia/Jerusalem → 2026-01-08T16:00:00.000Z', () => {
+    const d = deadlineDateTime('2026-01-11', 4, '18:00', 'Asia/Jerusalem')
+    expect(d.toISOString()).toBe('2026-01-08T16:00:00.000Z')
   })
 
-  it('computes Saturday 23:59 deadline (dow=6)', () => {
-    // 2026-06-07 - 7 = 2026-05-31, + 6 = 2026-06-06 Sat @ 23:59
-    const d = deadlineDateTime('2026-06-07', 6, '23:59')
-    expect(d.getDate()).toBe(6)
-    expect(d.getMonth()).toBe(5)
-    expect(d.getHours()).toBe(23)
-    expect(d.getMinutes()).toBe(59)
+  it('Sun 09:00 (dow=0): weekStart − 7 + 0 = 2026-05-31 09:00 IDT → 2026-05-31T06:00:00.000Z', () => {
+    // 2026-06-07 − 7 = 2026-05-31 (Sunday); May 31 is summer → UTC+3
+    const d = deadlineDateTime('2026-06-07', 0, '09:00', 'Asia/Jerusalem')
+    expect(d.toISOString()).toBe('2026-05-31T06:00:00.000Z')
+  })
+
+  it('Sat 23:59 (dow=6): 2026-06-06 23:59 IDT → 2026-06-06T20:59:00.000Z', () => {
+    // 2026-06-07 − 7 + 6 = 2026-06-06 (Saturday)
+    const d = deadlineDateTime('2026-06-07', 6, '23:59', 'Asia/Jerusalem')
+    expect(d.toISOString()).toBe('2026-06-06T20:59:00.000Z')
   })
 })
 
-describe('isPastDeadline', () => {
+describe('isPastDeadline (timezone-correct)', () => {
+  // Summer fixture: deadline = 2026-06-04T15:00:00.000Z
   const weekStart = '2026-06-07'
-  const dow = 4       // Thursday
+  const dow = 4
   const time = '18:00'
-  // Deadline = Thu 2026-06-04 18:00
+  const tz = 'Asia/Jerusalem'
 
-  it('returns true when now is after the deadline', () => {
-    // Friday 2026-06-05 10:00 — past the Thu 18:00 deadline
-    const now = new Date(2026, 5, 5, 10, 0)
-    expect(isPastDeadline(now, weekStart, dow, time)).toBe(true)
+  it('returns true when now is after the UTC deadline', () => {
+    // 2026-06-04T15:01:00Z — one minute after
+    const now = new Date('2026-06-04T15:01:00.000Z')
+    expect(isPastDeadline(now, weekStart, dow, time, tz)).toBe(true)
   })
 
-  it('returns false when now is before the deadline', () => {
-    // Thursday 2026-06-04 12:00 — before the 18:00 deadline
-    const now = new Date(2026, 5, 4, 12, 0)
-    expect(isPastDeadline(now, weekStart, dow, time)).toBe(false)
+  it('returns false when now is before the UTC deadline', () => {
+    // 2026-06-04T14:59:00Z — one minute before
+    const now = new Date('2026-06-04T14:59:00.000Z')
+    expect(isPastDeadline(now, weekStart, dow, time, tz)).toBe(false)
   })
 
   it('returns false when now is exactly at the deadline', () => {
-    // Exactly Thu 2026-06-04 18:00 — not yet past
-    const now = new Date(2026, 5, 4, 18, 0)
-    expect(isPastDeadline(now, weekStart, dow, time)).toBe(false)
+    const now = new Date('2026-06-04T15:00:00.000Z')
+    expect(isPastDeadline(now, weekStart, dow, time, tz)).toBe(false)
   })
 
-  it('returns true one minute after the deadline', () => {
-    const now = new Date(2026, 5, 4, 18, 1)
-    expect(isPastDeadline(now, weekStart, dow, time)).toBe(true)
+  it('returns true one second after the deadline', () => {
+    const now = new Date('2026-06-04T15:00:01.000Z')
+    expect(isPastDeadline(now, weekStart, dow, time, tz)).toBe(true)
+  })
+
+  it('default tz (Asia/Jerusalem) works without explicit param', () => {
+    // deadline for summer fixture = 2026-06-04T15:00:00.000Z
+    const afterDeadline = new Date('2026-06-04T16:00:00.000Z')
+    expect(isPastDeadline(afterDeadline, weekStart, dow, time)).toBe(true)
   })
 })

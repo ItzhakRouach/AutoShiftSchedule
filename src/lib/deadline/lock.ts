@@ -10,6 +10,7 @@ export interface LockResult {
 /**
  * Finds all collecting schedule_periods whose deadline has passed and flips
  * them to 'locked'. Uses the admin client (service-role) — no user session.
+ * Timezone is read from each workplace's `timezone` column (default 'Asia/Jerusalem').
  *
  * @param admin  Service-role Supabase client
  * @param now    Current time (injected for testability)
@@ -18,10 +19,11 @@ export async function lockExpiredPeriods(admin: SupabaseClient, now: Date): Prom
   const errors: string[] = []
   let locked = 0
 
-  // Load all workplace_settings that have a request deadline configured
+  // Load all workplace_settings that have a request deadline configured,
+  // joined with the workplace timezone via workplaces table.
   const { data: settings, error: settingsErr } = await admin
     .from('workplace_settings')
-    .select('workplace_id, request_deadline_dow, request_deadline_time')
+    .select('workplace_id, request_deadline_dow, request_deadline_time, workplaces(timezone)')
     .not('request_deadline_dow', 'is', null)
     .not('request_deadline_time', 'is', null)
 
@@ -34,6 +36,11 @@ export async function lockExpiredPeriods(admin: SupabaseClient, now: Date): Prom
   for (const setting of settings) {
     const { workplace_id, request_deadline_dow, request_deadline_time } = setting
     if (request_deadline_dow == null || !request_deadline_time) continue
+
+    // Resolve timezone: workplace row may come as object or null from the join.
+    const wpRow = setting.workplaces as { timezone?: string | null } | null
+    const timeZone: string =
+      (Array.isArray(wpRow) ? wpRow[0]?.timezone : wpRow?.timezone) ?? 'Asia/Jerusalem'
 
     // Load 'collecting' periods for this workplace
     const { data: periods, error: periodsErr } = await admin
@@ -54,6 +61,7 @@ export async function lockExpiredPeriods(admin: SupabaseClient, now: Date): Prom
         period.week_start_date,
         request_deadline_dow,
         request_deadline_time,
+        timeZone,
       )
       if (!past) continue
 

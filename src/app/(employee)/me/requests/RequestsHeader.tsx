@@ -1,4 +1,5 @@
 import React from 'react'
+import { Icon } from '@/components/ui/Icon'
 
 interface RequestsHeaderProps {
   weekLabel: string
@@ -8,6 +9,8 @@ interface RequestsHeaderProps {
 }
 
 export function RequestsHeader({ weekLabel, filled, total, isReadOnly }: RequestsHeaderProps) {
+  const pct = Math.round((filled / Math.max(total, 1)) * 100)
+
   return (
     <div>
       <div
@@ -49,6 +52,7 @@ export function RequestsHeader({ weekLabel, filled, total, isReadOnly }: Request
             marginBottom: 16,
           }}
         >
+          {/* warning-triangle is not in Icon registry — kept inline */}
           <svg
             width={20}
             height={20}
@@ -80,19 +84,7 @@ export function RequestsHeader({ weekLabel, filled, total, isReadOnly }: Request
             marginBottom: 16,
           }}
         >
-          <svg
-            width={20}
-            height={20}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="var(--accent)"
-            strokeWidth={1.75}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <circle cx="12" cy="12" r="9" />
-            <path d="M12 11v5M12 8v.1" />
-          </svg>
+          <Icon name="info" size={20} color="var(--accent)" />
           <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.4, flex: 1 }}>
             לחצו על יום כדי לבחור משמרות מועדפות או לסמן יום חופש. ניתן לבחור יותר ממשמרת אחת.
           </div>
@@ -113,7 +105,7 @@ export function RequestsHeader({ weekLabel, filled, total, isReadOnly }: Request
       >
         <div
           style={{
-            width: `${(filled / total) * 100}%`,
+            width: `${pct}%`,
             height: '100%',
             borderRadius: 99,
             background: 'var(--accent)',

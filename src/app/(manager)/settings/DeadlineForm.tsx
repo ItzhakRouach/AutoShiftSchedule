@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState } from 'react'
+import { Btn } from '@/components/ui/Btn'
 import { updateRequestDeadline, type DeadlineActionState } from './actions'
 
 const DAYS_HEB = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
@@ -51,7 +52,7 @@ export function DeadlineForm({ initialDow, initialTime }: Props) {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         <label htmlFor="deadline-time" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
-          שעה
+          שעה <span style={{ fontWeight: 400, color: 'var(--text-2)' }}>(שעון ישראל)</span>
         </label>
         <input
           id="deadline-time"
@@ -68,6 +69,9 @@ export function DeadlineForm({ initialDow, initialTime }: Props) {
             fontFamily: 'var(--font)',
           }}
         />
+        <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
+          תקופות ננעלות אוטומטית בלילה לאחר מועד זה
+        </span>
         {state.fieldErrors?.request_deadline_time && (
           <span style={{ color: '#D8423B', fontSize: 13 }}>
             {state.fieldErrors.request_deadline_time}
@@ -82,25 +86,9 @@ export function DeadlineForm({ initialDow, initialTime }: Props) {
         <p style={{ color: '#13A98E', fontSize: 14, margin: 0 }}>ההגדרות נשמרו בהצלחה</p>
       )}
 
-      <button
-        type="submit"
-        disabled={pending}
-        style={{
-          padding: '12px 24px',
-          background: 'var(--accent)',
-          color: '#fff',
-          border: 'none',
-          borderRadius: 'var(--r-pill)',
-          fontSize: 15,
-          fontWeight: 700,
-          fontFamily: 'var(--font)',
-          cursor: pending ? 'default' : 'pointer',
-          opacity: pending ? 0.55 : 1,
-          alignSelf: 'flex-start',
-        }}
-      >
+      <Btn variant="primary" size="lg" type="submit" disabled={pending}>
         {pending ? 'שומר…' : 'שמור'}
-      </button>
+      </Btn>
     </form>
   )
 }

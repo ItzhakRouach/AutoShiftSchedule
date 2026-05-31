@@ -24,12 +24,17 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const admin = createAdminClient()
-  const result = await lockExpiredPeriods(admin, new Date())
+  try {
+    const admin = createAdminClient()
+    const result = await lockExpiredPeriods(admin, new Date())
 
-  if (result.errors.length > 0) {
-    console.error('[lock-deadline] errors:', result.errors)
+    if (result.errors.length > 0) {
+      console.error('[lock-deadline] errors:', result.errors)
+    }
+
+    return NextResponse.json({ locked: result.locked, errors: result.errors })
+  } catch (err) {
+    console.error('[lock-deadline] unexpected error:', err)
+    return NextResponse.json({ error: 'lock failed' }, { status: 500 })
   }
-
-  return NextResponse.json({ locked: result.locked, errors: result.errors })
 }

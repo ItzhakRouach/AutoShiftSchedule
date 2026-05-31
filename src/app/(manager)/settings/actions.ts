@@ -20,7 +20,7 @@ const deadlineSchema = z.object({
     .max(6, { message: 'יום לא תקין' }),
   request_deadline_time: z
     .string()
-    .regex(/^\d{2}:\d{2}$/, { message: 'שעה לא תקינה (HH:MM)' }),
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/, { message: 'שעה לא תקינה (HH:MM)' }),
 })
 
 export async function updateRequestDeadline(

@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import { Card } from '@/components/ui/Card'
 import { Sheet } from '@/components/ui/Sheet'
+import { Icon } from '@/components/ui/Icon'
 import { SHIFT_META } from '@/lib/domain/constants'
 import type { ShiftTypeRow, RequestRow } from '@/lib/requests/context'
 import { DayEditor } from './DayEditor'
@@ -112,18 +113,7 @@ export function DayList({ days, shiftTypes, periodId, employeeId, isReadOnly }: 
                 </div>
 
                 {!isReadOnly && (
-                  <svg
-                    width={18}
-                    height={18}
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="var(--text-3)"
-                    strokeWidth={1.75}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M14.5 5 8 12l6.5 7" />
-                  </svg>
+                  <Icon name="chevronLeft" size={18} color="var(--text-3)" />
                 )}
               </div>
             </Card>

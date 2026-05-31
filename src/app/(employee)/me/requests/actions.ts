@@ -6,6 +6,20 @@ import { saveDayRequestSchema, addVacationSchema } from '@/lib/validation/reques
 
 export type ActionResult = { ok: true } | { error: string }
 
+/** Resolves the employee row for the authenticated user, or null if none. */
+async function resolveEmployee(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+) {
+  const { data } = await supabase
+    .from('employees')
+    .select('id')
+    .eq('user_id', userId)
+    .limit(1)
+    .maybeSingle()
+  return data
+}
+
 export async function saveDayRequest(input: unknown): Promise<ActionResult> {
   const parsed = saveDayRequestSchema.safeParse(input)
   if (!parsed.success) {
@@ -14,6 +28,11 @@ export async function saveDayRequest(input: unknown): Promise<ActionResult> {
   const { periodId, employeeId, dayOfWeek, isOff, preferredShiftIds } = parsed.data
 
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'אין הרשאה' }
+
+  const employee = await resolveEmployee(supabase, user.id)
+  if (!employee || employee.id !== employeeId) return { error: 'אין הרשאה' }
 
   // Guard: period must be 'collecting'
   const { data: period } = await supabase
@@ -54,6 +73,11 @@ export async function addVacation(input: unknown): Promise<ActionResult> {
   const { employeeId, dateFrom, dateTo } = parsed.data
 
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'אין הרשאה' }
+
+  const employee = await resolveEmployee(supabase, user.id)
+  if (!employee || employee.id !== employeeId) return { error: 'אין הרשאה' }
 
   const { error } = await supabase.from('employee_vacations').insert({
     employee_id: employeeId,
