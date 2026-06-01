@@ -13,3 +13,22 @@ body {
 .card-interactive:active {
   transform: scale(0.985);
 }
+
+/* Schedule page width: comfortable mobile column, wide on desktop so the weekly
+   roster table is large and easy to read. Controls stay capped so buttons/banners
+   don't stretch the full width. */
+.schedule-main {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 24px 20px;
+}
+.schedule-controls {
+  max-width: 600px;
+  margin: 0 auto;
+}
+@media (min-width: 1024px) {
+  .schedule-main {
+    max-width: 1200px;
+    padding: 28px 32px;
+  }
+}

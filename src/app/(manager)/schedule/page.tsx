@@ -17,15 +17,7 @@ export default async function SchedulePage() {
   const editMeta = view ? await getEditMeta(supabase, workplace.id, view.periodId) : null
 
   return (
-    <main
-      style={{
-        background: 'var(--bg)',
-        padding: '24px 20px',
-        maxWidth: 520,
-        margin: '0 auto',
-        direction: 'rtl',
-      }}
-    >
+    <main className="schedule-main" style={{ background: 'var(--bg)', direction: 'rtl' }}>
       {view ? (
         <ScheduleClient view={view} editMeta={editMeta} />
       ) : (

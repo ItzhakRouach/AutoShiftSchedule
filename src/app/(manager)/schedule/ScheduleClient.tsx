@@ -85,6 +85,7 @@ export function ScheduleClient({ view, editMeta }: Props) {
         />
       )}
 
+      <div className="schedule-controls">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
         <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>שיבוץ אוטומטי</h1>
         {pct !== null && (
@@ -140,6 +141,7 @@ export function ScheduleClient({ view, editMeta }: Props) {
         value={viewMode}
         onChange={(v) => setViewMode(v as ViewMode)}
       />
+      </div>{/* schedule-controls */}
       <div style={{ height: 14 }} />
 
       {viewMode === 'requests' && (
@@ -149,6 +151,7 @@ export function ScheduleClient({ view, editMeta }: Props) {
       {viewMode === 'schedule' && hasResult && (
         <>
           <WeekTable view={view} onSlot={editMeta ? setSlot : undefined} />
+          <div className="schedule-controls">
           <TwelveHourList suggestions={suggestions} roles={view.roles} />
           <div style={{ height: 14 }} />
           <Btn
@@ -167,6 +170,7 @@ export function ScheduleClient({ view, editMeta }: Props) {
               <ShareButton periodId={view.periodId} weekLabel={view.days[0]?.date ?? ''} />
             </>
           )}
+          </div>{/* schedule-controls */}
         </>
       )}
 
