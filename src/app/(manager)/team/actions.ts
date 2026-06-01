@@ -8,7 +8,7 @@ import { employeeSchema } from '@/lib/validation/employee'
 import { parseFormData, buildFieldErrors } from '@/lib/employees/form'
 import { syncEmployeeRoles } from '@/lib/employees/roles'
 import { syncEmployeeAvailability } from '@/lib/employees/availability'
-import { pickColorByIndex } from '@/lib/employees/colors'
+import { pickUniqueColor } from '@/lib/employees/colors'
 
 export type EmployeeActionState = {
   ok?: boolean
@@ -38,10 +38,12 @@ export async function createEmployee(
     observesShabbat, observesHolidays, mustAccept, roleIds, availability,
   } = parsed.data
 
-  const { count } = await supabase
+  const { data: existingEmps } = await supabase
     .from('employees')
-    .select('*', { count: 'exact', head: true })
+    .select('color')
     .eq('workplace_id', workplace.id)
+
+  const existingColors = (existingEmps ?? []).map((e) => e.color as string).filter(Boolean)
 
   const { data: emp, error: empError } = await supabase
     .from('employees')
@@ -49,7 +51,7 @@ export async function createEmployee(
       workplace_id: workplace.id,
       name,
       phone: phone || null,
-      color: pickColorByIndex(count ?? 0),
+      color: pickUniqueColor(existingColors),
       min_shifts_per_week: minShifts,
       max_shifts_per_week: maxShifts,
       employment_type: employmentType,

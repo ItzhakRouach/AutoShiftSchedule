@@ -36,23 +36,34 @@ const REQS = {
   noon:    { 'אחמ״ש': 1, 'מוקדן': 1, 'מאבטח': 1 },
   night:   { 'אחמ״ש': 1, 'מוקדן': 1, 'מאבטח': 1 },
 }
+
+// 16 employees — all with distinct hex colors.
+// ≥3 shabbat observers, ≥2 holiday observers, exactly 2 mustAccept.
 const EMP = [
-  { name: 'דני לוי', roles: ['מוקדן', 'מאבטח'], type: 'full', min: 5, shabbat: true, color: '#3D6BF5' },
-  { name: 'שירה כהן', roles: ['אחמ״ש', 'מוקדן', 'מאבטח'], type: 'full', min: 5, color: '#E0902A' },
-  { name: 'יוסי מזרחי', roles: ['מאבטח'], type: 'full', min: 5, color: '#13A98E', weekdayNights: true },
-  { name: 'נועה ברק', roles: ['מוקדן', 'מאבטח'], type: 'part', min: 2, max: 4, color: '#9B5DE0' },
-  { name: 'אבי פרץ', roles: ['אחמ״ש', 'מאבטח'], type: 'full', min: 5, holidays: true, color: '#EB6A4E' },
-  { name: 'רותם שמש', roles: ['מוקדן', 'מאבטח'], type: 'student', max: 3, color: '#2BB3C0' },
-  { name: 'עומר דהן', roles: ['אחמ״ש', 'מאבטח'], type: 'full', min: 5, mustAccept: true, color: '#C0598F' },
-  { name: 'ליאת אזולאי', roles: ['מוקדן', 'מאבטח'], type: 'part', min: 2, max: 4, color: '#7A8B3D' },
-  { name: 'מאור גבאי', roles: ['אחמ״ש', 'מאבטח'], type: 'full', min: 5, shabbat: true, color: '#5B61D6' },
-  { name: 'טל אבני', roles: ['אחמ״ש', 'מוקדן', 'מאבטח'], type: 'full', min: 5, color: '#2BB3C0' },
-  { name: 'רון שלו', roles: ['מוקדן', 'מאבטח'], type: 'full', min: 5, color: '#D08A2E' },
-  { name: 'גיא נחמיאס', roles: ['מאבטח'], type: 'full', min: 5, color: '#13A98E' },
-  { name: 'אורי כץ', roles: ['אחמ״ש', 'מאבטח'], type: 'full', min: 5, color: '#E0902A' },
-  { name: 'מיכל רז', roles: ['מוקדן', 'מאבטח'], type: 'part', min: 3, max: 5, color: '#9B5DE0' },
-  { name: 'עידן בר', roles: ['אחמ״ש', 'מוקדן', 'מאבטח'], type: 'full', min: 5, color: '#3D6BF5' },
-  { name: 'נטע גל', roles: ['מוקדן', 'מאבטח'], type: 'full', min: 5, color: '#C0598F' },
+  // mustAccept #1: strong morning preference — mgr should always see it honored
+  { name: 'עומר דהן',    roles: ['אחמ״ש', 'מאבטח'], type: 'full', min: 5, mustAccept: true,  color: '#3D6BF5' },
+  // mustAccept #2: strong night preference
+  { name: 'שירה כהן',   roles: ['אחמ״ש', 'מוקדן', 'מאבטח'], type: 'full', min: 5, mustAccept: true, color: '#13A98E' },
+
+  // shabbat observers (3)
+  { name: 'דני לוי',    roles: ['מוקדן', 'מאבטח'], type: 'full', min: 5, shabbat: true, color: '#E0902A' },
+  { name: 'מאור גבאי',  roles: ['אחמ״ש', 'מאבטח'], type: 'full', min: 5, shabbat: true, color: '#EB6A4E' },
+  { name: 'טל אבני',    roles: ['אחמ״ש', 'מוקדן', 'מאבטח'], type: 'full', min: 5, shabbat: true, color: '#5B61D6' },
+
+  // holiday observers (2)
+  { name: 'אבי פרץ',    roles: ['אחמ״ש', 'מאבטח'], type: 'full', min: 5, holidays: true, color: '#B05AB5' },
+  { name: 'ליאת אזולאי', roles: ['מוקדן', 'מאבטח'], type: 'part', min: 2, max: 4, holidays: true, color: '#2E9E6B' },
+
+  // rest of the roster
+  { name: 'יוסי מזרחי', roles: ['מאבטח'], type: 'full', min: 5, weekdayNights: true, color: '#D94F6A' },
+  { name: 'נועה ברק',   roles: ['מוקדן', 'מאבטח'], type: 'part', min: 2, max: 4, color: '#C0598F' },
+  { name: 'רותם שמש',   roles: ['מוקדן', 'מאבטח'], type: 'student', max: 3, color: '#7A8B3D' },
+  { name: 'רון שלו',    roles: ['מוקדן', 'מאבטח'], type: 'full', min: 5, color: '#2BB3C0' },
+  { name: 'גיא נחמיאס', roles: ['מאבטח'], type: 'full', min: 5, color: '#D08A2E' },
+  { name: 'אורי כץ',   roles: ['אחמ״ש', 'מאבטח'], type: 'full', min: 5, color: '#6A4EC0' },
+  { name: 'מיכל רז',   roles: ['מוקדן', 'מאבטח'], type: 'part', min: 3, max: 5, color: '#4EB5A0' },
+  { name: 'עידן בר',    roles: ['אחמ״ש', 'מוקדן', 'מאבטח'], type: 'full', min: 5, color: '#C0934E' },
+  { name: 'נטע גל',    roles: ['מוקדן', 'מאבטח'], type: 'full', min: 5, color: '#8B3D6A' },
 ]
 
 function upcomingSundayISO() {
@@ -63,10 +74,54 @@ function upcomingSundayISO() {
 }
 
 // Optional: limit the number of seeded employees via CLI arg, e.g.
-//   node scripts/seed-demo.mjs 9   → seeds the first 9 employees (for testing
-// the scheduler at different staffing levels). Default = all.
+//   node scripts/seed-demo.mjs 9   → seeds the first 9 employees
 const EMP_COUNT = Number.parseInt(process.argv[2] ?? '', 10)
 const EMPLOYEES = Number.isFinite(EMP_COUNT) && EMP_COUNT > 0 ? EMP.slice(0, EMP_COUNT) : EMP
+
+/**
+ * Build realistic/varied shift requests for one employee.
+ *
+ * Rules (deterministic by employee index i):
+ *  - 1 full day off (day = (i * 3 + 2) % 7)
+ *  - 2 days with 2 preferred shifts (days = (i+1)%7 and (i+4)%7)
+ *  - Remaining 4 days: 1 preferred shift each, cycling through morning/noon/night
+ *  - mustAccept employees get their strong preference on 5+ days (morning or night)
+ */
+function buildRequests(empId, empDef, i, periodId, shiftId) {
+  const OFF_DAY = (i * 3 + 2) % 7
+  const DOUBLE_A = (i + 1) % 7
+  const DOUBLE_B = (i + 4) % 7
+  const cycle = ['morning', 'noon', 'night']
+  const reqs = []
+
+  // mustAccept employees have a very strong single preference
+  const isMustAccept = !!empDef.mustAccept
+  const mustPrefer = i === 0 ? 'morning' : 'night' // emp[0]=עומר→morning, emp[1]=שירה→night
+
+  for (let d = 0; d < 7; d++) {
+    if (d === OFF_DAY) {
+      reqs.push({ period_id: periodId, employee_id: empId, day_of_week: d, is_off: true, preferred_shift_ids: [] })
+      continue
+    }
+
+    let preferred
+    if (isMustAccept) {
+      // Always 1 strong preference so the engine honors it visibly
+      preferred = [shiftId[mustPrefer]]
+    } else if (d === DOUBLE_A || d === DOUBLE_B) {
+      // 2 preferred shifts on these days
+      const sk1 = cycle[d % 3]
+      const sk2 = cycle[(d + 1) % 3]
+      preferred = [shiftId[sk1], shiftId[sk2]]
+    } else {
+      // 1 preferred shift, cycling deterministically
+      preferred = [shiftId[cycle[(i + d) % 3]]]
+    }
+
+    reqs.push({ period_id: periodId, employee_id: empId, day_of_week: d, is_off: false, preferred_shift_ids: preferred })
+  }
+  return reqs
+}
 
 async function main() {
   // 1. cleanup prior demo manager (cascades org → everything)
@@ -123,23 +178,19 @@ async function main() {
     }
   }
 
-  // 7. upcoming period + sample requests (so the engine has preferences to honor)
+  // 7. upcoming period + varied requests (engine has rich preferences to honor)
   const week = upcomingSundayISO()
   const { data: period } = await db.from('schedule_periods').insert({ workplace_id: W, week_start_date: week, status: 'collecting' }).select('id').single()
-  const prefByIdx = ['morning', 'noon', 'night']
   const reqs = []
   empIds.forEach((e, i) => {
-    for (let d = 0; d < 7; d++) {
-      if (d === ((i + 2) % 7)) { reqs.push({ period_id: period.id, employee_id: e.id, day_of_week: d, is_off: true, preferred_shift_ids: [] }); continue }
-      const sk = prefByIdx[(i + d) % 3]
-      reqs.push({ period_id: period.id, employee_id: e.id, day_of_week: d, is_off: false, preferred_shift_ids: [shiftId[sk]] })
-    }
+    reqs.push(...buildRequests(e.id, e, i, period.id, shiftId))
   })
   await db.from('requests').insert(reqs)
 
   console.log('\n✅ Demo seeded.')
   console.log('   Manager login →  email: ' + DEMO_EMAIL + '   password: ' + DEMO_PASSWORD)
   console.log('   Workplace: מוקד ראשי · employees: ' + EMPLOYEES.length + ' · requirements + a week of requests ready.')
+  console.log('   mustAccept: עומר (morning) + שירה (night)  |  shabbat: דני, מאור, טל  |  holidays: אבי, ליאת')
   console.log('   Log in, open שיבוץ, press "צור סידור אוטומטי", then פרסם — and check the dashboard.')
 }
 main().catch((e) => { console.error(e); process.exit(1) })

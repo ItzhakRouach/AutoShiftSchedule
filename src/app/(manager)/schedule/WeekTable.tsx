@@ -63,6 +63,9 @@ export function WeekTable({ view, onSlot }: Props) {
   const orderedRoleIds = ROLES.map((rn) => view.roles.find((r) => r.name === rn)?.id).filter(Boolean) as string[]
   const days = view.days
 
+  const empsWithShifts = view.employees.filter((e) => (empTotals[e.id] ?? 0) > 0)
+  const empsZero = view.employees.filter((e) => (empTotals[e.id] ?? 0) === 0)
+
   function handleCellClick(day: number, shift: ShiftKey, roleId: string) {
     if (!onSlot) return
     const shiftTypeId = view.shiftTypeIdByKey[shift]
@@ -72,64 +75,71 @@ export function WeekTable({ view, onSlot }: Props) {
   }
 
   return (
-    <div data-testid="week-table" style={{ overflowX: 'auto', direction: 'rtl', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
-      <table style={{ borderCollapse: 'collapse', minWidth: 700, tableLayout: 'auto', width: '100%' }}>
-        <thead>
-          <tr style={{ background: 'var(--surface-2)' }}>
-            <th style={{ ...S.sticky, right: 0, insetInlineEnd: 0, padding: '12px 14px', fontSize: 13, minWidth: 80 }}>משמרת</th>
-            <th style={{ ...S.sticky, right: 80, insetInlineEnd: 80, padding: '12px 10px', fontSize: 13, minWidth: 72 }}>תפקיד</th>
-            {days.map((d) => (
-              <th key={d.index} style={{ ...S.sticky, position: undefined, padding: '10px 8px', fontSize: 12, textAlign: 'center', minWidth: 96 }}>
-                <div style={{ fontWeight: 800, fontSize: 13 }}>{d.short}</div>
-                <div style={{ fontWeight: 500, color: 'var(--text-2)', fontSize: 11, marginTop: 2 }}>{d.date}</div>
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {BASE_SHIFTS.map((shift) => {
-            const m = SHIFT_META[shift]
-            const reqForShift = orderedRoleIds.filter((rid) => days.some((d) => (view.requirements[d.index]?.[shift]?.[rid] ?? 0) > 0))
-            const roles = reqForShift.length > 0 ? reqForShift : orderedRoleIds
-            return roles.map((roleId, ri) => {
-              const role = roleById.get(roleId)
-              const rm = role ? ROLE_META[role.name as keyof typeof ROLE_META] : null
-              return (
-                <tr key={`${shift}-${roleId}`} style={{ background: ri % 2 === 0 ? 'var(--surface)' : 'var(--bg)' }}>
-                  {ri === 0 && (
-                    <td rowSpan={roles.length} style={{ ...S.sticky, right: 0, insetInlineEnd: 0, padding: '10px 14px', textAlign: 'center', fontSize: 13, color: m.color, background: m.soft, verticalAlign: 'middle', minWidth: 80 }}>
-                      <div style={{ fontWeight: 800, whiteSpace: 'nowrap', fontSize: 13 }}>{m.name}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-2)', fontWeight: 600, marginTop: 3 }}>{m.time}</div>
+    <div>
+      <div data-testid="week-table" style={{ overflowX: 'auto', direction: 'rtl', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
+        <table style={{ borderCollapse: 'collapse', minWidth: 700, tableLayout: 'auto', width: '100%' }}>
+          <thead>
+            <tr style={{ background: 'var(--surface-2)' }}>
+              <th style={{ ...S.sticky, right: 0, insetInlineEnd: 0, padding: '12px 14px', fontSize: 13, minWidth: 80 }}>משמרת</th>
+              <th style={{ ...S.sticky, right: 80, insetInlineEnd: 80, padding: '12px 10px', fontSize: 13, minWidth: 72 }}>תפקיד</th>
+              {days.map((d) => (
+                <th key={d.index} style={{ ...S.sticky, position: undefined, padding: '10px 8px', fontSize: 12, textAlign: 'center', minWidth: 96 }}>
+                  <div style={{ fontWeight: 800, fontSize: 13 }}>{d.short}</div>
+                  <div style={{ fontWeight: 500, color: 'var(--text-2)', fontSize: 11, marginTop: 2 }}>{d.date}</div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {BASE_SHIFTS.map((shift) => {
+              const m = SHIFT_META[shift]
+              const reqForShift = orderedRoleIds.filter((rid) => days.some((d) => (view.requirements[d.index]?.[shift]?.[rid] ?? 0) > 0))
+              const roles = reqForShift.length > 0 ? reqForShift : orderedRoleIds
+              return roles.map((roleId, ri) => {
+                const role = roleById.get(roleId)
+                const rm = role ? ROLE_META[role.name as keyof typeof ROLE_META] : null
+                return (
+                  <tr key={`${shift}-${roleId}`} style={{ background: ri % 2 === 0 ? 'var(--surface)' : 'var(--bg)' }}>
+                    {ri === 0 && (
+                      <td rowSpan={roles.length} style={{ ...S.sticky, right: 0, insetInlineEnd: 0, padding: '10px 14px', textAlign: 'center', fontSize: 13, color: m.color, background: m.soft, verticalAlign: 'middle', minWidth: 80 }}>
+                        <div style={{ fontWeight: 800, whiteSpace: 'nowrap', fontSize: 13 }}>{m.name}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-2)', fontWeight: 600, marginTop: 3 }}>{m.time}</div>
+                      </td>
+                    )}
+                    <td style={{ ...S.sticky, right: 80, insetInlineEnd: 80, padding: '10px 12px', fontSize: 12.5, color: rm?.color ?? 'var(--text)', whiteSpace: 'nowrap', background: rm ? rm.soft : 'var(--surface-2)', minWidth: 72 }}>
+                      {role?.name ?? roleId}
                     </td>
-                  )}
-                  <td style={{ ...S.sticky, right: 80, insetInlineEnd: 80, padding: '10px 12px', fontSize: 12.5, color: rm?.color ?? 'var(--text)', whiteSpace: 'nowrap', background: rm ? rm.soft : 'var(--surface-2)', minWidth: 72 }}>
-                    {role?.name ?? roleId}
-                  </td>
-                  {days.map((d) => (
-                    <Cell key={d.index} entries={weekGrid[d.index]?.[shift]?.[roleId] ?? []} empById={empById}
-                      isFilled={(weekGrid[d.index]?.[shift]?.[roleId] ?? []).length >= (view.requirements[d.index]?.[shift]?.[roleId] ?? 0) && (view.requirements[d.index]?.[shift]?.[roleId] ?? 0) > 0}
-                      onClick={onSlot ? () => handleCellClick(d.index, shift, roleId) : undefined} />
-                  ))}
-                </tr>
-              )
-            })
-          })}
-        </tbody>
-        <tfoot>
-          <tr style={{ borderTop: '2px solid var(--border)', background: 'var(--surface-2)' }}>
-            <td colSpan={2} style={{ padding: '10px 14px', fontSize: 13, fontWeight: 800, color: 'var(--text-2)' }}>סה״כ משמרות לעובד</td>
-            {days.map((d) => (
-              <td key={d.index} style={{ padding: '8px 8px', borderLeft: '1px solid var(--border)', textAlign: 'center', fontSize: 12 }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                  {view.employees.filter((e) => (empTotals[e.id] ?? 0) > 0).slice(0, 4).map((e) => (
-                    <span key={e.id} style={{ color: e.color, fontWeight: 700, fontSize: 11 }}>{e.name.split(' ')[0]}: {empTotals[e.id]}</span>
-                  ))}
-                </div>
-              </td>
-            ))}
-          </tr>
-        </tfoot>
-      </table>
+                    {days.map((d) => (
+                      <Cell key={d.index} entries={weekGrid[d.index]?.[shift]?.[roleId] ?? []} empById={empById}
+                        isFilled={(weekGrid[d.index]?.[shift]?.[roleId] ?? []).length >= (view.requirements[d.index]?.[shift]?.[roleId] ?? 0) && (view.requirements[d.index]?.[shift]?.[roleId] ?? 0) > 0}
+                        onClick={onSlot ? () => handleCellClick(d.index, shift, roleId) : undefined} />
+                    ))}
+                  </tr>
+                )
+              })
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Per-employee totals summary — single block below the table, one chip per employee */}
+      <div data-testid="emp-totals-summary" style={{ direction: 'rtl', marginTop: 16, padding: '14px 16px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--surface-2)' }}>
+        <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-2)', marginBottom: 10 }}>סה״כ משמרות לעובד</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {empsWithShifts.map((e) => (
+            <span key={e.id} data-testid="emp-total-chip" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, background: `${e.color}22`, border: `1.5px solid ${e.color}55`, fontSize: 12, fontWeight: 700, color: e.color, whiteSpace: 'nowrap' }}>
+              {e.name.split(' ')[0]}
+              <span style={{ background: e.color, color: '#fff', borderRadius: 10, padding: '1px 7px', fontSize: 11, fontWeight: 800 }}>{empTotals[e.id]}</span>
+            </span>
+          ))}
+          {empsZero.map((e) => (
+            <span key={e.id} data-testid="emp-total-chip-zero" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, background: 'var(--surface)', border: '1.5px solid var(--border)', fontSize: 12, fontWeight: 600, color: 'var(--text-2)', whiteSpace: 'nowrap', opacity: 0.6 }}>
+              {e.name.split(' ')[0]}
+              <span style={{ background: 'var(--border)', color: 'var(--text-2)', borderRadius: 10, padding: '1px 7px', fontSize: 11, fontWeight: 700 }}>0</span>
+            </span>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
