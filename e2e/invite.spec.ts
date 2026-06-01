@@ -90,3 +90,65 @@ test('invalid invite code shows friendly Hebrew error', async ({ page }) => {
   await page.goto('/join/INVALID0')
   await expect(page.getByText('הזמנה לא תקפה')).toBeVisible({ timeout: 10000 })
 })
+
+test('employee joins as student + Shabbat observer and lands on /me', async ({ browser }) => {
+  const uuid = crypto.randomUUID().replace(/-/g, '').slice(0, 10)
+  const managerEmail = `mgr+${uuid}@example.com`
+  const managerPassword = 'TestPass123!'
+  const orgName = `ארגון ${uuid}`
+  const workplaceName = `מקום עבודה ${uuid}`
+
+  // ── 1. Manager signs up, onboards ────────────────────────────────────────
+  const { page: managerPage, context: managerContext } = await signupAndOnboard(
+    browser,
+    managerEmail,
+    managerPassword,
+    orgName,
+    workplaceName,
+  )
+
+  await managerPage.goto('/team')
+  await expect(managerPage).toHaveURL(/\/team/, { timeout: 10000 })
+
+  // ── 2. Manager creates an invite ─────────────────────────────────────────
+  await managerPage.getByRole('button', { name: 'צור קוד הזמנה' }).click()
+  const codeEl = managerPage.locator('div[style*="monospace"]')
+  await expect(codeEl).toBeVisible({ timeout: 10000 })
+  const code = (await codeEl.textContent())?.trim() ?? ''
+  expect(code).toMatch(/^[A-Z2-9]{8}$/)
+
+  const joinUrl = `http://localhost:3000/join/${code}`
+
+  // ── 3. Fresh employee context ─────────────────────────────────────────────
+  const employeeContext = await browser.newContext()
+  const employeePage = await employeeContext.newPage()
+
+  await employeePage.goto(joinUrl)
+  await expect(employeePage.getByRole('heading', { name: /הצטרפות ל/ })).toBeVisible({
+    timeout: 10000,
+  })
+
+  const empUuid = crypto.randomUUID().replace(/-/g, '').slice(0, 10)
+  const empEmail = `emp+${empUuid}@example.com`
+  const empPassword = 'EmpPass456!'
+  const empName = 'שומר שבת ישראלי'
+
+  await employeePage.getByLabel('שם מלא').fill(empName)
+  await employeePage.getByLabel('אימייל').fill(empEmail)
+  await employeePage.getByLabel('סיסמה').fill(empPassword)
+
+  // Choose "סטודנט" — radio is visually hidden inside a label, click the label text
+  await employeePage.getByText('סטודנט', { exact: true }).click()
+
+  // Check Shabbat observer checkbox
+  await employeePage.getByText(/שומר\/ת שבת/).click()
+
+  await employeePage.getByRole('button', { name: 'הצטרפות' }).click()
+
+  // ── 4. Employee lands on /me ──────────────────────────────────────────────
+  await expect(employeePage).toHaveURL(/\/me/, { timeout: 15000 })
+  await expect(employeePage.getByText(empName)).toBeVisible({ timeout: 5000 })
+
+  await employeeContext.close()
+  await managerContext.close()
+})

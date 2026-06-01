@@ -1,9 +1,10 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { pickRandomColor } from '@/lib/employees/colors'
+import { pickUniqueColor } from '@/lib/employees/colors'
 
 export type JoinState = {
   error?: string
@@ -14,15 +15,21 @@ export type JoinState = {
 // code can be redeemed by many employees until it expires. We do NOT consume
 // or single-use the code here; only expiry gates redemption.
 
-function validateFields(name: string, email: string, password: string): Record<string, string> | null {
-  const errors: Record<string, string> = {}
+const JoinSchema = z.object({
+  name: z
+    .string()
+    .min(2, 'שם חייב להכיל לפחות 2 תווים')
+    .max(120, 'שם ארוך מדי (מקסימום 120 תווים)'),
+  email: z.string().email('אימייל לא תקין'),
+  password: z.string().min(8, 'הסיסמה חייבת לפחות 8 תווים'),
+  employmentType: z.enum(['full', 'part', 'student'], { error: 'יש לבחור סוג משרה' }),
+  observesShabbat: z.boolean(),
+})
 
-  if (!name || name.trim().length < 2) errors.name = 'שם חייב להכיל לפחות 2 תווים'
-  if (name && name.trim().length > 120) errors.name = 'שם ארוך מדי (מקסימום 120 תווים)'
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = 'אימייל לא תקין'
-  if (!password || password.length < 8) errors.password = 'הסיסמה חייבת לפחות 8 תווים'
-
-  return Object.keys(errors).length > 0 ? errors : null
+function getEmploymentDefaults(type: 'full' | 'part' | 'student') {
+  if (type === 'full') return { min_shifts_per_week: 5, max_shifts_per_week: null }
+  if (type === 'part') return { min_shifts_per_week: 0, max_shifts_per_week: 4 }
+  return { min_shifts_per_week: 0, max_shifts_per_week: 3 }
 }
 
 export async function joinWithInvite(
@@ -30,12 +37,25 @@ export async function joinWithInvite(
   prevState: JoinState,
   formData: FormData,
 ): Promise<JoinState> {
-  const name = (formData.get('name') as string ?? '').trim()
-  const email = (formData.get('email') as string ?? '').trim()
-  const password = formData.get('password') as string ?? ''
+  const raw = {
+    name: (formData.get('name') as string ?? '').trim(),
+    email: (formData.get('email') as string ?? '').trim(),
+    password: formData.get('password') as string ?? '',
+    employmentType: formData.get('employmentType') as string ?? 'full',
+    observesShabbat: formData.get('observesShabbat') === 'true',
+  }
 
-  const fieldErrors = validateFields(name, email, password)
-  if (fieldErrors) return { fieldErrors }
+  const parsed = JoinSchema.safeParse(raw)
+  if (!parsed.success) {
+    const fieldErrors: Record<string, string> = {}
+    for (const issue of parsed.error.issues) {
+      const key = issue.path[0] as string
+      if (key && !fieldErrors[key]) fieldErrors[key] = issue.message
+    }
+    return { fieldErrors }
+  }
+
+  const { name, email, password, employmentType, observesShabbat } = parsed.data
 
   // Defensive: this flow creates a brand-new account. If someone is already
   // authenticated, refuse — they should be routed by their role, not join here.
@@ -113,12 +133,27 @@ export async function joinWithInvite(
     .maybeSingle()
 
   if (!existing) {
+    // Pick a color unique within this workplace
+    const { data: existingEmployees } = await admin
+      .from('employees')
+      .select('color')
+      .eq('workplace_id', workplaceId)
+    const existingColors = (existingEmployees ?? []).map((e: { color: string }) => e.color).filter(Boolean)
+    const color = pickUniqueColor(existingColors)
+
+    const shiftDefaults = getEmploymentDefaults(employmentType)
+
     const { error: empError } = await admin.from('employees').insert({
       workplace_id: workplaceId,
       user_id: userId,
       name,
       status: 'active',
-      color: pickRandomColor(),
+      color,
+      employment_type: employmentType,
+      min_shifts_per_week: shiftDefaults.min_shifts_per_week,
+      max_shifts_per_week: shiftDefaults.max_shifts_per_week,
+      observes_shabbat: observesShabbat,
+      observes_holidays: observesShabbat,
     })
 
     if (empError) {

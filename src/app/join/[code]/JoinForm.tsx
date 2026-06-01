@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useActionState } from 'react'
+import React, { useActionState, useState } from 'react'
 import type { JoinState } from './actions'
 
 interface JoinFormProps {
@@ -35,8 +35,18 @@ const errorStyle: React.CSSProperties = {
   marginTop: 4,
 }
 
+const EMPLOYMENT_OPTIONS = [
+  { value: 'full', label: 'משרה מלאה' },
+  { value: 'part', label: 'משרה חלקית' },
+  { value: 'student', label: 'סטודנט' },
+] as const
+
+type EmploymentValue = typeof EMPLOYMENT_OPTIONS[number]['value']
+
 export function JoinForm({ action }: JoinFormProps) {
   const [state, formAction, isPending] = useActionState<JoinState, FormData>(action, {})
+  const [observesShabbat, setObservesShabbat] = useState(false)
+  const [employmentType, setEmploymentType] = useState<EmploymentValue>('full')
 
   return (
     <form action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -99,6 +109,71 @@ export function JoinForm({ action }: JoinFormProps) {
           <span style={errorStyle}>{state.fieldErrors.password}</span>
         )}
       </div>
+
+      {/* Employment type */}
+      <div>
+        <span style={labelStyle}>סוג משרה</span>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {EMPLOYMENT_OPTIONS.map((opt) => {
+            const active = employmentType === opt.value
+            return (
+              <label
+                key={opt.value}
+                style={{
+                  flex: 1, textAlign: 'center', padding: '10px 4px',
+                  borderRadius: 'var(--r-md)',
+                  border: `1.5px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+                  background: active ? 'var(--accent-soft)' : 'var(--surface-2)',
+                  color: active ? 'var(--accent)' : 'var(--text)',
+                  fontWeight: active ? 700 : 400,
+                  fontSize: 13, cursor: 'pointer', transition: 'all 0.15s', userSelect: 'none',
+                }}
+              >
+                <input
+                  type="radio"
+                  name="employmentType"
+                  value={opt.value}
+                  checked={active}
+                  onChange={() => setEmploymentType(opt.value)}
+                  style={{ display: 'none' }}
+                />
+                {opt.label}
+              </label>
+            )
+          })}
+        </div>
+        {state.fieldErrors?.employmentType && (
+          <span style={errorStyle}>{state.fieldErrors.employmentType}</span>
+        )}
+      </div>
+
+      {/* Shabbat / holiday observance */}
+      <label
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          padding: '12px 14px',
+          borderRadius: 'var(--r-md)',
+          border: `1.5px solid ${observesShabbat ? 'var(--accent)' : 'var(--border)'}`,
+          background: observesShabbat ? 'var(--accent-soft)' : 'var(--surface-2)',
+          cursor: 'pointer',
+          userSelect: 'none',
+          transition: 'all 0.15s',
+        }}
+      >
+        <input
+          type="checkbox"
+          name="observesShabbat"
+          value="true"
+          checked={observesShabbat}
+          onChange={(e) => setObservesShabbat(e.target.checked)}
+          style={{ width: 18, height: 18, accentColor: 'var(--accent)', cursor: 'pointer' }}
+        />
+        <span style={{ fontSize: 14, color: 'var(--text)', fontWeight: 500 }}>
+          אני שומר/ת שבת וחג (לא עובד/ת בשבתות וחגים)
+        </span>
+      </label>
 
       <button
         type="submit"
