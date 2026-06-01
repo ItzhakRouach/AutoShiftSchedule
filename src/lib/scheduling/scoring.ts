@@ -45,12 +45,23 @@ export function compareCandidates(a: CandidateState, b: CandidateState): number 
   const bm = b.mustAcceptRequested ? 0 : 1
   if (am !== bm) return am - bm
 
-  // 2. reach-minimum, tier-ordered. below-min ranks above at-min; among
-  // below-min, employment tier (full > part > student) breaks the tie. Tier is
-  // intentionally NOT consulted once an employee has reached their minimum.
-  const ar2 = reachMinRank(a)
-  const br2 = reachMinRank(b)
-  if (ar2 !== br2) return ar2 - br2
+  // 2. reach-minimum. below-min ranks above at-min (bucket). Among below-min ONLY,
+  // sub-order by: (2a) higher carry-over priorDeficit first — cross-week fairness,
+  // so employees short-changed last week are filled toward their minimum first;
+  // then (2b) employment tier (full > part > student). Neither sub-key is
+  // consulted once an employee has reached their minimum (bucket collapses).
+  const aBelow = isBelowMin(a)
+  const bBelow = isBelowMin(b)
+  if (aBelow !== bBelow) return aBelow ? -1 : 1
+  if (aBelow && bBelow) {
+    // 2a. carry-over deficit: more-deficit employee first (descending → negate).
+    const dd = priorDeficitOf(b) - priorDeficitOf(a)
+    if (dd !== 0) return dd
+    // 2b. employment tier among equally-deficit below-min employees.
+    const at = EMPLOYMENT_RANK[a.emp.employmentType]
+    const bt = EMPLOYMENT_RANK[b.emp.employmentType]
+    if (at !== bt) return at - bt
+  }
 
   // 3. requested over not-requested.
   const ar = a.requested ? 0 : 1
@@ -75,15 +86,28 @@ export function compareCandidates(a: CandidateState, b: CandidateState): number 
   return a.lotteryRank - b.lotteryRank
 }
 
+/** Has this employee NOT yet reached their weekly minimum given current load? */
+export function isBelowMin(c: CandidateState): boolean {
+  return c.current.length < c.emp.minShifts
+}
+
+/** Carry-over shortfall from the most-recent published period (>=0, default 0). */
+export function priorDeficitOf(c: CandidateState): number {
+  return Math.max(0, c.emp.priorDeficit ?? 0)
+}
+
 /**
  * Combined reach-minimum + tier key. Below-min employees sort ahead of at-min
  * ones; among below-min, the employment tier (full=0, part=1, student=2) orders
  * them. At/above-min employees all collapse to the same (largest) bucket so tier
  * no longer separates them. Lower = higher priority.
+ *
+ * NOTE: the LIVE precedence in compareCandidates ALSO sub-orders below-min
+ * employees by carry-over priorDeficit (higher first) BEFORE tier; this helper
+ * keeps the deficit-agnostic tier ordering for reference/back-compat.
  */
 export function reachMinRank(c: CandidateState): number {
-  const belowMin = c.current.length < c.emp.minShifts
-  if (!belowMin) return EMPLOYMENT_RANK.student + 1
+  if (!isBelowMin(c)) return EMPLOYMENT_RANK.student + 1
   return EMPLOYMENT_RANK[c.emp.employmentType]
 }
 

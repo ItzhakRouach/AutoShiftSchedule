@@ -61,6 +61,8 @@ export interface MapInput {
   seed: number
   /** Set of holiday dates (YYYY-MM-DD) covering the week + the day after (for eve detection). */
   holidayDates?: Set<string>
+  /** Cross-week fairness: employee_id → shortfall in most-recent published period. */
+  priorDeficit?: Record<string, number>
 }
 
 const VALID_EMP: EmploymentType[] = ['full', 'part', 'student']
@@ -142,6 +144,7 @@ export function mapToEngineInput(rows: MapInput): MapResult {
     observesHolidays: (e.observes_holidays ?? false) || (e.observes_shabbat ?? false),
     mustAccept: e.must_accept ?? false,
     availability: availByEmp[e.id] ?? null,
+    priorDeficit: rows.priorDeficit?.[e.id] ?? 0,
   }))
 
   const requests: RequestMap = {}

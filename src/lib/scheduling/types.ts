@@ -18,6 +18,14 @@ export interface Employee {
   observesHolidays: boolean
   mustAccept: boolean
   availability: Record<number, ShiftKey[]> | null
+  /**
+   * Cross-week fairness carry-over: how many shifts SHORT of their minimum this
+   * employee was in the most-recent PUBLISHED prior period (max(0, minShifts −
+   * shiftsThen)). 0 (default) when there is no prior published period. A higher
+   * value boosts reach-minimum priority THIS week (soft objective only — see
+   * scoring.reachMinRank). Never overrides hard constraints or coverage.
+   */
+  priorDeficit?: number
 }
 
 /** Per-day metadata. Friday = index 5, Saturday = index 6 (implicit by index). */

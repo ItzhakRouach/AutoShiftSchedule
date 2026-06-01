@@ -73,6 +73,13 @@ function upcomingSundayISO() {
   return d.toISOString().slice(0, 10)
 }
 
+/** The Sunday one week BEFORE the given Sunday ISO date. */
+function priorSundayISO(sundayISO) {
+  const d = new Date(sundayISO + 'T00:00:00Z')
+  d.setUTCDate(d.getUTCDate() - 7)
+  return d.toISOString().slice(0, 10)
+}
+
 // Optional: limit the number of seeded employees via CLI arg, e.g.
 //   node scripts/seed-demo.mjs 9   → seeds the first 9 employees
 const EMP_COUNT = Number.parseInt(process.argv[2] ?? '', 10)
@@ -187,10 +194,37 @@ async function main() {
   })
   await db.from('requests').insert(reqs)
 
+  // 8. PRIOR PUBLISHED period (the week before) — cross-week fairness demo.
+  // Deliberately leave 2 named employees BELOW their minimum so the upcoming
+  // schedule prioritizes them toward their minimum. Not a full legal roster —
+  // just enough assignment rows to create a realistic carry-over deficit.
+  const SHORTED = new Set(['אורי כץ', 'גיא נחמיאס']) // both min 5 → seeded only 1–2 shifts
+  const priorWeek = priorSundayISO(week)
+  const { data: priorPeriod } = await db
+    .from('schedule_periods')
+    .insert({ workplace_id: W, week_start_date: priorWeek, status: 'published' })
+    .select('id').single()
+  const priorShifts = ['morning', 'noon', 'night']
+  const asg = []
+  empIds.forEach((e) => {
+    const role = roleId[e.roles[0]]
+    // Shorted employees get 1–2 shifts; everyone else gets up to 5 (≥ their min).
+    const target = SHORTED.has(e.name) ? (e.name === 'אורי כץ' ? 1 : 2) : 5
+    for (let day = 0; day < target; day++) {
+      asg.push({
+        period_id: priorPeriod.id, employee_id: e.id, day_of_week: day,
+        shift_type_id: shiftId[priorShifts[day % 3]], role_id: role, source: 'auto',
+      })
+    }
+  })
+  await db.from('assignments').insert(asg)
+
   console.log('\n✅ Demo seeded.')
   console.log('   Manager login →  email: ' + DEMO_EMAIL + '   password: ' + DEMO_PASSWORD)
   console.log('   Workplace: מוקד ראשי · employees: ' + EMPLOYEES.length + ' · requirements + a week of requests ready.')
   console.log('   mustAccept: עומר (morning) + שירה (night)  |  שומר שבת וחג: דני, מאור, טל, אבי, ליאת')
+  console.log('   Prior PUBLISHED week (' + priorWeek + ') left אורי כץ (1) + גיא נחמיאס (2) below min 5 →')
+  console.log('   the new schedule prioritizes them toward their minimum (cross-week fairness).')
   console.log('   Log in, open שיבוץ, press "צור סידור אוטומטי", then פרסם — and check the dashboard.')
 }
 main().catch((e) => { console.error(e); process.exit(1) })

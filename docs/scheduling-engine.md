@@ -40,10 +40,19 @@ reservation pre-pass via `dayfill.ts isTopPrecedenceFor`). Lower comparator outp
 
 1. **`must_accept` requested** — a must-accept employee's requested shift wins outright (their off-day
    request is already a hard constraint).
-2. **Reach-minimum, tier-ordered.** An employee **below** their `min_shifts` ranks above one who has
-   **reached** it. Among below-min employees only, employment tier breaks the tie: **full (0) < part (1) <
-   student (2)** — full-time first. **This is the ONLY place employment tier matters, and only until min is
-   reached.** Once an employee is at/above min, tier grants no priority.
+2. **Reach-minimum, carry-over- then tier-ordered.** An employee **below** their `min_shifts` ranks above
+   one who has **reached** it. Among below-min employees only, two sub-keys break the tie, in order:
+   **(2a) cross-week `priorDeficit`** — whoever was MORE short of their minimum in the most-recent
+   **published** prior week ranks first (carry-over fairness, so the same people aren't repeatedly
+   short-changed); then **(2b) employment tier** — **full (0) < part (1) < student (2)**, full-time first.
+   **This is the ONLY place employment tier matters, and only until min is reached.** Once an employee is
+   at/above min, neither sub-key separates them. `priorDeficit = max(0, min_shifts − shiftsAssignedInPrior
+   PublishedPeriod)`, computed by the adapter (`build-input.ts computePriorDeficit`) and `0` when there is no
+   prior published period. It is a **soft** objective: below all hard constraints (off-requests stay hard, so
+   "reach their minimum unless they requested off" is automatic), it never reduces coverage and never
+   overrides `must_accept`. A coverage-preserving reservation pre-pass (`fill.ts carryOverRound`) reserves
+   open slots toward min for carry-over employees BEFORE general fill, but only via legal, top-precedence
+   assignments — so total filled slots are identical with or without it; it only decides WHO fills a slot.
 3. **Requested-this-shift** — a requester ranks above a non-requester.
 4. **≥2-request floor** — fewer satisfied requests so far ranks higher, driving the guarantee of **≥2**
    requests per employee when possible (else **≥1**). (Per-employee request-satisfaction floor.)

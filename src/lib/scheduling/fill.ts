@@ -62,6 +62,35 @@ function reservationRound(
   }
 }
 
+/**
+ * Cross-week fairness pre-pass: reserve legal slots toward minShifts for
+ * employees carrying a positive priorDeficit (short of their minimum LAST
+ * published week), processed deficit-desc so the most short-changed fill first.
+ * Coverage-preserving: it only commits a slot when the employee is the
+ * top-precedence assignable candidate for it (so it never displaces a
+ * higher-precedence employee), and `matchDay` only fills OPEN required slots —
+ * so total filled slots are identical to a run without this pass; it merely
+ * decides WHO occupies a contested slot. Off-requests stay hard (isAssignable).
+ */
+function carryOverRound(
+  input: EngineInput,
+  st: FillState,
+  metas: Record<number, DayMeta>,
+): void {
+  const hasDeficit = input.employees.some((e) => (e.priorDeficit ?? 0) > 0)
+  if (!hasDeficit) return
+  for (const d of input.days) {
+    const meta = metas[d.index]
+    matchDay(
+      input,
+      meta,
+      st,
+      (e) => ((e.priorDeficit ?? 0) > 0 && st.committed[e.id].length < e.minShifts ? 1 : 0),
+      (e, slot) => isTopPrecedenceFor(input, meta, st, e, slot),
+    )
+  }
+}
+
 function generalFill(input: EngineInput, st: FillState, metas: Record<number, DayMeta>): void {
   for (const d of input.days) {
     matchDay(input, metas[d.index], st, () => 1, () => true)
@@ -93,6 +122,10 @@ export function runFill(input: EngineInput, skipTwelve = false, skipDiversity = 
   // FIX 5: reserve up to 2 requested slots each, then ensure >=1 for anyone at 0.
   reservationRound(input, st, metas, 2, false)
   reservationRound(input, st, metas, 1, true)
+  // CROSS-WEEK FAIRNESS: reserve toward minShifts for carry-over (under-served
+  // last published week) employees, before general fill. Top-precedence-gated &
+  // open-slot-only ⇒ coverage-preserving; off-requests remain hard.
+  carryOverRound(input, st, metas)
   // FIX 2: general max-matching fill of all remaining required slots.
   generalFill(input, st, metas)
   // FAIRNESS dims 2 & 4: coverage-preserving diversity swaps (shift-type variety
