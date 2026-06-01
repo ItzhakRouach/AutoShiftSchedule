@@ -95,13 +95,22 @@ export function WeekTable({ view, onSlot }: Props) {
               const m = SHIFT_META[shift]
               const reqForShift = orderedRoleIds.filter((rid) => days.some((d) => (view.requirements[d.index]?.[shift]?.[rid] ?? 0) > 0))
               const roles = reqForShift.length > 0 ? reqForShift : orderedRoleIds
+              const isFirstShift = shift === BASE_SHIFTS[0]
               return roles.map((roleId, ri) => {
                 const role = roleById.get(roleId)
                 const rm = role ? ROLE_META[role.name as keyof typeof ROLE_META] : null
+                // Show thick divider on the first role-row of each shift group, except the very first group
+                const showGroupDivider = ri === 0 && !isFirstShift
+                const groupDividerStyle: React.CSSProperties = showGroupDivider
+                  ? { borderTop: '3px solid var(--border-strong, var(--border))' }
+                  : {}
+                // Subtle tint using the shift's soft color for all rows in the group
+                const shiftTint = `color-mix(in srgb, ${m.soft} 55%, var(--surface))`
+                const rowBg = ri % 2 === 0 ? shiftTint : 'var(--bg)'
                 return (
-                  <tr key={`${shift}-${roleId}`} style={{ background: ri % 2 === 0 ? 'var(--surface)' : 'var(--bg)' }}>
+                  <tr key={`${shift}-${roleId}`} style={{ background: rowBg, ...groupDividerStyle }}>
                     {ri === 0 && (
-                      <td rowSpan={roles.length} style={{ ...S.sticky, right: 0, insetInlineEnd: 0, padding: '10px 14px', textAlign: 'center', fontSize: 13, color: m.color, background: m.soft, verticalAlign: 'middle', minWidth: 80 }}>
+                      <td rowSpan={roles.length} style={{ ...S.sticky, right: 0, insetInlineEnd: 0, padding: '12px 14px', textAlign: 'center', fontSize: 13, color: m.color, background: m.soft, verticalAlign: 'middle', minWidth: 80, borderTop: showGroupDivider ? '3px solid var(--border-strong, var(--border))' : undefined }}>
                         <div style={{ fontWeight: 800, whiteSpace: 'nowrap', fontSize: 13 }}>{m.name}</div>
                         <div style={{ fontSize: 11, color: 'var(--text-2)', fontWeight: 600, marginTop: 3 }}>{m.time}</div>
                       </td>

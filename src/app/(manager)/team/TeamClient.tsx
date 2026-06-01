@@ -57,17 +57,28 @@ export function TeamClient({ employees, roles, shiftTypes }: TeamClientProps) {
           marginBottom: 20,
         }}
       >
-        <h1
-          style={{
-            margin: 0,
-            fontSize: 24,
-            fontWeight: 800,
-            color: 'var(--text)',
-            letterSpacing: '-0.4px',
-          }}
-        >
-          עובדים
-        </h1>
+        <div>
+          <h1
+            style={{
+              margin: 0,
+              fontSize: 24,
+              fontWeight: 800,
+              color: 'var(--text)',
+              letterSpacing: '-0.4px',
+            }}
+          >
+            עובדים
+          </h1>
+          {employees.length > 0 && (
+            <div style={{ marginTop: 4, fontSize: 13, fontWeight: 600, color: 'var(--text-2)' }}>
+              סה״כ{' '}
+              <span data-testid="employee-count" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 22, height: 22, padding: '0 7px', borderRadius: 'var(--r-pill)', background: 'var(--accent-soft)', color: 'var(--accent)', fontWeight: 800, fontSize: 13 }}>
+                {employees.length}
+              </span>{' '}
+              עובדים
+            </div>
+          )}
+        </div>
         <button
           onClick={openAdd}
           aria-label="הוסף עובד"
@@ -118,38 +129,12 @@ export function TeamClient({ employees, roles, shiftTypes }: TeamClientProps) {
               >
                 <Avatar name={emp.name} color={emp.color} size={46} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      marginBottom: 5,
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: 16,
-                        fontWeight: 700,
-                        color: 'var(--text)',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+                    <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {emp.name}
                     </span>
                     {emp.status === 'pending' && (
-                      <span
-                        style={{
-                          fontSize: 11,
-                          fontWeight: 700,
-                          color: '#E0902A',
-                          background: 'rgba(224,144,42,0.14)',
-                          padding: '2px 8px',
-                          borderRadius: 'var(--r-pill)',
-                          flexShrink: 0,
-                        }}
-                      >
+                      <span style={{ fontSize: 11, fontWeight: 700, color: '#E0902A', background: 'rgba(224,144,42,0.14)', padding: '2px 8px', borderRadius: 'var(--r-pill)', flexShrink: 0 }}>
                         ממתין
                       </span>
                     )}
