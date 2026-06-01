@@ -8,6 +8,7 @@ import { emptyGrid } from './grid'
 import { matchDay, isTopPrecedenceFor, type FillState } from './dayfill'
 import { runTwelveFill } from './twelve-fill'
 import { runDiversityPass } from './diversity'
+import { satisfiedCount as recountSatisfied } from './request-gate'
 
 function reqOf(input: EngineInput, empId: string, day: number) {
   return input.requests[empId]?.[day] ?? { off: false, preferred: [] }
@@ -97,7 +98,15 @@ export function runFill(input: EngineInput, skipTwelve = false, skipDiversity = 
   // FAIRNESS dims 2 & 4: coverage-preserving diversity swaps (shift-type variety
   // + co-worker rotation). Swaps only — coverage & per-employee load unchanged.
   // `skipDiversity` (test-only) lets suites measure the pre-pass baseline.
-  if (!skipDiversity) runDiversityPass(input, st, metas)
+  if (!skipDiversity) {
+    runDiversityPass(input, st, metas)
+    // The pass may move occupants onto/off requested cells; recompute satisfied
+    // counts from the final committed state so stats stay accurate. (The pass
+    // never lowers any employee's satisfied count — gated in request-gate.)
+    for (const e of input.employees) {
+      st.satisfied[e.id] = recountSatisfied(input, e.id, st.committed[e.id])
+    }
+  }
   // NEW: 12h auto-coverage pass closes residual gaps with 12h shifts (day/night
   // preferred, 03-15/15-03 last resort). Records flow through st.twelve.
   st.twelve = skipTwelve ? [] : runTwelveFill(input, st)

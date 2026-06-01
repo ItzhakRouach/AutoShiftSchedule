@@ -80,13 +80,28 @@ two SLOT-SPECIFIC dimensions a per-day employee ordering cannot fully control:
   `day` AND same `shift`** (the same physical shift block); the repetition penalty is `Σ max(0, shared − 1)`
   over employee pairs.
 
-It minimises a global objective `diversityCost = Σ typeSpread(emp) + co-worker-repetition`. Each pass it
-scans all committed-8h assignment pairs of two **different** employees in deterministic (input) order and
-applies the single **best strictly-improving legal swap** of their occupants — keeping every required slot
-filled (a swap only changes WHO fills a slot, never how many are filled) and re-checking all 8 hard
-constraints for both employees. A strict-decrease rule plus a fixed pass cap (24) guarantee termination and
-reproducibility. Because swaps never change any employee's total shift count, steps 1–4 (reach-min,
-requested, the ≥2-request floor) and the even-load signal are all preserved.
+It minimises a global objective
+`diversityCost = 1000·(Σ typeSpread(emp) + co-worker-repetition) + nightWeekendSpread`
+(the night/weekend spread is a low-weight guard so a diversity move never worsens dim 3). Each pass it
+enumerates candidate **moves over the occupants of already-filled 8h cells** — **2-swaps** (exchange two
+cells' occupants) and **3-cycle rotations** (rotate occupants among three cells) — and applies the single
+**best strictly-improving** move. A move is applied ONLY when it:
+- keeps every required slot filled (a move only changes WHO fills a cell, never how many) and re-checks **all
+  8 hard constraints** for every mover against their assignments **excluding the vacated cell**;
+- is **request-preserving** (`request-gate.ts`): it never lowers any involved employee's satisfied-request
+  count and never pushes anyone below their request floor `min(2, requestCount)`. Requests rank above
+  fairness, so the pass can never strip a granted request (this is a hard GATE, not just a cost term);
+- strictly lowers `diversityCost`.
+
+The pass is **reorder-invariant**: it iterates a **canonical order** (employee id, then day, shift, role) —
+built in `moves.ts`/`diversity.ts` — so the result is identical regardless of `input.employees` array order.
+A strict-decrease rule plus a fixed pass cap (24) guarantee termination and reproducibility; same seed +
+data → identical grid. Because moves never change any employee's total shift count, steps 1–4 (reach-min,
+requested, the ≥2-request floor) and the even-load signal are all preserved. After the pass, satisfied-request
+counts are recomputed from the final committed state so `EmployeeStat.requestsSatisfied` stays accurate.
+The 3-cycle rotations escape the single-type **stranding** local optimum that swap-only could not.
+Modules: `diversity.ts` (cost + orchestration), `moves.ts` (swap/3-cycle primitives), `request-gate.ts`
+(satisfied-count gate).
 
 Per-shift-type counts are surfaced on `EmployeeStat.byType { morning, noon, night }` for transparency/tests.
 
