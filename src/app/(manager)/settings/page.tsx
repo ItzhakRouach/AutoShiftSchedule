@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveWorkplace } from '@/lib/workplace/current'
+import { signOut } from '@/app/(auth)/actions'
 import { DeadlineForm } from './DeadlineForm'
 import { HolidaysSection } from './HolidaysSection'
 import { PublishSettings } from './PublishSettings'
@@ -111,6 +112,34 @@ export default async function SettingsPage() {
         </section>
 
         <HolidaysSection holidays={holidays ?? []} currentYear={currentYear} />
+
+        {/* Account */}
+        <section style={section}>
+          <h2 style={{ fontSize: 17, fontWeight: 700, margin: '0 0 6px', color: 'var(--text)' }}>
+            חשבון
+          </h2>
+          <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '0 0 20px', lineHeight: 1.5 }}>
+            התנתקות מהמערכת תחזיר אותך למסך הכניסה.
+          </p>
+          <form action={signOut}>
+            <button
+              type="submit"
+              style={{
+                background: 'none',
+                border: '1px solid var(--border-strong)',
+                borderRadius: 'var(--r-pill)',
+                padding: '10px 24px',
+                fontSize: 14,
+                fontWeight: 600,
+                color: 'var(--text-2)',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              התנתקות
+            </button>
+          </form>
+        </section>
       </div>
     </main>
   )

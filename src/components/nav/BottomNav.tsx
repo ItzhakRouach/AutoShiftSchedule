@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Icon, type IconName } from '@/components/ui/Icon'
+import { NavLogout } from './NavLogout'
 
 interface Tab {
   href: string
@@ -41,7 +42,8 @@ function NavBar({ tabs }: { tabs: Tab[] }) {
       }}
     >
       {tabs.map((tab) => {
-        const isActive = pathname === tab.href ||
+        const isActive =
+          pathname === tab.href ||
           (tab.href !== '/me' && pathname.startsWith(tab.href + '/')) ||
           (tab.href === '/me' && pathname === '/me')
         return (
@@ -67,6 +69,7 @@ function NavBar({ tabs }: { tabs: Tab[] }) {
           </Link>
         )
       })}
+      <NavLogout />
     </div>
   )
 }

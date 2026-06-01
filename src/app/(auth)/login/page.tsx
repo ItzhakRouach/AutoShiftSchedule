@@ -2,13 +2,19 @@
 
 import { useActionState } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 import { signIn, type AuthState } from '../actions'
 import { Field } from '../_components/Field'
 import { Icon } from '@/components/ui/Icon'
 
 const initialState: AuthState = {}
 
-export default function LoginPage() {
+function LoginForm() {
+  const searchParams = useSearchParams()
+  const role = searchParams.get('as') === 'employee' ? 'employee' : 'manager'
+  const isManager = role === 'manager'
+
   const [state, action, pending] = useActionState(signIn, initialState)
 
   return (
@@ -35,13 +41,48 @@ export default function LoginPage() {
           direction: 'rtl',
         }}
       >
+        {/* Back link */}
+        <Link
+          href="/"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+            fontSize: 13,
+            color: 'var(--text-3)',
+            textDecoration: 'none',
+            marginBottom: 20,
+          }}
+        >
+          <Icon name="chevronRight" size={14} />
+          חזרה לבחירת כניסה
+        </Link>
+
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <div style={{ width: 56, height: 56, borderRadius: 16, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px', boxShadow: '0 8px 24px rgba(52,87,240,0.3)' }}>
-            <Icon name="shield" size={28} stroke={1.7} color="#fff" />
+          <div
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: 16,
+              background: isManager ? 'var(--accent)' : '#13A98E',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 14px',
+              boxShadow: isManager
+                ? '0 8px 24px rgba(52,87,240,0.3)'
+                : '0 8px 24px rgba(19,169,142,0.3)',
+            }}
+          >
+            <Icon name={isManager ? 'chart' : 'user'} size={28} stroke={1.7} color="#fff" />
           </div>
-          <h1 style={{ margin: '0 0 4px', fontSize: 26, fontWeight: 800 }}>מִשְׁמֶרֶת</h1>
-          <p style={{ margin: 0, fontSize: 14, color: 'var(--text-2)' }}>התחברות לחשבון</p>
+          <h1 style={{ margin: '0 0 4px', fontSize: 26, fontWeight: 800 }}>
+            {isManager ? 'כניסת מנהל' : 'כניסת עובד'}
+          </h1>
+          <p style={{ margin: 0, fontSize: 14, color: 'var(--text-2)' }}>
+            {isManager ? 'ניהול הסידור והעובדים' : 'הזנת בקשות וצפייה בסידור'}
+          </p>
         </div>
 
         <form action={action} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -84,8 +125,8 @@ export default function LoginPage() {
             disabled={pending}
             style={{
               marginTop: 4,
-              background: 'var(--accent)',
-              color: 'var(--accent-ink)',
+              background: isManager ? 'var(--accent)' : '#13A98E',
+              color: '#fff',
               border: 'none',
               borderRadius: 'var(--r-pill)',
               padding: '13px 0',
@@ -95,20 +136,39 @@ export default function LoginPage() {
               opacity: pending ? 0.7 : 1,
               transition: 'opacity .15s',
               fontFamily: 'inherit',
-              boxShadow: '0 4px 14px rgba(52,87,240,0.3)',
+              boxShadow: isManager
+                ? '0 4px 14px rgba(52,87,240,0.3)'
+                : '0 4px 14px rgba(19,169,142,0.3)',
             }}
           >
             {pending ? 'מתחבר…' : 'התחברות'}
           </button>
         </form>
 
-        <p style={{ marginTop: 20, fontSize: 13, color: 'var(--text-2)', textAlign: 'center' }}>
-          אין לך חשבון?{' '}
-          <Link href="/signup" style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>
-            הרשמה
-          </Link>
-        </p>
+        {/* Footer */}
+        <div style={{ marginTop: 20, fontSize: 13, color: 'var(--text-2)', textAlign: 'center' }}>
+          {isManager ? (
+            <p style={{ margin: 0 }}>
+              אין לך חשבון?{' '}
+              <Link href="/signup" style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'none' }}>
+                הרשמה
+              </Link>
+            </p>
+          ) : (
+            <p style={{ margin: 0, lineHeight: 1.5 }}>
+              הצטרפת דרך קישור הזמנה? התחבר עם הפרטים שיצרת.
+            </p>
+          )}
+        </div>
       </div>
     </main>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   )
 }
