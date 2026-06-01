@@ -11,6 +11,7 @@ import type { RoleName } from '@/lib/domain/constants'
 export interface SeedRole {
   name: RoleName
   color: string
+  rank: number
 }
 
 export interface SeedShiftType {
@@ -48,6 +49,7 @@ export function buildSeed(): Seed {
   const roles: SeedRole[] = ROLES.map(name => ({
     name,
     color: ROLE_META[name].color,
+    rank: ROLE_META[name].rank,
   }))
 
   // Shift types: base shifts first, then fallback

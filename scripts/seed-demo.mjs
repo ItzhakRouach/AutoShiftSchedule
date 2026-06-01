@@ -18,9 +18,9 @@ const DEMO_EMAIL = 'manager@demo.com'
 const DEMO_PASSWORD = 'Demo123456'
 
 const ROLES = [
-  { name: 'אחמ״ש', color: '#E0902A' },
-  { name: 'מוקדן', color: '#3D6BF5' },
-  { name: 'מאבטח', color: '#13A98E' },
+  { name: 'אחמ״ש', color: '#E0902A', rank: 3 },
+  { name: 'מוקדן', color: '#3D6BF5', rank: 2 },
+  { name: 'מאבטח', color: '#13A98E', rank: 1 },
 ]
 const SHIFTS = [
   { key: 'morning', name: 'בוקר', start_hour: 7, hours: 8, color: '#F2A93B', is_fallback: false, sort: 0 },

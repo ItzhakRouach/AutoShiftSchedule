@@ -17,8 +17,8 @@ async function addEmployee(page: Page, name: string) {
   await page.getByRole('button', { name: 'הוסף עובד' }).click()
   await expect(page.getByRole('heading', { name: 'עובד חדש' })).toBeVisible({ timeout: 5000 })
   await page.getByLabel('שם מלא').fill(name)
-  const roleSwitches = page.getByRole('switch')
-  for (let i = 0; i < 3; i++) await roleSwitches.nth(i).click()
+  // Senior role (אחמ״ש) auto-qualifies for all lower roles via the rank hierarchy.
+  await page.getByRole('switch').first().click()
   await page.getByRole('button', { name: 'הוספת עובד' }).click()
   await expect(page.getByRole('heading', { name: 'עובד חדש' })).toBeHidden({ timeout: 10000 })
 }

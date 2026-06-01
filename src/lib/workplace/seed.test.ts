@@ -7,6 +7,11 @@ describe('buildSeed', () => {
     expect(seed.roles.map(r => r.name)).toEqual(['אחמ״ש', 'מוקדן', 'מאבטח'])
     expect(seed.roles.find(r => r.name === 'מאבטח')!.color).toBe('#13A98E')
   })
+  it('seeds roles with their rank (אחמ״ש=3, מוקדן=2, מאבטח=1)', () => {
+    expect(seed.roles.find(r => r.name === 'אחמ״ש')!.rank).toBe(3)
+    expect(seed.roles.find(r => r.name === 'מוקדן')!.rank).toBe(2)
+    expect(seed.roles.find(r => r.name === 'מאבטח')!.rank).toBe(1)
+  })
   it('seeds 7 shift types: 3 base + 4 fallback, with correct flags/hours', () => {
     expect(seed.shiftTypes).toHaveLength(7)
     const base = seed.shiftTypes.filter(s => !s.is_fallback)

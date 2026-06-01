@@ -15,6 +15,7 @@ export interface RoleOption {
   id: string
   name: string
   color: string
+  rank: number
 }
 
 export interface EmployeeData {

@@ -1,13 +1,15 @@
 export type RoleName = 'אחמ״ש' | 'מוקדן' | 'מאבטח'
 
-export interface RoleMeta { color: string; soft: string; short: string }
+export interface RoleMeta { color: string; soft: string; short: string; rank: number }
 
 export const ROLES: RoleName[] = ['אחמ״ש', 'מוקדן', 'מאבטח']
 
+// rank: higher rank auto-qualifies for all lower-ranked roles (see role-rank
+// hierarchy in src/lib/schedule/map-rows.ts → expandRolesByRank).
 export const ROLE_META: Record<RoleName, RoleMeta> = {
-  'אחמ״ש': { color: '#E0902A', soft: 'rgba(224,144,42,0.14)', short: 'אחמ״ש' },
-  'מוקדן': { color: '#3D6BF5', soft: 'rgba(61,107,245,0.14)', short: 'מוקדן' },
-  'מאבטח': { color: '#13A98E', soft: 'rgba(19,169,142,0.14)', short: 'מאבטח' },
+  'אחמ״ש': { color: '#E0902A', soft: 'rgba(224,144,42,0.14)', short: 'אחמ״ש', rank: 3 },
+  'מוקדן': { color: '#3D6BF5', soft: 'rgba(61,107,245,0.14)', short: 'מוקדן', rank: 2 },
+  'מאבטח': { color: '#13A98E', soft: 'rgba(19,169,142,0.14)', short: 'מאבטח', rank: 1 },
 }
 
 export type ShiftId =

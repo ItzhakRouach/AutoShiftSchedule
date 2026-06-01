@@ -92,7 +92,7 @@ export async function createWorkplace(
   // Insert roles
   const { data: insertedRoles, error: rolesError } = await supabase
     .from('roles')
-    .insert(seed.roles.map(r => ({ workplace_id: workplaceId, name: r.name, color: r.color })))
+    .insert(seed.roles.map(r => ({ workplace_id: workplaceId, name: r.name, color: r.color, rank: r.rank })))
     .select('id, name')
 
   if (rolesError || !insertedRoles) {

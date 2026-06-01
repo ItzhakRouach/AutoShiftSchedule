@@ -1,5 +1,4 @@
 // PURE mapping: plain DB rows → engine EngineInput. NO Supabase/IO imports.
-// Unit-tested directly with plain row objects (see map-rows.test.ts).
 import { BASE_SHIFTS } from '@/lib/scheduling/types'
 import type {
   DayMeta,
@@ -12,6 +11,7 @@ import type {
   ShiftKey,
 } from '@/lib/scheduling/types'
 import { buildHolidayMeta } from '@/lib/holidays/day-meta'
+import { expandRolesByRank } from './role-rank'
 
 // ── Row shapes (mirror the DB columns we read) ─────────────────────────────────
 export interface ShiftTypeRow { id: string; key: string }
@@ -45,7 +45,7 @@ export interface SettingsRow {
   allow_12h_fallback: boolean | null
 }
 
-export interface RoleRow { id: string; name: string }
+export interface RoleRow { id: string; name: string; rank?: number | null }
 
 export interface MapInput {
   weekDates: string[] // 7 ISO dates (YYYY-MM-DD), index 0..6
@@ -94,8 +94,7 @@ export function mapToEngineInput(rows: MapInput): MapResult {
     }
   }
 
-  // The engine keys roles by NAME (emptyGrid uses ROLES constant = role names).
-  // Map role UUID → name for input, and name → UUID for persisting output.
+  // Engine keys roles by NAME; map UUID→name (input) and name→UUID (persist output).
   const roleIdToName: Record<string, string> = {}
   const nameToRoleId: Record<string, string> = {}
   for (const r of rows.roles) {
@@ -103,12 +102,15 @@ export function mapToEngineInput(rows: MapInput): MapResult {
     nameToRoleId[r.name] = r.id
   }
 
-  // Group roles (by NAME) by employee
-  const rolesByEmp: Record<string, string[]> = {}
+  // Group held role IDs per employee, EXPAND by rank (higher role auto-qualifies
+  // for all lower) → names. Applies the hierarchy to auto-scheduling AND manual edits.
+  const heldIdsByEmp: Record<string, string[]> = {}
   for (const r of rows.employeeRoles) {
-    const name = roleIdToName[r.role_id]
-    if (!name) continue
-    ;(rolesByEmp[r.employee_id] ??= []).push(name)
+    if (roleIdToName[r.role_id]) (heldIdsByEmp[r.employee_id] ??= []).push(r.role_id)
+  }
+  const rolesByEmp: Record<string, string[]> = {}
+  for (const [empId, heldIds] of Object.entries(heldIdsByEmp)) {
+    rolesByEmp[empId] = expandRolesByRank(heldIds, rows.roles).map((id) => roleIdToName[id]).filter(Boolean)
   }
 
   // Group availability by employee → day → shift keys
@@ -139,8 +141,7 @@ export function mapToEngineInput(rows: MapInput): MapResult {
     minShifts: e.min_shifts_per_week ?? 0,
     maxShifts: e.max_shifts_per_week ?? null,
     observesShabbat: e.observes_shabbat ?? false,
-    // Safety-net: Shabbat observance implies holiday observance (handles legacy rows
-    // where only observes_shabbat=true was saved before the combined toggle was introduced).
+    // Safety-net: Shabbat observance implies holiday observance (handles legacy rows).
     observesHolidays: (e.observes_holidays ?? false) || (e.observes_shabbat ?? false),
     mustAccept: e.must_accept ?? false,
     availability: availByEmp[e.id] ?? null,

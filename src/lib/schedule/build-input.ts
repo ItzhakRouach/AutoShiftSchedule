@@ -104,7 +104,7 @@ export async function buildEngineInput(
     { data: requests },
   ] = await Promise.all([
     supabase.from('shift_types').select('id, key, is_fallback').eq('workplace_id', wp),
-    supabase.from('roles').select('id, name').eq('workplace_id', wp),
+    supabase.from('roles').select('id, name, rank').eq('workplace_id', wp),
     supabase
       .from('employees')
       .select(

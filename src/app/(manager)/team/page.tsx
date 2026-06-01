@@ -29,7 +29,7 @@ export default async function TeamPage() {
   // Fetch roles
   const { data: rolesRaw } = await supabase
     .from('roles')
-    .select('id, name, color')
+    .select('id, name, color, rank')
     .eq('workplace_id', workplace.id)
     .order('name')
 
@@ -37,6 +37,7 @@ export default async function TeamPage() {
     id: r.id,
     name: r.name,
     color: r.color,
+    rank: r.rank ?? 1,
   }))
 
   // Fetch base (non-fallback) shift types for this workplace
