@@ -86,7 +86,6 @@ export default async function SettingsPage() {
           </h2>
           <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '0 0 20px', lineHeight: 1.5 }}>
             הגדר את היום והשעה האחרונים שבהם עובדים יכולים להגיש בקשות לשבוע הקרוב.
-            לאחר המועד הזה, תקופת ה-Collecting תינעל אוטומטית.
           </p>
           <DeadlineForm
             initialDow={settings?.request_deadline_dow ?? null}
