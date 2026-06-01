@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { signOut } from '@/app/(auth)/actions'
 import { Icon } from '@/components/ui/Icon'
 import { Card } from '@/components/ui/Card'
+import { DeleteAccountButton } from './DeleteAccountButton'
 
 export default async function MePage() {
   const supabase = await createClient()
@@ -62,27 +63,30 @@ export default async function MePage() {
         </Card>
       </Link>
 
-      {/* Sign out */}
-      <form action={signOut} style={{ marginTop: 24 }}>
-        <button
-          type="submit"
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'var(--text-3)',
-            fontSize: 13,
-            cursor: 'pointer',
-            fontFamily: 'inherit',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: 0,
-          }}
-        >
-          <Icon name="logout" size={15} stroke={1.75} />
-          יציאה
-        </button>
-      </form>
+      {/* Sign out + delete account */}
+      <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 0 }}>
+        <form action={signOut}>
+          <button
+            type="submit"
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--text-3)',
+              fontSize: 13,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: 0,
+            }}
+          >
+            <Icon name="logout" size={15} stroke={1.75} />
+            יציאה
+          </button>
+        </form>
+        <DeleteAccountButton />
+      </div>
     </main>
   )
 }
