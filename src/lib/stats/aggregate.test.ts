@@ -60,7 +60,7 @@ describe('aggregateFairness', () => {
     expect(e2.weekendShifts).toBe(0)
   })
 
-  it('computes requestHonoredPct correctly', () => {
+  it('computes requestedCount and honoredCount correctly', () => {
     const assignments = [mkAssign('e1', 0, 'st_morning', 'r1', 8)]
     const requests = [
       { employee_id: 'e1', period_id: 'p1', day_of_week: 0, is_off: false, preferred_shift_ids: ['st_morning'] },
@@ -68,24 +68,42 @@ describe('aggregateFairness', () => {
     ]
     const result = aggregateFairness(assignments, requests, employees, shiftKeyById)
     const e1 = result.find((f) => f.id === 'e1')!
-    expect(e1.requestHonoredPct).toBe(50)
+    expect(e1.requestedCount).toBe(2)
+    expect(e1.honoredCount).toBe(1)
   })
 
-  it('returns null when no non-off requests exist (divide-by-zero guard)', () => {
+  it('returns zero counts when no non-off requests exist (divide-by-zero guard)', () => {
     const requests = [
       { employee_id: 'e1', period_id: 'p1', day_of_week: 0, is_off: true, preferred_shift_ids: null },
     ]
     const result = aggregateFairness([], requests, employees, shiftKeyById)
     const e1 = result.find((f) => f.id === 'e1')!
-    expect(e1.requestHonoredPct).toBeNull()
+    expect(e1.requestedCount).toBe(0)
+    expect(e1.honoredCount).toBe(0)
   })
 
-  it('returns null when preferred_shift_ids is empty', () => {
+  it('returns zero counts when preferred_shift_ids is empty (no-request guard)', () => {
     const requests = [
       { employee_id: 'e1', period_id: 'p1', day_of_week: 0, is_off: false, preferred_shift_ids: [] },
     ]
     const result = aggregateFairness([], requests, employees, shiftKeyById)
     const e1 = result.find((f) => f.id === 'e1')!
-    expect(e1.requestHonoredPct).toBeNull()
+    expect(e1.requestedCount).toBe(0)
+    expect(e1.honoredCount).toBe(0)
+  })
+
+  it('returns honoredCount = requestedCount when all requests are honored', () => {
+    const assignments = [
+      mkAssign('e1', 0, 'st_morning', 'r1', 8),
+      mkAssign('e1', 1, 'st_night', 'r1', 8),
+    ]
+    const requests = [
+      { employee_id: 'e1', period_id: 'p1', day_of_week: 0, is_off: false, preferred_shift_ids: ['st_morning'] },
+      { employee_id: 'e1', period_id: 'p1', day_of_week: 1, is_off: false, preferred_shift_ids: ['st_night'] },
+    ]
+    const result = aggregateFairness(assignments, requests, employees, shiftKeyById)
+    const e1 = result.find((f) => f.id === 'e1')!
+    expect(e1.requestedCount).toBe(2)
+    expect(e1.honoredCount).toBe(2)
   })
 })

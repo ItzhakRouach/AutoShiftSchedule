@@ -35,7 +35,10 @@ export interface FairnessStat {
   name: string
   nightShifts: number
   weekendShifts: number
-  requestHonoredPct: number | null // null = no requests
+  /** count of non-off requested shifts with preferred_shift_ids for the period */
+  requestedCount: number
+  /** count of assignments that matched a requested shift (day + shift type) */
+  honoredCount: number
 }
 
 export interface DashboardStats {

@@ -47,8 +47,8 @@ export function DashPanels({ employees, fairness, maxHours }: Props) {
                 <span style={{ fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
                 <span style={{ textAlign: 'center', fontWeight: 700, color: 'var(--text-2)' }}>{f.nightShifts}</span>
                 <span style={{ textAlign: 'center', fontWeight: 700, color: 'var(--text-2)' }}>{f.weekendShifts}</span>
-                <span style={{ textAlign: 'center', fontWeight: 700, color: f.requestHonoredPct != null && f.requestHonoredPct >= 80 ? '#13A98E' : 'var(--text-2)' }}>
-                  {f.requestHonoredPct != null ? `${f.requestHonoredPct}%` : '—'}
+                <span style={{ textAlign: 'center', fontWeight: 700, color: f.requestedCount > 0 && f.honoredCount === f.requestedCount ? '#13A98E' : 'var(--text-2)' }}>
+                  {f.requestedCount > 0 ? `קיבל ${f.honoredCount} מתוך ${f.requestedCount}` : '—'}
                 </span>
               </div>
             ))}

@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { SHIFT_META, ROLE_META, ROLES, type ShiftId } from '@/lib/domain/constants'
 import { buildWeekGrid, buildEmpTotals } from '@/lib/schedule/week-table-data'
 import type { ScheduleView } from '@/lib/schedule/view-data'
@@ -23,27 +24,61 @@ function Badge() {
   )
 }
 
-function Cell({ entries, empById, isFilled, onClick }: {
+function Cell({ entries, empById, isFilled, selectedId, onClick, onSelectEmp }: {
   entries: { employeeId: string; is12h: boolean; requested: boolean }[]
   empById: Map<string, { name: string; color: string }>
   isFilled: boolean
+  selectedId: string | null
   onClick?: () => void
+  onSelectEmp: (id: string) => void
 }) {
+  const hasSelected = selectedId !== null
+  const cellHasSelected = hasSelected && entries.some((e) => e.employeeId === selectedId)
   const bg = entries.length === 0 && !isFilled ? 'rgba(235,106,78,0.06)' : 'var(--surface)'
+  const dimCell = hasSelected && !cellHasSelected
+  const highlightCell = cellHasSelected
+
+  const cellStyle: React.CSSProperties = {
+    ...S.cellBase,
+    background: bg,
+    cursor: onClick ? 'pointer' : 'default',
+    minWidth: 96,
+    opacity: dimCell ? 0.4 : 1,
+    outline: highlightCell ? '2px solid var(--accent, #13A98E)' : undefined,
+    outlineOffset: highlightCell ? '-2px' : undefined,
+    transition: 'opacity 0.15s, outline 0.15s',
+  }
+
   if (entries.length === 0) {
     return (
-      <td style={{ ...S.cellBase, background: bg, cursor: onClick ? 'pointer' : 'default', minWidth: 96 }} onClick={onClick}>
+      <td style={cellStyle} onClick={onClick}>
         <span style={{ color: '#EB6A4E', fontWeight: 600, fontSize: 12 }}>לא מאויש</span>
       </td>
     )
   }
   return (
-    <td style={{ ...S.cellBase, background: bg, cursor: onClick ? 'pointer' : 'default', minWidth: 96 }} onClick={onClick}>
+    <td style={cellStyle} onClick={onClick}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {entries.map((en, i) => {
           const emp = empById.get(en.employeeId)
+          const isSelected = selectedId === en.employeeId
           return (
-            <span key={i} style={{ display: 'inline-flex', alignItems: 'center', color: emp?.color ?? 'var(--text)', fontWeight: 700, whiteSpace: 'nowrap', fontSize: 13, lineHeight: 1.4 }}>
+            <span
+              key={i}
+              role="button"
+              aria-pressed={isSelected}
+              title={isSelected ? 'לחץ לביטול הסימון' : 'לחץ לסימון עובד'}
+              onClick={(ev) => { ev.stopPropagation(); onSelectEmp(en.employeeId) }}
+              style={{
+                display: 'inline-flex', alignItems: 'center',
+                color: emp?.color ?? 'var(--text)', fontWeight: 700,
+                whiteSpace: 'nowrap', fontSize: 13, lineHeight: 1.4,
+                cursor: 'pointer',
+                opacity: hasSelected && !isSelected ? 0.35 : 1,
+                textDecoration: isSelected ? 'underline' : undefined,
+                transition: 'opacity 0.15s',
+              }}
+            >
               {en.requested && <Badge />}
               {emp?.name ?? '?'}
               {en.is12h ? <span style={{ color: 'var(--accent)', fontWeight: 800, marginRight: 2 }}>-12</span> : ''}
@@ -56,16 +91,16 @@ function Cell({ entries, empById, isFilled, onClick }: {
 }
 
 export function WeekTable({ view, onSlot }: Props) {
+  const [selectedId, setSelectedId] = useState<string | null>(null)
   const weekGrid = buildWeekGrid(view)
   const empTotals = buildEmpTotals(view, view.employees)
   const empById = new Map(view.employees.map((e) => [e.id, e]))
   const roleById = new Map(view.roles.map((r) => [r.id, r]))
   const orderedRoleIds = ROLES.map((rn) => view.roles.find((r) => r.name === rn)?.id).filter(Boolean) as string[]
   const days = view.days
-
   const empsWithShifts = view.employees.filter((e) => (empTotals[e.id] ?? 0) > 0)
   const empsZero = view.employees.filter((e) => (empTotals[e.id] ?? 0) === 0)
-
+  const toggleSelect = (id: string) => setSelectedId((cur) => (cur === id ? null : id))
   function handleCellClick(day: number, shift: ShiftKey, roleId: string) {
     if (!onSlot) return
     const shiftTypeId = view.shiftTypeIdByKey[shift]
@@ -76,6 +111,10 @@ export function WeekTable({ view, onSlot }: Props) {
 
   return (
     <div>
+      {selectedId && <div style={{ direction: 'rtl', marginBottom: 8, fontSize: 12, color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span>מוצג: <strong style={{ color: empById.get(selectedId)?.color }}>{empById.get(selectedId)?.name}</strong></span>
+        <button onClick={() => setSelectedId(null)} style={{ fontSize: 11, padding: '2px 8px', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface)', cursor: 'pointer', color: 'var(--text-2)' }}>נקה</button>
+      </div>}
       <div data-testid="week-table" style={{ overflowX: 'auto', direction: 'rtl', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
         <table style={{ borderCollapse: 'collapse', minWidth: 700, tableLayout: 'auto', width: '100%' }}>
           <thead>
@@ -99,12 +138,8 @@ export function WeekTable({ view, onSlot }: Props) {
               return roles.map((roleId, ri) => {
                 const role = roleById.get(roleId)
                 const rm = role ? ROLE_META[role.name as keyof typeof ROLE_META] : null
-                // Show thick divider on the first role-row of each shift group, except the very first group
                 const showGroupDivider = ri === 0 && !isFirstShift
-                const groupDividerStyle: React.CSSProperties = showGroupDivider
-                  ? { borderTop: '3px solid var(--border-strong, var(--border))' }
-                  : {}
-                // Subtle tint using the shift's soft color for all rows in the group
+                const groupDividerStyle: React.CSSProperties = showGroupDivider ? { borderTop: '3px solid var(--border-strong, var(--border))' } : {}
                 const shiftTint = `color-mix(in srgb, ${m.soft} 55%, var(--surface))`
                 const rowBg = ri % 2 === 0 ? shiftTint : 'var(--bg)'
                 return (
@@ -119,9 +154,14 @@ export function WeekTable({ view, onSlot }: Props) {
                       {role?.name ?? roleId}
                     </td>
                     {days.map((d) => (
-                      <Cell key={d.index} entries={weekGrid[d.index]?.[shift]?.[roleId] ?? []} empById={empById}
+                      <Cell key={d.index}
+                        entries={weekGrid[d.index]?.[shift]?.[roleId] ?? []}
+                        empById={empById}
                         isFilled={(weekGrid[d.index]?.[shift]?.[roleId] ?? []).length >= (view.requirements[d.index]?.[shift]?.[roleId] ?? 0) && (view.requirements[d.index]?.[shift]?.[roleId] ?? 0) > 0}
-                        onClick={onSlot ? () => handleCellClick(d.index, shift, roleId) : undefined} />
+                        selectedId={selectedId}
+                        onClick={onSlot ? () => handleCellClick(d.index, shift, roleId) : undefined}
+                        onSelectEmp={toggleSelect}
+                      />
                     ))}
                   </tr>
                 )
@@ -131,16 +171,22 @@ export function WeekTable({ view, onSlot }: Props) {
         </table>
       </div>
 
-      {/* Per-employee totals summary — single block below the table, one chip per employee */}
       <div data-testid="emp-totals-summary" style={{ direction: 'rtl', marginTop: 16, padding: '14px 16px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--surface-2)' }}>
         <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-2)', marginBottom: 10 }}>סה״כ משמרות לעובד</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {empsWithShifts.map((e) => (
-            <span key={e.id} data-testid="emp-total-chip" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, background: `${e.color}22`, border: `1.5px solid ${e.color}55`, fontSize: 12, fontWeight: 700, color: e.color, whiteSpace: 'nowrap' }}>
-              {e.name.split(' ')[0]}
-              <span style={{ background: e.color, color: '#fff', borderRadius: 10, padding: '1px 7px', fontSize: 11, fontWeight: 800 }}>{empTotals[e.id]}</span>
-            </span>
-          ))}
+          {empsWithShifts.map((e) => {
+            const isSelected = selectedId === e.id
+            return (
+              <span key={e.id} data-testid="emp-total-chip"
+                role="button" aria-pressed={isSelected}
+                onClick={() => toggleSelect(e.id)}
+                title={isSelected ? 'לחץ לביטול הסימון' : 'לחץ לסימון עובד'}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, background: `${e.color}22`, border: isSelected ? `2px solid ${e.color}` : `1.5px solid ${e.color}55`, fontSize: 12, fontWeight: 700, color: e.color, whiteSpace: 'nowrap', cursor: 'pointer', opacity: selectedId && !isSelected ? 0.45 : 1, transition: 'opacity 0.15s, border 0.15s' }}>
+                {e.name.split(' ')[0]}
+                <span style={{ background: e.color, color: '#fff', borderRadius: 10, padding: '1px 7px', fontSize: 11, fontWeight: 800 }}>{empTotals[e.id]}</span>
+              </span>
+            )
+          })}
           {empsZero.map((e) => (
             <span key={e.id} data-testid="emp-total-chip-zero" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, background: 'var(--surface)', border: '1.5px solid var(--border)', fontSize: 12, fontWeight: 600, color: 'var(--text-2)', whiteSpace: 'nowrap', opacity: 0.6 }}>
               {e.name.split(' ')[0]}

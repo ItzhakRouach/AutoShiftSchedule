@@ -87,7 +87,8 @@ export async function fetchDashboardStats(
         name: e.name,
         nightShifts: 0,
         weekendShifts: 0,
-        requestHonoredPct: null,
+        requestedCount: 0,
+        honoredCount: 0,
       })),
     }
   }

@@ -164,20 +164,19 @@ export function aggregateFairness(
     ).length
 
     const empRequests = requests.filter((r) => r.employee_id === e.id && !r.is_off)
-    let honored = 0
-    let total = 0
+    let honoredCount = 0
+    let requestedCount = 0
     for (const req of empRequests) {
       if (!req.preferred_shift_ids || req.preferred_shift_ids.length === 0) continue
-      total += 1
+      requestedCount += 1
       const matched = empAssignments.some(
         (a) =>
           req.preferred_shift_ids!.includes(a.shift_type_id) &&
           a.day_of_week === req.day_of_week,
       )
-      if (matched) honored += 1
+      if (matched) honoredCount += 1
     }
-    const requestHonoredPct = total > 0 ? Math.round((honored / total) * 100) : null
 
-    return { id: e.id, name: e.name, nightShifts, weekendShifts, requestHonoredPct }
+    return { id: e.id, name: e.name, nightShifts, weekendShifts, requestedCount, honoredCount }
   })
 }
