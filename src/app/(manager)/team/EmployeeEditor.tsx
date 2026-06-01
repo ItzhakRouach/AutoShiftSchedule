@@ -65,8 +65,10 @@ export function EmployeeEditor({ roles, shiftTypes, employee, onSuccess }: Emplo
   const [minShifts, setMinShifts] = useState(employee?.minShifts ?? 2)
   const [maxShifts, setMaxShifts] = useState<number | null>(employee?.maxShifts ?? null)
   const [employmentType, setEmploymentType] = useState<EmploymentType>(employee?.employmentType ?? 'full')
-  const [observesShabbat, setObservesShabbat] = useState(employee?.observesShabbat ?? false)
-  const [observesHolidays, setObservesHolidays] = useState(employee?.observesHolidays ?? false)
+  // Single toggle: Shabbat observance implies holiday observance (shabbat || holidays → both true)
+  const [observesShabbat, setObservesShabbat] = useState(
+    (employee?.observesShabbat ?? false) || (employee?.observesHolidays ?? false),
+  )
   const [mustAccept, setMustAccept] = useState(employee?.mustAccept ?? false)
   const [selectedRoleIds, setSelectedRoleIds] = useState<Set<string>>(new Set(employee?.roleIds ?? []))
   const [availability, setAvailability] = useState<AvailabilityItem[] | null>(employee?.availability ?? null)
@@ -128,7 +130,6 @@ export function EmployeeEditor({ roles, shiftTypes, employee, onSuccess }: Emplo
 
       <EmployeeSettingsToggles
         observesShabbat={observesShabbat} setObservesShabbat={setObservesShabbat}
-        observesHolidays={observesHolidays} setObservesHolidays={setObservesHolidays}
         mustAccept={mustAccept} setMustAccept={setMustAccept}
       />
 

@@ -5,7 +5,7 @@ import { Toggle } from '@/components/ui/Toggle'
 import { Icon } from '@/components/ui/Icon'
 
 interface ToggleRowDef {
-  key: 'observesShabbat' | 'observesHolidays' | 'mustAccept'
+  key: string
   label: string
   desc: string
   icon: 'moon' | 'sun' | 'shield'
@@ -14,10 +14,9 @@ interface ToggleRowDef {
 }
 
 interface EmployeeSettingsTogglesProps {
+  /** True when the employee observes both Shabbat AND holidays (combined toggle). */
   observesShabbat: boolean
   setObservesShabbat: (v: boolean) => void
-  observesHolidays: boolean
-  setObservesHolidays: (v: boolean) => void
   mustAccept: boolean
   setMustAccept: (v: boolean) => void
 }
@@ -25,27 +24,17 @@ interface EmployeeSettingsTogglesProps {
 export function EmployeeSettingsToggles({
   observesShabbat,
   setObservesShabbat,
-  observesHolidays,
-  setObservesHolidays,
   mustAccept,
   setMustAccept,
 }: EmployeeSettingsTogglesProps) {
   const rows: ToggleRowDef[] = [
     {
-      key: 'observesShabbat',
-      label: 'שומר שבת',
-      desc: 'לא ישובץ ממע"ש עד מוצ"ש',
+      key: 'observesShabbatChag',
+      label: 'שומר שבת וחג',
+      desc: 'לא ישובץ ממע"ש עד מוצ"ש ובחגים',
       icon: 'moon',
       value: observesShabbat,
       setter: setObservesShabbat,
-    },
-    {
-      key: 'observesHolidays',
-      label: 'שומר חג',
-      desc: 'לא ישובץ בחגים',
-      icon: 'sun',
-      value: observesHolidays,
-      setter: setObservesHolidays,
     },
     {
       key: 'mustAccept',
@@ -91,7 +80,15 @@ export function EmployeeSettingsToggles({
             <div style={{ fontSize: 12.5, color: 'var(--text-2)', marginTop: 1 }}>{desc}</div>
           </div>
           <Toggle checked={value} onChange={setter} />
-          <input type="hidden" name={key} value={String(value)} />
+          {/* Emit BOTH hidden fields from the single shabbat+chag toggle */}
+          {key === 'observesShabbatChag' ? (
+            <>
+              <input type="hidden" name="observesShabbat" value={String(value)} />
+              <input type="hidden" name="observesHolidays" value={String(value)} />
+            </>
+          ) : (
+            <input type="hidden" name={key} value={String(value)} />
+          )}
         </div>
       ))}
     </>

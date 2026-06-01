@@ -45,14 +45,14 @@ const EMP = [
   // mustAccept #2: strong night preference
   { name: 'שירה כהן',   roles: ['אחמ״ש', 'מוקדן', 'מאבטח'], type: 'full', min: 5, mustAccept: true, color: '#13A98E' },
 
-  // shabbat observers (3)
-  { name: 'דני לוי',    roles: ['מוקדן', 'מאבטח'], type: 'full', min: 5, shabbat: true, color: '#E0902A' },
-  { name: 'מאור גבאי',  roles: ['אחמ״ש', 'מאבטח'], type: 'full', min: 5, shabbat: true, color: '#EB6A4E' },
-  { name: 'טל אבני',    roles: ['אחמ״ש', 'מוקדן', 'מאבטח'], type: 'full', min: 5, shabbat: true, color: '#5B61D6' },
+  // shabbat+chag observers (3) — shabbat implies holidays per the combined toggle
+  { name: 'דני לוי',    roles: ['מוקדן', 'מאבטח'], type: 'full', min: 5, shabbat: true, holidays: true, color: '#E0902A' },
+  { name: 'מאור גבאי',  roles: ['אחמ״ש', 'מאבטח'], type: 'full', min: 5, shabbat: true, holidays: true, color: '#EB6A4E' },
+  { name: 'טל אבני',    roles: ['אחמ״ש', 'מוקדן', 'מאבטח'], type: 'full', min: 5, shabbat: true, holidays: true, color: '#5B61D6' },
 
-  // holiday observers (2)
-  { name: 'אבי פרץ',    roles: ['אחמ״ש', 'מאבטח'], type: 'full', min: 5, holidays: true, color: '#B05AB5' },
-  { name: 'ליאת אזולאי', roles: ['מוקדן', 'מאבטח'], type: 'part', min: 2, max: 4, holidays: true, color: '#2E9E6B' },
+  // holiday observers (2) — holiday-only employees also have shabbat=true for consistency
+  { name: 'אבי פרץ',    roles: ['אחמ״ש', 'מאבטח'], type: 'full', min: 5, shabbat: true, holidays: true, color: '#B05AB5' },
+  { name: 'ליאת אזולאי', roles: ['מוקדן', 'מאבטח'], type: 'part', min: 2, max: 4, shabbat: true, holidays: true, color: '#2E9E6B' },
 
   // rest of the roster
   { name: 'יוסי מזרחי', roles: ['מאבטח'], type: 'full', min: 5, weekdayNights: true, color: '#D94F6A' },
@@ -190,7 +190,7 @@ async function main() {
   console.log('\n✅ Demo seeded.')
   console.log('   Manager login →  email: ' + DEMO_EMAIL + '   password: ' + DEMO_PASSWORD)
   console.log('   Workplace: מוקד ראשי · employees: ' + EMPLOYEES.length + ' · requirements + a week of requests ready.')
-  console.log('   mustAccept: עומר (morning) + שירה (night)  |  shabbat: דני, מאור, טל  |  holidays: אבי, ליאת')
+  console.log('   mustAccept: עומר (morning) + שירה (night)  |  שומר שבת וחג: דני, מאור, טל, אבי, ליאת')
   console.log('   Log in, open שיבוץ, press "צור סידור אוטומטי", then פרסם — and check the dashboard.')
 }
 main().catch((e) => { console.error(e); process.exit(1) })

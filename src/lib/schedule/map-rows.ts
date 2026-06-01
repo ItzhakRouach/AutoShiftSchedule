@@ -137,7 +137,9 @@ export function mapToEngineInput(rows: MapInput): MapResult {
     minShifts: e.min_shifts_per_week ?? 0,
     maxShifts: e.max_shifts_per_week ?? null,
     observesShabbat: e.observes_shabbat ?? false,
-    observesHolidays: e.observes_holidays ?? false,
+    // Safety-net: Shabbat observance implies holiday observance (handles legacy rows
+    // where only observes_shabbat=true was saved before the combined toggle was introduced).
+    observesHolidays: (e.observes_holidays ?? false) || (e.observes_shabbat ?? false),
     mustAccept: e.must_accept ?? false,
     availability: availByEmp[e.id] ?? null,
   }))

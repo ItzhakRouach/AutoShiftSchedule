@@ -38,9 +38,9 @@ test('add an employee, verify they appear in the team list', async ({ page }) =>
   await firstRoleSwitch.click()
   await expect(firstRoleSwitch).toHaveAttribute('aria-checked', 'true')
 
-  // Toggle שומר שבת on — now the 4th switch (3 roles + after the availability toggle)
-  // The order of switches: 3 roles, then availability toggle, then 3 settings toggles
-  // shabbat is the 5th switch (index 4)
+  // Toggle "שומר שבת וחג" on — single combined toggle (was two separate toggles before).
+  // Order of switches: 3 roles, then availability toggle, then 2 settings toggles
+  // (שומר שבת וחג + חובה לקבל בקשות). Combined shabbat+chag is the 5th switch (index 4).
   const shabbatSwitch = page.getByRole('switch').nth(4)
   await shabbatSwitch.click()
   await expect(shabbatSwitch).toHaveAttribute('aria-checked', 'true')

@@ -51,7 +51,7 @@ describe('mapToEngineInput', () => {
     expect(nameToRoleId).toEqual({ מאבטח: 'r1' })
   })
 
-  it('maps employee fields', () => {
+  it('maps employee fields (shabbat observer gets observesHolidays=true via safety-net derive)', () => {
     const { input } = mapToEngineInput(baseRows())
     const e = input.employees[0]
     expect(e).toMatchObject({
@@ -60,9 +60,22 @@ describe('mapToEngineInput', () => {
       minShifts: 2,
       maxShifts: 5,
       observesShabbat: true,
-      observesHolidays: false,
+      // shabbat implies holidays — adapter derives this even if DB column is false
+      observesHolidays: true,
       mustAccept: false,
     })
+  })
+
+  it('adapter derive: shabbat=false, holidays=false → observesHolidays=false', () => {
+    const { input } = mapToEngineInput(
+      baseRows({
+        employees: [{
+          id: 'e1', employment_type: 'full', min_shifts_per_week: 2,
+          max_shifts_per_week: 5, observes_shabbat: false, observes_holidays: false, must_accept: false,
+        }],
+      }),
+    )
+    expect(input.employees[0].observesHolidays).toBe(false)
   })
 
   it('groups availability by day → shift keys; no rows = null (unrestricted)', () => {

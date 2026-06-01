@@ -4,8 +4,13 @@ export function parseFormData(formData: FormData) {
   const name = (formData.get('name') as string | null) ?? ''
   const phone = (formData.get('phone') as string | null) ?? ''
   const minShifts = parseInt((formData.get('minShifts') as string | null) ?? '0', 10)
-  const observesShabbat = formData.get('observesShabbat') === 'true'
-  const observesHolidays = formData.get('observesHolidays') === 'true'
+  // The UI emits a single "שומר שבת וחג" toggle that sets BOTH hidden fields to the
+  // same value. We still parse each field individually so legacy/direct-POST payloads
+  // that only send one field still work. The combined flag is shabbat OR holidays.
+  const observesShabbatRaw = formData.get('observesShabbat') === 'true'
+  const observesHolidaysRaw = formData.get('observesHolidays') === 'true'
+  const observesShabbat = observesShabbatRaw || observesHolidaysRaw
+  const observesHolidays = observesShabbatRaw || observesHolidaysRaw
   const mustAccept = formData.get('mustAccept') === 'true'
 
   // employmentType
