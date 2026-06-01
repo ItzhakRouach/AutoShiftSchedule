@@ -68,6 +68,8 @@ export function computeStats(
   const stats: EngineResult['stats'] = {}
   for (const e of employees) {
     const list = committed[e.id]
+    const byType = { morning: 0, noon: 0, night: 0 }
+    for (const a of list) byType[a.shift]++
     stats[e.id] = {
       employeeId: e.id,
       shifts: list.length,
@@ -75,6 +77,7 @@ export function computeStats(
       belowMin: list.length < e.minShifts,
       requestsSatisfied: satisfied[e.id],
       assignments: list,
+      byType,
     }
   }
   return stats

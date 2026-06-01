@@ -1,5 +1,6 @@
 // Soft-objective candidate scoring. Lower comparator output = higher priority.
 import type { Assignment, EmploymentType, Employee } from './types'
+import { fairnessScore } from './fairness'
 
 /** Employment-type priority: full-time first, then part-time, then student. */
 export const EMPLOYMENT_RANK: Record<EmploymentType, number> = {
@@ -31,7 +32,8 @@ export interface CandidateState {
  *      only until min is met. Once at/above min, tier grants no priority.
  *   3. Requested-this-shift      (requester before non-requester).
  *   4. >=2-request floor         (fewer satisfied requests first — see floorRank).
- *   5. Fairness                  (fewer total assigned shifts).
+ *   5. Fairness (deterministic fairnessScore): even shift-count distribution
+ *      (dominant), night/weekend fairness, and a shift-type-variety nudge.
  *   6. Lottery rank (FIX 1)      (final deterministic tie-break).
  *
  * Consequence: a below-min full-timer beats a part-time requester (step 2), but
@@ -63,10 +65,11 @@ export function compareCandidates(a: CandidateState, b: CandidateState): number 
     if (af !== bf) return af - bf
   }
 
-  // 5. fairness: fewer total shifts so far.
-  if (a.current.length !== b.current.length) {
-    return a.current.length - b.current.length
-  }
+  // 5. fairness: deterministic fairnessScore (even load dominant + night/weekend
+  // fairness + shift-type-variety nudge). Lower score = higher priority.
+  const af = fairnessScore(a.current)
+  const bf = fairnessScore(b.current)
+  if (af !== bf) return af - bf
 
   // 6. deterministic lottery tie-break.
   return a.lotteryRank - b.lotteryRank

@@ -47,13 +47,48 @@ reservation pre-pass via `dayfill.ts isTopPrecedenceFor`). Lower comparator outp
 3. **Requested-this-shift** — a requester ranks above a non-requester.
 4. **≥2-request floor** — fewer satisfied requests so far ranks higher, driving the guarantee of **≥2**
    requests per employee when possible (else **≥1**). (Per-employee request-satisfaction floor.)
-5. **Fairness** — fewer total assigned shifts.
+5. **Fairness & diversity** — a deterministic `fairnessScore` (see below) replaces the old raw
+   shift-count tie-break. Lower = higher priority.
 6. **Lottery** — deterministic per-employee rank (seeded for reproducibility & testing) as the final
    tie-break. Losers of a contended slot go unfilled.
 
 Consequence: a **below-min** full-timer may pre-empt a part-time requester (step 2), but an **at-min**
 full-timer loses to a part-time requester (step 3 decides). Ideal **16h rest** for guards remains a soft
 preference (not a hard cap).
+
+### Fairness & diversity (soft, step 5) — coverage-preserving
+All four dimensions are SOFT: they rank **below** the hard constraints and the higher soft objectives
+(steps 1–4) and **above** the lottery (step 6). **Coverage never regresses** — these are tie-breaks and
+swaps only; the engine still maximises filled slots exactly as before, and determinism is preserved (same
+seed + input → identical output; all fairness signals are computed, not random).
+
+**`fairnessScore(current)`** (`fairness.ts`) — the step-5 comparator key, lower wins. Pure function of an
+employee's committed assignments:
+`100·load + 8·unpopularLoad + 3·typeSpread`, where
+- **load** = total committed shifts → **even shift-count distribution** (dim 1). Dominant weight, so even
+  load is always the primary signal and is never overturned by the lower terms within a realistic week
+  (each employee's min/max still bounds load — no global cap is added).
+- **unpopularLoad** = count of the employee's shifts that are a **night** OR fall on **Fri (day 5) / Sat
+  (day 6)** → **night/weekend fairness** (dim 3): spreads the unpopular shifts.
+- **typeSpread** = `max − min` of the employee's morning/noon/night counts → a nudge toward **shift-type
+  variety** (dim 2).
+
+**Diversity post-pass** (`diversity.ts`, run after the 8h general fill and before the 12h pass) finishes the
+two SLOT-SPECIFIC dimensions a per-day employee ordering cannot fully control:
+- **dim 2 — shift-type variety**: don't strand someone on a single type.
+- **dim 4 — co-worker rotation**: vary who works alongside whom. **"Worked together" = assigned to the same
+  `day` AND same `shift`** (the same physical shift block); the repetition penalty is `Σ max(0, shared − 1)`
+  over employee pairs.
+
+It minimises a global objective `diversityCost = Σ typeSpread(emp) + co-worker-repetition`. Each pass it
+scans all committed-8h assignment pairs of two **different** employees in deterministic (input) order and
+applies the single **best strictly-improving legal swap** of their occupants — keeping every required slot
+filled (a swap only changes WHO fills a slot, never how many are filled) and re-checking all 8 hard
+constraints for both employees. A strict-decrease rule plus a fixed pass cap (24) guarantee termination and
+reproducibility. Because swaps never change any employee's total shift count, steps 1–4 (reach-min,
+requested, the ≥2-request floor) and the even-load signal are all preserved.
+
+Per-shift-type counts are surfaced on `EmployeeStat.byType { morning, noon, night }` for transparency/tests.
 
 ## 12h auto-coverage policy (CONFIRMED product rules)
 Base shifts are 8h (morning 07–15 / noon 15–23 / night 23–07). **Full coverage is mandatory.** After the

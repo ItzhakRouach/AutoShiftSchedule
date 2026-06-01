@@ -13,6 +13,14 @@ export {
 export { runTwelveFill } from './twelve-fill'
 export { canTwelve } from './twelve-rules'
 export { maxMatch } from './matching'
+export {
+  fairnessScore,
+  byType,
+  typeSpread,
+  unpopularLoad,
+  WEEKEND_DAYS,
+} from './fairness'
+export { runDiversityPass, diversityCost } from './diversity'
 export { mulberry32, shuffle, draw, hashStr, lotteryRank } from './lottery'
 export { restOk, gapHours, shiftStartAbs, shiftEndAbs } from './rest'
 export { isAssignable } from './constraints'

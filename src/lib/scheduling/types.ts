@@ -107,6 +107,8 @@ export interface EmployeeStat {
   belowMin: boolean
   requestsSatisfied: number
   assignments: Assignment[]
+  /** per-shift-type counts (for fairness transparency / tests). */
+  byType: { morning: number; noon: number; night: number }
 }
 
 export interface Coverage {
