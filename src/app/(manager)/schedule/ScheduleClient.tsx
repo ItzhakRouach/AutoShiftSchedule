@@ -13,6 +13,7 @@ import { FeasibilityBanner } from './FeasibilityBanner'
 import { WeekTable } from './WeekTable'
 import { RequestsOverview } from './RequestsOverview'
 import { SwapEditor, type SlotCtx } from './SwapEditor'
+import { TwelvePairEditor } from './TwelvePairEditor'
 import { TwelveHourList, Generating } from './parts'
 import { RegenerateConfirm } from './RegenerateConfirm'
 import { ShareButton } from './ShareButton'
@@ -36,6 +37,7 @@ export function ScheduleClient({ view, editMeta }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [published, setPublished] = useState(view.status === 'published')
   const [slot, setSlot] = useState<SlotCtx | null>(null)
+  const [pairDay, setPairDay] = useState<number | null>(null)
   const [showConfirm, setShowConfirm] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('schedule')
   const [running, startRun] = useTransition()
@@ -150,7 +152,7 @@ export function ScheduleClient({ view, editMeta }: Props) {
 
       {viewMode === 'schedule' && hasResult && (
         <>
-          <WeekTable view={view} onSlot={editMeta ? setSlot : undefined} />
+          <WeekTable view={view} onSlot={editMeta ? setSlot : undefined} onDayPair={editMeta ? setPairDay : undefined} />
           <div className="schedule-controls">
           <TwelveHourList suggestions={suggestions} roles={view.roles} />
           <div style={{ height: 14 }} />
@@ -176,6 +178,10 @@ export function ScheduleClient({ view, editMeta }: Props) {
 
       {editMeta && (
         <SwapEditor slot={slot} onClose={() => setSlot(null)} view={view} meta={editMeta} />
+      )}
+
+      {editMeta && (
+        <TwelvePairEditor day={pairDay} onClose={() => setPairDay(null)} view={view} meta={editMeta} />
       )}
     </div>
   )

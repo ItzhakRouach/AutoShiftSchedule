@@ -7,13 +7,14 @@ import type { ScheduleView } from '@/lib/schedule/view-data'
 import type { SlotCtx } from './SwapEditor'
 import type { ShiftKey } from '@/lib/scheduling/types'
 
-interface Props { view: ScheduleView; onSlot?: (slot: SlotCtx) => void }
+interface Props { view: ScheduleView; onSlot?: (slot: SlotCtx) => void; onDayPair?: (day: number) => void }
 
 const BASE_SHIFTS: ShiftKey[] = ['morning', 'noon', 'night']
 
 const S = {
   sticky: { position: 'sticky', background: 'var(--surface-2)', fontWeight: 700, borderLeft: '1px solid var(--border)', borderBottom: '1px solid var(--border)', zIndex: 2 } as React.CSSProperties,
   cellBase: { padding: '10px 12px', verticalAlign: 'middle', borderLeft: '1px solid var(--border)', borderBottom: '1px solid var(--border)', fontSize: 13, textAlign: 'center' } as React.CSSProperties,
+  dayPairBtn: { marginTop: 4, padding: '2px 8px', fontSize: 10.5, fontWeight: 700, borderRadius: 99, border: '1px solid var(--accent)', background: 'var(--accent-soft)', color: 'var(--accent)', cursor: 'pointer', fontFamily: 'var(--font)' } as React.CSSProperties,
 }
 
 function Badge() {
@@ -90,7 +91,7 @@ function Cell({ entries, empById, isFilled, selectedId, onClick, onSelectEmp }: 
   )
 }
 
-export function WeekTable({ view, onSlot }: Props) {
+export function WeekTable({ view, onSlot, onDayPair }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const weekGrid = buildWeekGrid(view)
   const empTotals = buildEmpTotals(view, view.employees)
@@ -113,8 +114,7 @@ export function WeekTable({ view, onSlot }: Props) {
     <div>
       {selectedId && <div style={{ direction: 'rtl', marginBottom: 8, fontSize: 12, color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: 8 }}>
         <span>מוצג: <strong style={{ color: empById.get(selectedId)?.color }}>{empById.get(selectedId)?.name}</strong></span>
-        <button onClick={() => setSelectedId(null)} style={{ fontSize: 11, padding: '2px 8px', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface)', cursor: 'pointer', color: 'var(--text-2)' }}>נקה</button>
-      </div>}
+        <button onClick={() => setSelectedId(null)} style={{ fontSize: 11, padding: '2px 8px', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface)', cursor: 'pointer', color: 'var(--text-2)' }}>נקה</button></div>}
       <div data-testid="week-table" style={{ overflowX: 'auto', direction: 'rtl', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
         <table style={{ borderCollapse: 'collapse', minWidth: 700, tableLayout: 'auto', width: '100%' }}>
           <thead>
@@ -125,6 +125,9 @@ export function WeekTable({ view, onSlot }: Props) {
                 <th key={d.index} style={{ ...S.sticky, position: undefined, padding: '10px 8px', fontSize: 12, textAlign: 'center', minWidth: 96 }}>
                   <div style={{ fontWeight: 800, fontSize: 13 }}>{d.short}</div>
                   <div style={{ fontWeight: 500, color: 'var(--text-2)', fontSize: 11, marginTop: 2 }}>{d.date}</div>
+                  {onDayPair && (
+                    <button data-testid="day-pair-btn" title="החל צמד משמרת 12 שעות ליום זה" onClick={() => onDayPair(d.index)} style={S.dayPairBtn}>12ש׳</button>
+                  )}
                 </th>
               ))}
             </tr>
@@ -170,7 +173,6 @@ export function WeekTable({ view, onSlot }: Props) {
           </tbody>
         </table>
       </div>
-
       <div data-testid="emp-totals-summary" style={{ direction: 'rtl', marginTop: 16, padding: '14px 16px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--surface-2)' }}>
         <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-2)', marginBottom: 10 }}>סה״כ משמרות לעובד</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -182,15 +184,13 @@ export function WeekTable({ view, onSlot }: Props) {
                 onClick={() => toggleSelect(e.id)}
                 title={isSelected ? 'לחץ לביטול הסימון' : 'לחץ לסימון עובד'}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, background: `${e.color}22`, border: isSelected ? `2px solid ${e.color}` : `1.5px solid ${e.color}55`, fontSize: 12, fontWeight: 700, color: e.color, whiteSpace: 'nowrap', cursor: 'pointer', opacity: selectedId && !isSelected ? 0.45 : 1, transition: 'opacity 0.15s, border 0.15s' }}>
-                {e.name.split(' ')[0]}
-                <span style={{ background: e.color, color: '#fff', borderRadius: 10, padding: '1px 7px', fontSize: 11, fontWeight: 800 }}>{empTotals[e.id]}</span>
+                {e.name.split(' ')[0]}<span style={{ background: e.color, color: '#fff', borderRadius: 10, padding: '1px 7px', fontSize: 11, fontWeight: 800 }}>{empTotals[e.id]}</span>
               </span>
             )
           })}
           {empsZero.map((e) => (
             <span key={e.id} data-testid="emp-total-chip-zero" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, background: 'var(--surface)', border: '1.5px solid var(--border)', fontSize: 12, fontWeight: 600, color: 'var(--text-2)', whiteSpace: 'nowrap', opacity: 0.6 }}>
-              {e.name.split(' ')[0]}
-              <span style={{ background: 'var(--border)', color: 'var(--text-2)', borderRadius: 10, padding: '1px 7px', fontSize: 11, fontWeight: 700 }}>0</span>
+              {e.name.split(' ')[0]}<span style={{ background: 'var(--border)', color: 'var(--text-2)', borderRadius: 10, padding: '1px 7px', fontSize: 11, fontWeight: 700 }}>0</span>
             </span>
           ))}
         </div>
