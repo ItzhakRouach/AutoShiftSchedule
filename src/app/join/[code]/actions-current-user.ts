@@ -6,41 +6,34 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { pickUniqueColor } from '@/lib/employees/colors'
 import { getEmploymentDefaults } from './employment-defaults'
+import type { JoinState } from './actions'
 
-export type JoinState = {
-  error?: string
-  fieldErrors?: Record<string, string>
-}
-
-// NOTE: invite codes are intentionally REUSABLE — a single workplace-level
-// code can be redeemed by many employees until it expires. We do NOT consume
-// or single-use the code here; only expiry gates redemption.
-
-const JoinSchema = z.object({
+const CurrentUserJoinSchema = z.object({
   name: z
     .string()
     .min(2, 'שם חייב להכיל לפחות 2 תווים')
     .max(120, 'שם ארוך מדי (מקסימום 120 תווים)'),
-  email: z.string().email('אימייל לא תקין'),
-  password: z.string().min(8, 'הסיסמה חייבת לפחות 8 תווים'),
   employmentType: z.enum(['full', 'part', 'student'], { error: 'יש לבחור סוג משרה' }),
   observesShabbat: z.boolean(),
 })
 
-export async function joinWithInvite(
+/**
+ * Server action for an already-authenticated user with role `none` who wants
+ * to join a workplace via an invite code, keeping their existing account.
+ * No email/password fields — the user is already logged in.
+ */
+export async function joinAsCurrentUser(
   code: string,
   prevState: JoinState,
   formData: FormData,
 ): Promise<JoinState> {
   const raw = {
     name: (formData.get('name') as string ?? '').trim(),
-    email: (formData.get('email') as string ?? '').trim(),
-    password: formData.get('password') as string ?? '',
     employmentType: formData.get('employmentType') as string ?? 'full',
     observesShabbat: formData.get('observesShabbat') === 'true',
   }
 
-  const parsed = JoinSchema.safeParse(raw)
+  const parsed = CurrentUserJoinSchema.safeParse(raw)
   if (!parsed.success) {
     const fieldErrors: Record<string, string> = {}
     for (const issue of parsed.error.issues) {
@@ -50,21 +43,19 @@ export async function joinWithInvite(
     return { fieldErrors }
   }
 
-  const { name, email, password, employmentType, observesShabbat } = parsed.data
+  const { name, employmentType, observesShabbat } = parsed.data
 
-  // Defensive: this flow creates a brand-new account. If someone is already
-  // authenticated, refuse — they should be routed by their role, not join here.
-  const supabaseAuth = await createClient()
+  const supabase = await createClient()
   const {
     data: { user: currentUser },
-  } = await supabaseAuth.auth.getUser()
-  if (currentUser) {
-    return { error: 'אתה כבר מחובר. התנתק כדי להצטרף עם חשבון אחר.' }
+  } = await supabase.auth.getUser()
+
+  if (!currentUser) {
+    return { error: 'לא מחובר. אנא התחבר ונסה שוב.' }
   }
 
   const admin = createAdminClient()
 
-  // Re-validate invite
   const now = new Date().toISOString()
   const { data: invite } = await admin
     .from('invites')
@@ -78,49 +69,12 @@ export async function joinWithInvite(
   }
 
   const workplaceId = invite.workplace_id
-  const supabase = supabaseAuth
-
-  const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-    email,
-    password,
-  })
-
-  let userId: string | undefined
-
-  if (signUpError) {
-    const isExisting =
-      signUpError.code === 'user_already_exists' ||
-      signUpError.message?.includes('already registered') ||
-      signUpError.message?.includes('already been registered')
-
-    if (!isExisting) {
-      return { error: 'שגיאה בהרשמה, נסה שוב' }
-    }
-
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-
-    if (signInError || !signInData.user) {
-      return { error: 'האימייל כבר קיים. בדוק את הסיסמה ונסה שוב.' }
-    }
-
-    userId = signInData.user.id
-  } else {
-    if (!signUpData.session) {
-      return { error: 'נשלח אימייל אימות. אנא אשרו את האימייל ואז התחברו.' }
-    }
-    userId = signUpData.user?.id
-  }
-
-  if (!userId) return { error: 'שגיאה ביצירת המשתמש' }
 
   const { data: existing } = await admin
     .from('employees')
     .select('id')
     .eq('workplace_id', workplaceId)
-    .eq('user_id', userId)
+    .eq('user_id', currentUser.id)
     .maybeSingle()
 
   if (!existing) {
@@ -136,7 +90,7 @@ export async function joinWithInvite(
 
     const { error: empError } = await admin.from('employees').insert({
       workplace_id: workplaceId,
-      user_id: userId,
+      user_id: currentUser.id,
       name,
       status: 'active',
       color,
