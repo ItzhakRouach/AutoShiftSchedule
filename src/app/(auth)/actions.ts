@@ -1,12 +1,22 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import { headers } from 'next/headers'
+import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { signInSchema, signUpSchema } from '@/lib/validation/auth'
 
 export type AuthState = {
   error?: string
+  ok?: boolean
   fieldErrors?: Record<string, string>
+}
+
+async function getBaseUrl(): Promise<string> {
+  const h = await headers()
+  const host = h.get('host') ?? 'localhost:3000'
+  const proto = host.startsWith('localhost') ? 'http' : 'https'
+  return process.env.NEXT_PUBLIC_BASE_URL ?? `${proto}://${host}`
 }
 
 export async function signIn(prevState: AuthState, formData: FormData): Promise<AuthState> {
@@ -81,4 +91,45 @@ export async function signOut(): Promise<void> {
   const supabase = await createClient()
   await supabase.auth.signOut()
   redirect('/login')
+}
+
+/**
+ * Send a password-reset email. Always reports success (never leaks whether an
+ * account exists). The link lands on /auth/callback which establishes a session
+ * and forwards to /reset-password.
+ */
+export async function requestPasswordReset(
+  prevState: AuthState,
+  formData: FormData,
+): Promise<AuthState> {
+  const email = (formData.get('email') as string ?? '').trim()
+  const parsed = z.string().email().safeParse(email)
+  if (!parsed.success) return { fieldErrors: { email: 'אימייל לא תקין' } }
+
+  const baseUrl = await getBaseUrl()
+  const supabase = await createClient()
+  await supabase.auth.resetPasswordForEmail(parsed.data, {
+    redirectTo: `${baseUrl}/auth/callback?next=/reset-password`,
+  })
+
+  return { ok: true }
+}
+
+/** Set a new password for the currently-authenticated (recovery) session. */
+export async function updatePassword(
+  prevState: AuthState,
+  formData: FormData,
+): Promise<AuthState> {
+  const password = (formData.get('password') as string) ?? ''
+  const parsed = z.string().min(8, 'הסיסמה חייבת להכיל לפחות 8 תווים').safeParse(password)
+  if (!parsed.success) return { fieldErrors: { password: parsed.error.issues[0].message } }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'הקישור פג תוקף או אינו תקין. בקשו קישור חדש לאיפוס.' }
+
+  const { error } = await supabase.auth.updateUser({ password: parsed.data })
+  if (error) return { error: 'שגיאה בעדכון הסיסמה, נסו שוב' }
+
+  redirect('/dashboard')
 }

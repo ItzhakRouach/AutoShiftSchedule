@@ -103,6 +103,13 @@ function LoginForm() {
             error={state.fieldErrors?.password}
           />
 
+          <Link
+            href="/forgot-password"
+            style={{ alignSelf: 'flex-start', fontSize: 13, color: 'var(--text-2)', textDecoration: 'none', marginTop: -6 }}
+          >
+            שכחתי סיסמה?
+          </Link>
+
           {state.error && (
             <p
               role="alert"

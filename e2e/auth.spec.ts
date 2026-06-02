@@ -31,6 +31,25 @@ test('/login without ?as defaults to manager copy (signup link visible)', async 
   await expect(page.getByRole('link', { name: 'הרשמה' })).toBeVisible()
 })
 
+// ── Forgot / reset password ────────────────────────────────────────────────
+
+test('forgot-password: reachable from login, submitting shows a success message', async ({ page }) => {
+  await page.goto('/login')
+  await page.getByRole('link', { name: 'שכחתי סיסמה?' }).click()
+  await expect(page).toHaveURL(/\/forgot-password/)
+  await expect(page.getByRole('heading', { name: 'שכחתי סיסמה' })).toBeVisible()
+
+  const uuid = crypto.randomUUID().replace(/-/g, '').slice(0, 10)
+  await page.getByLabel('אימייל').fill(`nobody+${uuid}@example.com`)
+  await page.getByRole('button', { name: 'שליחת קישור לאיפוס' }).click()
+  await expect(page.getByText(/נשלח אליו קישור לאיפוס/)).toBeVisible({ timeout: 10000 })
+})
+
+test('reset-password page renders the new-password form', async ({ page }) => {
+  await page.goto('/reset-password')
+  await expect(page.getByRole('heading', { name: 'בחירת סיסמה חדשה' })).toBeVisible()
+})
+
 // ── Existing auth tests ────────────────────────────────────────────────────
 
 test('unauthenticated /dashboard redirects to /login', async ({ page }) => {

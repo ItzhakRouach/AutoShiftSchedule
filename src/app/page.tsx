@@ -56,23 +56,6 @@ export default function Home() {
         </p>
       </div>
 
-      {/* Section label */}
-      <div
-        style={{
-          fontSize: 13,
-          fontWeight: 600,
-          color: 'var(--text-3)',
-          marginBottom: 11,
-          paddingInlineStart: 4,
-          alignSelf: 'flex-start',
-          width: '100%',
-          maxWidth: 380,
-          direction: 'rtl',
-        }}
-      >
-        בחרו כיצד להיכנס
-      </div>
-
       {/* Role cards */}
       <div
         style={{
