@@ -78,7 +78,6 @@ function TopBar({ tabs }: { tabs: Tab[] }) {
         style={{
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
           padding: '10px 16px',
           paddingTop: 'calc(10px + env(safe-area-inset-top))',
         }}
@@ -94,6 +93,7 @@ function TopBar({ tabs }: { tabs: Tab[] }) {
             justifyContent: 'center',
             width: 40,
             height: 40,
+            flexShrink: 0,
             borderRadius: 'var(--r-md)',
             border: '1px solid var(--border)',
             background: open ? 'var(--accent-soft)' : 'var(--surface)',
@@ -103,9 +103,11 @@ function TopBar({ tabs }: { tabs: Tab[] }) {
         >
           <HamburgerIcon open={open} />
         </button>
-        <span style={{ fontSize: 19, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>
+        <span style={{ flex: 1, textAlign: 'center', fontSize: 19, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>
           מִשְׁמֶרֶת
         </span>
+        {/* Spacer to keep the brand visually centered opposite the hamburger. */}
+        <span aria-hidden style={{ width: 40, flexShrink: 0 }} />
       </div>
 
       {open && (
@@ -118,7 +120,7 @@ function TopBar({ tabs }: { tabs: Tab[] }) {
             className="nav-dropdown"
             style={{
               position: 'absolute',
-              insetInlineEnd: 12,
+              insetInlineStart: 12,
               top: 'calc(100% + 6px)',
               zIndex: 2,
               width: 'min(280px, calc(100vw - 24px))',
