@@ -1,5 +1,5 @@
 // Grid construction, requirement iteration, warnings & coverage. Pure helpers.
-import { ROLES, SHIFT_META } from '@/lib/domain/constants'
+import { SHIFT_META } from '@/lib/domain/constants'
 import {
   BASE_SHIFTS,
   type Assignment,
@@ -12,13 +12,30 @@ import {
   type Warning,
 } from './types'
 
+/**
+ * All role identifiers (names) present in the input — derived from the
+ * requirements and the employees' held roles. Data-driven so ANY number of
+ * configurable roles works (no hardcoded 3-role assumption).
+ */
+export function rolesInInput(input: EngineInput): string[] {
+  const set = new Set<string>()
+  for (const e of input.employees) for (const r of e.roleIds) set.add(r)
+  for (const day of Object.values(input.requirements)) {
+    for (const byShift of Object.values(day)) {
+      for (const roleId of Object.keys(byShift)) set.add(roleId)
+    }
+  }
+  return [...set]
+}
+
 export function emptyGrid(input: EngineInput): Grid {
+  const roles = rolesInInput(input)
   const grid: Grid = {}
   for (const meta of input.days) {
     grid[meta.index] = {} as Record<ShiftKey, Record<string, string[]>>
     for (const shift of BASE_SHIFTS) {
       grid[meta.index][shift] = {}
-      for (const role of ROLES) grid[meta.index][shift][role] = []
+      for (const role of roles) grid[meta.index][shift][role] = []
     }
   }
   return grid

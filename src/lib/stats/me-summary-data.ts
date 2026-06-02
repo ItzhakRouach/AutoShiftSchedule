@@ -6,11 +6,18 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { summarizeEmployee, type EmployeeSummary } from './employee-summary'
 
+export interface MeSummaryRole { name: string; color: string }
+export interface MeSummaryData {
+  summary: EmployeeSummary
+  /** Active roles of the workplace (name + color) for the breakdown display. */
+  roles: MeSummaryRole[]
+}
+
 export async function getMeSummary(
   supabase: SupabaseClient,
   employeeId: string,
   workplaceId: string,
-): Promise<EmployeeSummary | null> {
+): Promise<MeSummaryData | null> {
   const { data: period } = await supabase
     .from('schedule_periods')
     .select('id')
@@ -33,10 +40,12 @@ export async function getMeSummary(
       .eq('period_id', period.id)
       .eq('employee_id', employeeId),
     supabase.from('shift_types').select('id, key').eq('workplace_id', workplaceId),
-    supabase.from('roles').select('id, name').eq('workplace_id', workplaceId),
+    supabase.from('roles').select('id, name, color, rank').eq('workplace_id', workplaceId).eq('is_active', true).order('rank', { ascending: false }),
   ])
 
   const shiftKeyById = new Map((shiftTypes ?? []).map((s) => [s.id, s.key]))
   const roleNameById = new Map((roles ?? []).map((r) => [r.id, r.name]))
-  return summarizeEmployee(assigns ?? [], reqs ?? [], shiftKeyById, roleNameById)
+  const summary = summarizeEmployee(assigns ?? [], reqs ?? [], shiftKeyById, roleNameById)
+  const roleList: MeSummaryRole[] = (roles ?? []).map((r) => ({ name: r.name, color: r.color ?? '#888888' }))
+  return { summary, roles: roleList }
 }

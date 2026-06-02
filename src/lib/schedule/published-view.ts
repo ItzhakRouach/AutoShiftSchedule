@@ -8,6 +8,7 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { formatHebDate } from '@/lib/dates/week'
 import { weekDatesFrom } from './map-rows'
+import { shiftMetaFromRow, type ShiftDisplay } from '@/lib/domain/meta'
 import { buildRequestedSet, type ScheduleView, type ViewGrid, type ViewTwelve, type ViewRequest } from './view-data'
 import type { ShiftKey } from '@/lib/scheduling/types'
 
@@ -35,13 +36,13 @@ export async function getPublishedScheduleView(
     { data: shiftTypesRaw },
     { data: requestsRaw },
   ] = await Promise.all([
-    supabase.from('roles').select('id, name').eq('workplace_id', workplaceId).order('name'),
+    supabase.from('roles').select('id, name, color, rank').eq('workplace_id', workplaceId).eq('is_active', true).order('rank', { ascending: false }),
     supabase.from('employees').select('id, name, color').eq('workplace_id', workplaceId).order('name'),
     supabase
       .from('assignments')
       .select('employee_id, day_of_week, shift_type_id, role_id')
       .eq('period_id', period.id),
-    supabase.from('shift_types').select('id, key').eq('workplace_id', workplaceId),
+    supabase.from('shift_types').select('id, key, name, color, start_hour, hours').eq('workplace_id', workplaceId),
     supabase
       .from('requests')
       .select('employee_id, day_of_week, is_off, preferred_shift_ids')
@@ -50,9 +51,11 @@ export async function getPublishedScheduleView(
 
   const idToKey: Record<string, string> = {}
   const shiftTypeIdByKey: Record<string, string> = {}
+  const shiftMeta: Record<string, ShiftDisplay> = {}
   for (const st of shiftTypesRaw ?? []) {
     idToKey[st.id] = st.key
     shiftTypeIdByKey[st.key] = st.id
+    shiftMeta[st.key] = shiftMetaFromRow(st)
   }
 
   const grid: ViewGrid = {}
@@ -89,12 +92,13 @@ export async function getPublishedScheduleView(
     weekStart: period.week_start_date,
     days,
     shiftKeys: ['morning', 'noon', 'night'] as ShiftKey[],
-    roles: (rolesRaw ?? []).map((r) => ({ id: r.id, name: r.name })),
+    roles: (rolesRaw ?? []).map((r) => ({ id: r.id, name: r.name, color: r.color, rank: r.rank ?? 1 })),
     employees: (empsRaw ?? []).map((e) => ({ id: e.id, name: e.name, color: e.color })),
     requirements: {},
     grid,
     twelve,
     shiftTypeIdByKey,
+    shiftMeta,
     hasAssignments: (assignsRaw ?? []).length > 0,
     feasibility: null,
     requests,

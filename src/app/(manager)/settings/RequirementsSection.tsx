@@ -4,8 +4,7 @@ import { useState, useTransition } from 'react'
 import { Card } from '@/components/ui/Card'
 import { Stepper } from '@/components/ui/Stepper'
 import { Btn } from '@/components/ui/Btn'
-import { SHIFT_META, ROLE_META } from '@/lib/domain/constants'
-import type { RoleName } from '@/lib/domain/constants'
+import { shiftMetaFromRow, roleMetaFromRow } from '@/lib/domain/meta'
 import { updateRequirements } from './requirements-actions'
 
 interface ShiftTypeRow {
@@ -13,11 +12,15 @@ interface ShiftTypeRow {
   key: string
   name: string
   color: string
+  start_hour?: number | null
+  hours?: number | null
 }
 
 interface RoleRow {
   id: string
   name: string
+  color?: string | null
+  rank?: number | null
 }
 
 interface RequirementRow {
@@ -107,7 +110,7 @@ export function RequirementsSection({ shiftTypes, roles, requirements }: Props) 
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
         {shiftTypes.map((st) => {
-          const meta = SHIFT_META[st.key as keyof typeof SHIFT_META]
+          const meta = shiftMetaFromRow(st)
           const total = roles.reduce((s, r) => s + (counts[st.id]?.[r.id] ?? 0), 0)
           return (
             <Card key={st.id} pad={0} style={{ overflow: 'hidden' }}>
@@ -117,11 +120,12 @@ export function RequirementsSection({ shiftTypes, roles, requirements }: Props) 
                   alignItems: 'center',
                   gap: 11,
                   padding: '12px 14px',
-                  background: meta?.soft ?? 'var(--surface-sunk)',
+                  background: meta.soft,
                 }}
               >
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)' }}>{st.name}</div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)' }}>{meta.name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>{meta.time}</div>
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-2)' }}>
                   {total} עובדים
@@ -129,7 +133,7 @@ export function RequirementsSection({ shiftTypes, roles, requirements }: Props) 
               </div>
               <div style={{ padding: '4px 14px 10px' }}>
                 {roles.map((role, idx) => {
-                  const roleMeta = ROLE_META[role.name as RoleName]
+                  const roleMeta = roleMetaFromRow(role)
                   const isLast = idx === roles.length - 1
                   return (
                     <div

@@ -12,12 +12,18 @@ export interface RequirementRow {
   count: number
 }
 
-/** Pure function: build 7-day rows from one payload item. Used in actions + unit tests. */
+const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6]
+
+/**
+ * Pure: build requirement rows for one payload item across the given working
+ * days (defaults to all 7). Non-working days get no rows so the engine skips them.
+ */
 export function buildRows(
   workplaceId: string,
   item: RequirementsPayloadItem,
+  days: number[] = ALL_DAYS,
 ): RequirementRow[] {
-  return Array.from({ length: 7 }, (_, day) => ({
+  return days.map((day) => ({
     workplace_id: workplaceId,
     day_of_week: day,
     shift_type_id: item.shiftTypeId,
