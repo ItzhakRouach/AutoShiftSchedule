@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { SHIFT_META, ROLE_META, ROLES, type ShiftId } from '@/lib/domain/constants'
+import { type ShiftId } from '@/lib/domain/constants'
+import { shiftMetaFromRow, roleMetaFromRow } from '@/lib/domain/meta'
 import { buildWeekGrid, buildEmpTotals } from '@/lib/schedule/week-table-data'
 import type { ScheduleView } from '@/lib/schedule/view-data'
 import type { SlotCtx } from './SwapEditor'
@@ -108,7 +109,8 @@ export function WeekTable({ view, onSlot, onDayPair, initialSelectedId, showUnfi
   const empTotals = buildEmpTotals(view, view.employees)
   const empById = new Map(view.employees.map((e) => [e.id, e]))
   const roleById = new Map(view.roles.map((r) => [r.id, r]))
-  const orderedRoleIds = ROLES.map((rn) => view.roles.find((r) => r.name === rn)?.id).filter(Boolean) as string[]
+  // Roles already arrive active + rank-desc from the view (senior first).
+  const orderedRoleIds = view.roles.map((r) => r.id)
   const days = view.days
   const toggleSelect = (id: string) => setSelectedId((cur) => (cur === id ? null : id))
   function handleCellClick(day: number, shift: ShiftKey, roleId: string) {
@@ -143,13 +145,13 @@ export function WeekTable({ view, onSlot, onDayPair, initialSelectedId, showUnfi
           </thead>
           <tbody>
             {BASE_SHIFTS.map((shift) => {
-              const m = SHIFT_META[shift]
+              const m = view.shiftMeta?.[shift] ?? shiftMetaFromRow({ key: shift })
               const reqForShift = orderedRoleIds.filter((rid) => days.some((d) => (view.requirements[d.index]?.[shift]?.[rid] ?? 0) > 0))
               const roles = reqForShift.length > 0 ? reqForShift : orderedRoleIds
               const isFirstShift = shift === BASE_SHIFTS[0]
               return roles.map((roleId, ri) => {
                 const role = roleById.get(roleId)
-                const rm = role ? ROLE_META[role.name as keyof typeof ROLE_META] : null
+                const rm = role ? roleMetaFromRow(role) : null
                 const showGroupDivider = ri === 0 && !isFirstShift
                 const groupDividerStyle: React.CSSProperties = showGroupDivider ? { borderTop: '3px solid var(--border-strong, var(--border))' } : {}
                 const shiftTint = `color-mix(in srgb, ${m.soft} 55%, var(--surface))`

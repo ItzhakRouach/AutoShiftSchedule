@@ -8,6 +8,9 @@ import { DeadlineForm } from './DeadlineForm'
 import { HolidaysSection } from './HolidaysSection'
 import { PublishSettings } from './PublishSettings'
 import { RequirementsSection } from './RequirementsSection'
+import { RolesSection } from './RolesSection'
+import { ShiftsSection } from './ShiftsSection'
+import { WorkingDaysSection } from './WorkingDaysSection'
 
 export default async function SettingsPage() {
   const supabase = await createClient()
@@ -27,7 +30,7 @@ export default async function SettingsPage() {
     supabase
       .from('workplace_settings')
       .select(
-        'request_deadline_dow, request_deadline_time, publish_dow, publish_time',
+        'request_deadline_dow, request_deadline_time, publish_dow, publish_time, working_days',
       )
       .eq('workplace_id', workplace.id)
       .maybeSingle(),
@@ -38,15 +41,16 @@ export default async function SettingsPage() {
       .order('date', { ascending: true }),
     supabase
       .from('shift_types')
-      .select('id, key, name, color, sort')
+      .select('id, key, name, color, sort, start_hour, hours, is_active')
       .eq('workplace_id', workplace.id)
       .eq('is_fallback', false)
       .order('sort', { ascending: true }),
     supabase
       .from('roles')
-      .select('id, name')
+      .select('id, name, color, rank, is_active')
       .eq('workplace_id', workplace.id)
-      .order('name', { ascending: true }),
+      .eq('is_active', true)
+      .order('rank', { ascending: false }),
     supabase
       .from('shift_requirements')
       .select('shift_type_id, role_id, count')
@@ -55,9 +59,11 @@ export default async function SettingsPage() {
   ])
 
   const currentYear = new Date().getFullYear()
-  const baseShifts = shiftTypes ?? []
-  const baseRoles = roles ?? []
+  const allBaseShifts = shiftTypes ?? []
+  const activeShifts = allBaseShifts.filter((s) => s.is_active !== false)
+  const baseRoles = (roles ?? []).map((r) => ({ id: r.id, name: r.name, color: r.color, rank: r.rank ?? 1 }))
   const baseRequirements = requirements ?? []
+  const workingDays = (settings?.working_days as number[] | null) ?? [0, 1, 2, 3, 4, 5, 6]
 
   const section = {
     background: 'var(--surface)',
@@ -75,9 +81,18 @@ export default async function SettingsPage() {
           הגדרות
         </h1>
 
-        {/* Staffing requirements */}
+        {/* Roles */}
+        <RolesSection roles={baseRoles} />
+
+        {/* Shifts */}
+        <ShiftsSection shifts={allBaseShifts} />
+
+        {/* Working days */}
+        <WorkingDaysSection initialDays={workingDays} />
+
+        {/* Staffing requirements (active shifts × active roles) */}
         <RequirementsSection
-          shiftTypes={baseShifts}
+          shiftTypes={activeShifts}
           roles={baseRoles}
           requirements={baseRequirements}
         />

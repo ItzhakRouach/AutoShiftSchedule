@@ -1,6 +1,6 @@
 import { Card } from '@/components/ui/Card'
-import { ROLES, ROLE_META } from '@/lib/domain/constants'
 import { shiftTypeOrder, type EmployeeSummary } from '@/lib/stats/employee-summary'
+import type { MeSummaryRole } from '@/lib/stats/me-summary-data'
 
 const chip: React.CSSProperties = {
   display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -19,7 +19,7 @@ function Count({ label, value, color }: { label: string; value: number; color?: 
 
 const sectionTitle: React.CSSProperties = { fontSize: 13, fontWeight: 800, color: 'var(--text-2)', margin: '0 0 10px' }
 
-export function MeSummary({ summary }: { summary: EmployeeSummary }) {
+export function MeSummary({ summary, roles }: { summary: EmployeeSummary; roles: MeSummaryRole[] }) {
   const shiftLabels = shiftTypeOrder(summary.byShiftType).filter(
     (l) => (summary.byShiftType[l] ?? 0) > 0 || ['בוקר', 'צהריים', 'לילה'].includes(l),
   )
@@ -36,8 +36,8 @@ export function MeSummary({ summary }: { summary: EmployeeSummary }) {
 
         <p style={sectionTitle}>לפי תפקיד</p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-          {ROLES.map((rn) => (
-            <Count key={rn} label={rn} value={summary.byRole[rn] ?? 0} color={ROLE_META[rn].color} />
+          {roles.map((r) => (
+            <Count key={r.name} label={r.name} value={summary.byRole[r.name] ?? 0} color={r.color} />
           ))}
         </div>
 

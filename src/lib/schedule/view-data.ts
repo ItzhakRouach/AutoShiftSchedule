@@ -4,10 +4,11 @@ import { upcomingWeekStartISO, formatHebDate } from '@/lib/dates/week'
 import { checkFeasibility } from '@/lib/scheduling'
 import { buildEngineInput } from './build-input'
 import { weekDatesFrom } from './map-rows'
+import { shiftMetaFromRow, type ShiftDisplay } from '@/lib/domain/meta'
 import type { FeasibilityResult, ShiftKey } from '@/lib/scheduling/types'
 
 export interface ViewEmployee { id: string; name: string; color: string }
-export interface ViewRole { id: string; name: string }
+export interface ViewRole { id: string; name: string; color?: string; rank?: number }
 export interface DayInfo { index: number; short: string; date: string }
 /** assignments[day][shiftKey][roleId] = employeeId[] */
 export type ViewGrid = Record<number, Record<string, Record<string, string[]>>>
@@ -43,6 +44,8 @@ export interface ScheduleView {
   twelve: ViewTwelve[]
   /** base shiftKey → shift_type_id (for opening the editor on a base slot). */
   shiftTypeIdByKey: Record<string, string>
+  /** base shiftKey → display meta (name/time/color) from the workplace's DB rows. */
+  shiftMeta?: Record<string, ShiftDisplay>
   hasAssignments: boolean
   feasibility: FeasibilityResult | null
   /** All employee requests for this period. */
@@ -100,7 +103,7 @@ export async function getScheduleView(
     { data: allShiftTypes },
     { data: requestsRaw },
   ] = await Promise.all([
-    supabase.from('roles').select('id, name').eq('workplace_id', workplaceId).order('name'),
+    supabase.from('roles').select('id, name, color, rank').eq('workplace_id', workplaceId).eq('is_active', true).order('rank', { ascending: false }),
     supabase.from('employees').select('id, name, color').eq('workplace_id', workplaceId).order('name'),
     supabase
       .from('assignments')
@@ -110,7 +113,7 @@ export async function getScheduleView(
       .from('shift_requirements')
       .select('day_of_week, shift_type_id, role_id, count')
       .eq('workplace_id', workplaceId),
-    supabase.from('shift_types').select('id, key').eq('workplace_id', workplaceId),
+    supabase.from('shift_types').select('id, key, name, color, start_hour, hours').eq('workplace_id', workplaceId),
     supabase
       .from('requests')
       .select('employee_id, day_of_week, is_off, preferred_shift_ids')
@@ -120,9 +123,11 @@ export async function getScheduleView(
   // All shift-type keys (base + 12h) so manual 12h assignments can be surfaced.
   const idToAnyKey: Record<string, string> = {}
   const shiftTypeIdByKey: Record<string, string> = {}
+  const shiftMeta: Record<string, ShiftDisplay> = {}
   for (const st of allShiftTypes ?? []) {
     idToAnyKey[st.id] = st.key
     shiftTypeIdByKey[st.key] = st.id
+    shiftMeta[st.key] = shiftMetaFromRow(st)
   }
 
   // Grid (base shifts) + separate 12h list from persisted assignments.
@@ -181,12 +186,13 @@ export async function getScheduleView(
     weekStart,
     days,
     shiftKeys: ['morning', 'noon', 'night'],
-    roles: (rolesRaw ?? []).map((r) => ({ id: r.id, name: r.name })),
+    roles: (rolesRaw ?? []).map((r) => ({ id: r.id, name: r.name, color: r.color, rank: r.rank ?? 1 })),
     employees: (empsRaw ?? []).map((e) => ({ id: e.id, name: e.name, color: e.color })),
     requirements,
     grid,
     twelve,
     shiftTypeIdByKey,
+    shiftMeta,
     hasAssignments: (assignsRaw ?? []).length > 0,
     feasibility,
     requests,

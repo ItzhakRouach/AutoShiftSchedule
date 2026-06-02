@@ -38,7 +38,7 @@ export default async function MePage() {
     .maybeSingle()
   if (!employee) redirect('/onboarding')
 
-  const [{ data: workplace }, summary] = await Promise.all([
+  const [{ data: workplace }, summaryData] = await Promise.all([
     supabase.from('workplaces').select('name').eq('id', employee.workplace_id).maybeSingle(),
     getMeSummary(supabase, employee.id, employee.workplace_id),
   ])
@@ -52,7 +52,7 @@ export default async function MePage() {
         <p style={{ margin: 0, fontSize: 13, color: 'var(--text-2)' }}>{workplace?.name ?? ''}</p>
       </div>
 
-      {summary && <MeSummary summary={summary} />}
+      {summaryData && <MeSummary summary={summaryData.summary} roles={summaryData.roles} />}
 
       <NavCard href="/me/schedule" icon="grid" title="הסידור השבועי" subtitle="צפייה בסידור העבודה המפורסם" />
       <NavCard href="/me/requests" icon="calendar" title="הגשת בקשות" subtitle="בקשות לשבוע הקרוב" />
