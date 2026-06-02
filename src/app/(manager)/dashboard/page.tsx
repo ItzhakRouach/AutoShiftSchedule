@@ -41,7 +41,7 @@ export default async function DashboardPage({
     : '#E0902A'
 
   return (
-    <main style={{ background: 'var(--bg)', padding: '24px 20px', maxWidth: 520, margin: '0 auto', direction: 'rtl' }}>
+    <main className="page-wrap wide" style={{ direction: 'rtl' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
         <div>

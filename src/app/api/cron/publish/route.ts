@@ -31,7 +31,6 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       published: result.published,
-      sent: result.sent,
       errors: result.errors,
     })
   } catch (err) {

@@ -6,8 +6,18 @@ import { buildWeekGrid, buildEmpTotals } from '@/lib/schedule/week-table-data'
 import type { ScheduleView } from '@/lib/schedule/view-data'
 import type { SlotCtx } from './SwapEditor'
 import type { ShiftKey } from '@/lib/scheduling/types'
+import { EmpTotalsBar } from './EmpTotalsBar'
 
-interface Props { view: ScheduleView; onSlot?: (slot: SlotCtx) => void; onDayPair?: (day: number) => void }
+interface Props {
+  view: ScheduleView
+  onSlot?: (slot: SlotCtx) => void
+  onDayPair?: (day: number) => void
+  /** Pre-select an employee so their cells are highlighted on first render. */
+  initialSelectedId?: string
+  /** When false, empty cells render blank instead of "לא מאויש" (read-only views
+   *  without requirements data, e.g. the employee schedule). */
+  showUnfilled?: boolean
+}
 
 const BASE_SHIFTS: ShiftKey[] = ['morning', 'noon', 'night']
 
@@ -25,17 +35,18 @@ function Badge() {
   )
 }
 
-function Cell({ entries, empById, isFilled, selectedId, onClick, onSelectEmp }: {
+function Cell({ entries, empById, isFilled, selectedId, onClick, onSelectEmp, showUnfilled }: {
   entries: { employeeId: string; is12h: boolean; requested: boolean }[]
   empById: Map<string, { name: string; color: string }>
   isFilled: boolean
   selectedId: string | null
   onClick?: () => void
   onSelectEmp: (id: string) => void
+  showUnfilled: boolean
 }) {
   const hasSelected = selectedId !== null
   const cellHasSelected = hasSelected && entries.some((e) => e.employeeId === selectedId)
-  const bg = entries.length === 0 && !isFilled ? 'rgba(235,106,78,0.06)' : 'var(--surface)'
+  const bg = entries.length === 0 && !isFilled && showUnfilled ? 'rgba(235,106,78,0.06)' : 'var(--surface)'
   const dimCell = hasSelected && !cellHasSelected
   const highlightCell = cellHasSelected
 
@@ -53,7 +64,7 @@ function Cell({ entries, empById, isFilled, selectedId, onClick, onSelectEmp }: 
   if (entries.length === 0) {
     return (
       <td style={cellStyle} onClick={onClick}>
-        <span style={{ color: '#EB6A4E', fontWeight: 600, fontSize: 12 }}>לא מאויש</span>
+        {showUnfilled && <span style={{ color: '#EB6A4E', fontWeight: 600, fontSize: 12 }}>לא מאויש</span>}
       </td>
     )
   }
@@ -91,16 +102,14 @@ function Cell({ entries, empById, isFilled, selectedId, onClick, onSelectEmp }: 
   )
 }
 
-export function WeekTable({ view, onSlot, onDayPair }: Props) {
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+export function WeekTable({ view, onSlot, onDayPair, initialSelectedId, showUnfilled = true }: Props) {
+  const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId ?? null)
   const weekGrid = buildWeekGrid(view)
   const empTotals = buildEmpTotals(view, view.employees)
   const empById = new Map(view.employees.map((e) => [e.id, e]))
   const roleById = new Map(view.roles.map((r) => [r.id, r]))
   const orderedRoleIds = ROLES.map((rn) => view.roles.find((r) => r.name === rn)?.id).filter(Boolean) as string[]
   const days = view.days
-  const empsWithShifts = view.employees.filter((e) => (empTotals[e.id] ?? 0) > 0)
-  const empsZero = view.employees.filter((e) => (empTotals[e.id] ?? 0) === 0)
   const toggleSelect = (id: string) => setSelectedId((cur) => (cur === id ? null : id))
   function handleCellClick(day: number, shift: ShiftKey, roleId: string) {
     if (!onSlot) return
@@ -164,6 +173,7 @@ export function WeekTable({ view, onSlot, onDayPair }: Props) {
                         selectedId={selectedId}
                         onClick={onSlot ? () => handleCellClick(d.index, shift, roleId) : undefined}
                         onSelectEmp={toggleSelect}
+                        showUnfilled={showUnfilled}
                       />
                     ))}
                   </tr>
@@ -173,28 +183,7 @@ export function WeekTable({ view, onSlot, onDayPair }: Props) {
           </tbody>
         </table>
       </div>
-      <div data-testid="emp-totals-summary" style={{ direction: 'rtl', marginTop: 16, padding: '14px 16px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', background: 'var(--surface-2)' }}>
-        <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-2)', marginBottom: 10 }}>סה״כ משמרות לעובד</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {empsWithShifts.map((e) => {
-            const isSelected = selectedId === e.id
-            return (
-              <span key={e.id} data-testid="emp-total-chip"
-                role="button" aria-pressed={isSelected}
-                onClick={() => toggleSelect(e.id)}
-                title={isSelected ? 'לחץ לביטול הסימון' : 'לחץ לסימון עובד'}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, background: `${e.color}22`, border: isSelected ? `2px solid ${e.color}` : `1.5px solid ${e.color}55`, fontSize: 12, fontWeight: 700, color: e.color, whiteSpace: 'nowrap', cursor: 'pointer', opacity: selectedId && !isSelected ? 0.45 : 1, transition: 'opacity 0.15s, border 0.15s' }}>
-                {e.name.split(' ')[0]}<span style={{ background: e.color, color: '#fff', borderRadius: 10, padding: '1px 7px', fontSize: 11, fontWeight: 800 }}>{empTotals[e.id]}</span>
-              </span>
-            )
-          })}
-          {empsZero.map((e) => (
-            <span key={e.id} data-testid="emp-total-chip-zero" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, background: 'var(--surface)', border: '1.5px solid var(--border)', fontSize: 12, fontWeight: 600, color: 'var(--text-2)', whiteSpace: 'nowrap', opacity: 0.6 }}>
-              {e.name.split(' ')[0]}<span style={{ background: 'var(--border)', color: 'var(--text-2)', borderRadius: 10, padding: '1px 7px', fontSize: 11, fontWeight: 700 }}>0</span>
-            </span>
-          ))}
-        </div>
-      </div>
+      <EmpTotalsBar employees={view.employees} empTotals={empTotals} selectedId={selectedId} onToggle={toggleSelect} />
     </div>
   )
 }

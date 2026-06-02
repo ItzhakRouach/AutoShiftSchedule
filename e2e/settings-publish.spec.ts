@@ -23,6 +23,12 @@ test('settings page shows publish section', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'פרסום אוטומטי לווטסאפ' })).toBeVisible({ timeout: 10000 })
 })
 
+test('settings page shows a delete-account button for the manager', async ({ page }) => {
+  await signupAndOnboard(page)
+  await page.goto('/settings')
+  await expect(page.getByRole('button', { name: 'מחיקת חשבון' })).toBeVisible({ timeout: 10000 })
+})
+
 test('manager sets publish day + time → saved → reload → values persisted', async ({ page }) => {
   await signupAndOnboard(page)
   await page.goto('/settings')
@@ -40,29 +46,4 @@ test('manager sets publish day + time → saved → reload → values persisted'
   await expect(page.locator('select[name="publish_dow"]')).toHaveValue('6', { timeout: 10000 })
   // DB stores time as HH:MM:SS; browser input shows HH:MM — match either
   await expect(page.locator('input[name="publish_time"]')).toHaveValue(/^09:00/)
-})
-
-test('manager enables WhatsApp auto-send, sets group JID → saved → reload → value persisted', async ({ page }) => {
-  await signupAndOnboard(page)
-  await page.goto('/settings')
-
-  // Set required day/time first
-  await page.locator('select[name="publish_dow"]').selectOption('5')
-  await page.locator('input[name="publish_time"]').fill('08:00')
-
-  // Enable WhatsApp auto-send toggle
-  await page.locator('#whatsapp-toggle').check()
-  await expect(page.locator('input[name="whatsapp_group_jid"]')).toBeVisible({ timeout: 5000 })
-
-  // Fill the group JID
-  await page.locator('input[name="whatsapp_group_jid"]').fill('120363012345678901@g.us')
-
-  // Save
-  await page.getByRole('button', { name: 'שמור הגדרות פרסום' }).click()
-  await expect(page.getByText('הגדרות הפרסום נשמרו')).toBeVisible({ timeout: 10000 })
-
-  // Reload — toggle ON (field visible) with the group JID populated
-  await page.reload()
-  await expect(page.locator('input[name="whatsapp_group_jid"]')).toBeVisible({ timeout: 10000 })
-  await expect(page.locator('input[name="whatsapp_group_jid"]')).toHaveValue('120363012345678901@g.us')
 })

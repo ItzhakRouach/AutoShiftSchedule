@@ -25,8 +25,6 @@ const publishSchema = z.object({
   publish_time: z
     .string()
     .regex(/^([01]\d|2[0-3]):[0-5]\d$/, { message: 'שעה לא תקינה (HH:MM)' }),
-  whatsapp_enabled: z.boolean().default(false),
-  whatsapp_group_jid: z.string().max(120).optional(),
 })
 
 export async function updatePublishSettings(
@@ -43,8 +41,6 @@ export async function updatePublishSettings(
   const raw = {
     publish_dow: formData.get('publish_dow'),
     publish_time: formData.get('publish_time'),
-    whatsapp_enabled: formData.get('whatsapp_enabled') === 'true',
-    whatsapp_group_jid: formData.get('whatsapp_group_jid') ?? undefined,
   }
 
   const parsed = publishSchema.safeParse(raw)
@@ -56,7 +52,7 @@ export async function updatePublishSettings(
     return { fieldErrors }
   }
 
-  const { publish_dow, publish_time, whatsapp_enabled, whatsapp_group_jid } = parsed.data
+  const { publish_dow, publish_time } = parsed.data
 
   const { error: upsertError } = await supabase
     .from('workplace_settings')
@@ -65,7 +61,6 @@ export async function updatePublishSettings(
         workplace_id: workplace.id,
         publish_dow,
         publish_time,
-        whatsapp_group_jid: whatsapp_enabled ? (whatsapp_group_jid?.trim() || null) : null,
       },
       { onConflict: 'workplace_id' },
     )

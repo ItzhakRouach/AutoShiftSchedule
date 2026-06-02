@@ -21,6 +21,7 @@ const MANAGER_TABS: Tab[] = [
 
 const EMPLOYEE_TABS: Tab[] = [
   { href: '/me', label: 'בית', icon: 'home' },
+  { href: '/me/schedule', label: 'סידור', icon: 'grid' },
   { href: '/me/requests', label: 'בקשות', icon: 'calendar' },
 ]
 
@@ -38,12 +39,22 @@ function HamburgerIcon({ open }: { open: boolean }) {
   )
 }
 
+const rowBase: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 12,
+  padding: '12px 14px',
+  borderRadius: 'var(--r-md)',
+  fontSize: 15,
+  textDecoration: 'none',
+  transition: 'background .12s ease, color .12s ease',
+}
+
 function TopBar({ tabs }: { tabs: Tab[] }) {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
 
-  // Collapse the menu whenever the route changes (adjust state during render —
-  // the React-sanctioned pattern, avoids an effect + cascading renders).
+  // Collapse the menu whenever the route changes (adjust state during render).
   const [navPath, setNavPath] = useState(pathname)
   if (navPath !== pathname) {
     setNavPath(pathname)
@@ -68,13 +79,10 @@ function TopBar({ tabs }: { tabs: Tab[] }) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '10px 16px calc(10px)',
+          padding: '10px 16px',
           paddingTop: 'calc(10px + env(safe-area-inset-top))',
         }}
       >
-        <span style={{ fontSize: 19, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>
-          מִשְׁמֶרֶת
-        </span>
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
@@ -95,27 +103,33 @@ function TopBar({ tabs }: { tabs: Tab[] }) {
         >
           <HamburgerIcon open={open} />
         </button>
+        <span style={{ fontSize: 19, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>
+          מִשְׁמֶרֶת
+        </span>
       </div>
 
       {open && (
         <>
           <div
             onClick={() => setOpen(false)}
-            style={{
-              position: 'fixed',
-              inset: 0,
-              top: 0,
-              background: 'rgba(0,0,0,0.18)',
-              zIndex: -1,
-            }}
+            style={{ position: 'fixed', inset: 0, background: 'transparent', zIndex: 0 }}
           />
           <nav
+            className="nav-dropdown"
             style={{
+              position: 'absolute',
+              insetInlineEnd: 12,
+              top: 'calc(100% + 6px)',
+              zIndex: 2,
+              width: 'min(280px, calc(100vw - 24px))',
               display: 'flex',
               flexDirection: 'column',
-              gap: 4,
-              padding: '8px 12px 14px',
-              borderTop: '1px solid var(--border)',
+              gap: 2,
+              padding: 8,
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--r-lg)',
+              boxShadow: 'var(--shadow-lift)',
             }}
           >
             {tabs.map((tab) => {
@@ -124,18 +138,13 @@ function TopBar({ tabs }: { tabs: Tab[] }) {
                 <Link
                   key={tab.href}
                   href={tab.href}
+                  className="nav-item"
                   onClick={() => setOpen(false)}
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
-                    padding: '12px 14px',
-                    borderRadius: 'var(--r-md)',
-                    textDecoration: 'none',
+                    ...rowBase,
                     color: active ? 'var(--accent)' : 'var(--text)',
                     background: active ? 'var(--accent-soft)' : 'transparent',
                     fontWeight: active ? 700 : 600,
-                    fontSize: 15,
                   }}
                 >
                   <Icon name={tab.icon} size={22} stroke={active ? 2.2 : 1.8} />
@@ -144,21 +153,19 @@ function TopBar({ tabs }: { tabs: Tab[] }) {
               )
             })}
 
+            <div style={{ height: 1, background: 'var(--border)', margin: '6px 8px' }} />
+
             <form action={signOut} style={{ margin: 0 }}>
               <button
                 type="submit"
+                className="nav-logout"
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
+                  ...rowBase,
                   width: '100%',
-                  padding: '12px 14px',
-                  borderRadius: 'var(--r-md)',
                   border: 'none',
                   background: 'transparent',
                   color: 'var(--text-2)',
                   fontWeight: 600,
-                  fontSize: 15,
                   cursor: 'pointer',
                   fontFamily: 'inherit',
                   textAlign: 'right',

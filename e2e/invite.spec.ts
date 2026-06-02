@@ -83,6 +83,11 @@ test('manager creates invite, employee joins via /join/[code] and lands on /me',
   await expect(employeePage.getByText(empName)).toBeVisible({ timeout: 5000 })
   await expect(employeePage.getByText(workplaceName)).toBeVisible()
 
+  // ── 5. Employee can open the weekly schedule page (empty until published) ─
+  await employeePage.getByRole('link', { name: /הסידור השבועי/ }).click()
+  await expect(employeePage).toHaveURL(/\/me\/schedule/, { timeout: 10000 })
+  await expect(employeePage.getByRole('heading', { name: 'הסידור השבועי' })).toBeVisible({ timeout: 10000 })
+
   await employeeContext.close()
   await managerContext.close()
 })

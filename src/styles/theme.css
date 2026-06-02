@@ -19,6 +19,10 @@
   --accent-soft: rgba(52,87,240,0.12);
   --accent-ink: #FFFFFF;
 
+  /* danger (red) — destructive actions: logout hover, delete account */
+  --danger: #D8423B;
+  --danger-soft: rgba(216,66,59,0.12);
+
   /* radii (soft) */
   --r-lg: 22px;
   --r-md: 16px;
@@ -41,6 +45,8 @@
   --chrome: rgba(18,22,29,0.82);
   --scrim: rgba(0,0,0,0.6);
   --accent-soft: rgba(52,87,240,0.2);
+  --danger: #F0655E;
+  --danger-soft: rgba(240,101,94,0.18);
 }
 
 [data-theme="warm"] {
@@ -57,4 +63,6 @@
   --shadow-lift: 0 10px 32px rgba(80,60,30,0.16);
   --chrome: rgba(255,252,247,0.85);
   --scrim: rgba(50,40,25,0.4);
+  --danger: #C5443C;
+  --danger-soft: rgba(197,68,60,0.12);
 }

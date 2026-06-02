@@ -32,15 +32,7 @@ export default async function RequestsPage() {
   ).length
 
   return (
-    <main
-      style={{
-        background: 'var(--bg)',
-        padding: '16px 16px 24px',
-        maxWidth: 540,
-        margin: '0 auto',
-        direction: 'rtl',
-      }}
-    >
+    <main className="page-wrap narrow" style={{ direction: 'rtl' }}>
       <RequestsHeader
         weekLabel={formatHebDate(weekStart)}
         filled={filled}
