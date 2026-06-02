@@ -42,15 +42,14 @@ describe('GET /api/cron/publish', () => {
     expect(res.status).toBe(401)
   })
 
-  it('returns 200 with published/sent counts when token is correct', async () => {
+  it('returns 200 with published count when token is correct', async () => {
     const { publishDuePeriods } = await import('@/lib/publish/run')
-    vi.mocked(publishDuePeriods).mockResolvedValueOnce({ published: 2, sent: 1, errors: [] })
+    vi.mocked(publishDuePeriods).mockResolvedValueOnce({ published: 2, errors: [] })
 
     const res = await GET(makeRequest('Bearer test-secret-publish'))
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.published).toBe(2)
-    expect(body.sent).toBe(1)
     expect(body.errors).toHaveLength(0)
   })
 })

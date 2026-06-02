@@ -24,7 +24,7 @@ const JoinSchema = z.object({
     .max(120, 'שם ארוך מדי (מקסימום 120 תווים)'),
   email: z.string().email('אימייל לא תקין'),
   password: z.string().min(8, 'הסיסמה חייבת לפחות 8 תווים'),
-  phone: z.string().min(1, 'יש להזין מספר טלפון'),
+  phone: z.string().optional(),
   employmentType: z.enum(['full', 'part', 'student'], { error: 'יש לבחור סוג משרה' }),
   observesShabbat: z.boolean(),
 })
@@ -55,8 +55,8 @@ export async function joinWithInvite(
 
   const { name, email, password, employmentType, observesShabbat } = parsed.data
 
+  // Phone is optional contact info; store normalized when valid, else null.
   const phone = normalizeIsraeliPhone(parsed.data.phone)
-  if (!phone) return { fieldErrors: { phone: 'מספר טלפון לא תקין' } }
 
   // Defensive: this flow creates a brand-new account. If someone is already
   // authenticated, refuse — they should be routed by their role, not join here.

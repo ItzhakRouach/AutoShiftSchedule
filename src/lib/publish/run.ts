@@ -1,16 +1,15 @@
 /**
  * Core publish logic — factored out of the cron route for testability.
  * Loads due workplaces, publishes their earliest unpublished period, and
- * delegates image + per-worker WhatsApp sending to `sendPublish`.
+ * renders + uploads the schedule image (so the public share link works).
  */
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { isPublishDue } from './compute'
-import { sendPublish } from './send'
+import { buildAndUploadScheduleImage } from './image'
 
 export interface PublishResult {
   published: number
-  sent: number
   errors: string[]
 }
 
@@ -20,7 +19,6 @@ export async function publishDuePeriods(
 ): Promise<PublishResult> {
   const errors: string[] = []
   let published = 0
-  let sent = 0
 
   // Load workplaces with publish schedule configured
   const { data: settings, error: settingsErr } = await admin
@@ -31,9 +29,9 @@ export async function publishDuePeriods(
 
   if (settingsErr) {
     errors.push(`settings fetch: ${settingsErr.message}`)
-    return { published, sent, errors }
+    return { published, errors }
   }
-  if (!settings?.length) return { published, sent, errors }
+  if (!settings?.length) return { published, errors }
 
   for (const setting of settings) {
     const { workplace_id, publish_dow, publish_time } = setting
@@ -75,11 +73,9 @@ export async function publishDuePeriods(
     }
     published++
 
-    // Render image + send to group + per-worker (best-effort).
-    const result = await sendPublish(admin, period.id)
-    sent += (result.groupSent ? 1 : 0) + result.workersSent
-    errors.push(...result.errors)
+    // Render + upload the schedule image (best-effort) so the share link works.
+    await buildAndUploadScheduleImage(admin, period.id)
   }
 
-  return { published, sent, errors }
+  return { published, errors }
 }

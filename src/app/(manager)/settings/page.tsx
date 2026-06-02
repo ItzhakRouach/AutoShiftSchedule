@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveWorkplace } from '@/lib/workplace/current'
 import { signOut } from '@/app/(auth)/actions'
+import { DeleteAccountButton } from '@/components/account/DeleteAccountButton'
+import { deleteManagerAccount } from './account-actions'
 import { DeadlineForm } from './DeadlineForm'
 import { HolidaysSection } from './HolidaysSection'
 import { PublishSettings } from './PublishSettings'
@@ -25,7 +27,7 @@ export default async function SettingsPage() {
     supabase
       .from('workplace_settings')
       .select(
-        'request_deadline_dow, request_deadline_time, publish_dow, publish_time, whatsapp_group_jid',
+        'request_deadline_dow, request_deadline_time, publish_dow, publish_time',
       )
       .eq('workplace_id', workplace.id)
       .maybeSingle(),
@@ -67,8 +69,8 @@ export default async function SettingsPage() {
   }
 
   return (
-    <main style={{ padding: 24, background: 'var(--bg)' }}>
-      <div style={{ maxWidth: 520, margin: '0 auto', direction: 'rtl' }}>
+    <main style={{ background: 'var(--bg)' }}>
+      <div className="page-wrap narrow" style={{ direction: 'rtl' }}>
         <h1 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 24px', color: 'var(--text)' }}>
           הגדרות
         </h1>
@@ -106,7 +108,6 @@ export default async function SettingsPage() {
           <PublishSettings
             initialDow={settings?.publish_dow ?? null}
             initialTime={settings?.publish_time ?? null}
-            initialGroupJid={settings?.whatsapp_group_jid ?? null}
           />
         </section>
 
@@ -120,24 +121,30 @@ export default async function SettingsPage() {
           <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '0 0 20px', lineHeight: 1.5 }}>
             התנתקות מהמערכת תחזיר אותך למסך הכניסה.
           </p>
-          <form action={signOut}>
-            <button
-              type="submit"
-              style={{
-                background: 'none',
-                border: '1px solid var(--border-strong)',
-                borderRadius: 'var(--r-pill)',
-                padding: '10px 24px',
-                fontSize: 14,
-                fontWeight: 600,
-                color: 'var(--text-2)',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-              }}
-            >
-              התנתקות
-            </button>
-          </form>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
+            <form action={signOut}>
+              <button
+                type="submit"
+                style={{
+                  background: 'none',
+                  border: '1px solid var(--border-strong)',
+                  borderRadius: 'var(--r-pill)',
+                  padding: '10px 24px',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: 'var(--text-2)',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                התנתקות
+              </button>
+            </form>
+            <DeleteAccountButton
+              action={deleteManagerAccount}
+              description="פעולה זו תמחק את הארגון, מקום העבודה, כל העובדים והסידורים — לצמיתות. לא ניתן לבטל."
+            />
+          </div>
         </section>
       </div>
     </main>

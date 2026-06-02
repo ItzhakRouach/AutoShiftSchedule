@@ -14,6 +14,14 @@ export function ShareButton({ periodId, weekLabel }: Props) {
 
   const imageUrl = `/api/schedule-image/${periodId}`
 
+  // Public bucket URL (uploaded on publish) — shareable to anyone via WhatsApp.
+  const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').replace(/\/+$/, '')
+  const publicImageUrl = supabaseUrl
+    ? `${supabaseUrl}/storage/v1/object/public/schedule-images/${periodId}.png`
+    : null
+  const waText = encodeURIComponent(`סידור העבודה לשבוע ${weekLabel}:\n${publicImageUrl ?? ''}`)
+  const waHref = `https://wa.me/?text=${waText}`
+
   async function handleShare() {
     setHint(null)
     setLoading(true)
@@ -50,6 +58,29 @@ export function ShareButton({ periodId, weekLabel }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {publicImageUrl && (
+        <a
+          href={waHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            padding: '12px 16px',
+            borderRadius: 'var(--r-md)',
+            background: '#25D366',
+            color: '#fff',
+            fontSize: 15,
+            fontWeight: 700,
+            textDecoration: 'none',
+            boxShadow: '0 4px 14px rgba(37,211,102,0.30)',
+          }}
+        >
+          שתף בוואטסאפ
+        </a>
+      )}
       <div style={{ display: 'flex', gap: 8 }}>
         <Btn
           variant="soft"

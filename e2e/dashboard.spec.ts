@@ -54,6 +54,9 @@ test('dashboard shows new KPIs after schedule is published', async ({ page }) =>
   await page.getByRole('button', { name: 'פרסם סידור' }).click()
   await expect(page.getByRole('button', { name: /פורסם/ })).toBeVisible({ timeout: 10000 })
 
+  // After publishing, the WhatsApp share link appears.
+  await expect(page.getByRole('link', { name: 'שתף בוואטסאפ' })).toBeVisible({ timeout: 10000 })
+
   // Go to dashboard
   await page.goto('/dashboard')
   await expect(page).toHaveURL(/\/dashboard/)

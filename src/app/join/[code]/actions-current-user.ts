@@ -14,7 +14,7 @@ const CurrentUserJoinSchema = z.object({
     .string()
     .min(2, 'שם חייב להכיל לפחות 2 תווים')
     .max(120, 'שם ארוך מדי (מקסימום 120 תווים)'),
-  phone: z.string().min(1, 'יש להזין מספר טלפון'),
+  phone: z.string().optional(),
   employmentType: z.enum(['full', 'part', 'student'], { error: 'יש לבחור סוג משרה' }),
   observesShabbat: z.boolean(),
 })
@@ -48,8 +48,8 @@ export async function joinAsCurrentUser(
 
   const { name, employmentType, observesShabbat } = parsed.data
 
+  // Phone is optional contact info; store normalized when valid, else null.
   const phone = normalizeIsraeliPhone(parsed.data.phone)
-  if (!phone) return { fieldErrors: { phone: 'מספר טלפון לא תקין' } }
 
   const supabase = await createClient()
   const {

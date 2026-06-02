@@ -106,15 +106,7 @@ export default async function TeamPage() {
   })
 
   return (
-    <main
-      style={{
-        background: 'var(--bg)',
-        padding: '24px 20px',
-        maxWidth: 520,
-        margin: '0 auto',
-        direction: 'rtl',
-      }}
-    >
+    <main className="page-wrap wide" style={{ direction: 'rtl' }}>
       <InvitePanel
         initialCode={latestInvite?.code ?? null}
         workplaceName={workplace.name}
