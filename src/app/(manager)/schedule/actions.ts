@@ -3,7 +3,9 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { getActiveWorkplace } from '@/lib/workplace/current'
+import { sendPublish } from '@/lib/publish/send'
 import { buildEngineInput } from '@/lib/schedule/build-input'
 import { generateSchedule } from '@/lib/scheduling'
 import type { Coverage, FeasibilityResult, TwelveHourSuggestion } from '@/lib/scheduling/types'
@@ -162,6 +164,16 @@ export async function publishSchedule(periodId: string): Promise<RunResult> {
 
   if (error) return { ok: false, error: GENERIC_ERROR }
   if (!updated || updated.length === 0) return { ok: false, error: GENERIC_ERROR }
+
+  // Best-effort: render the image and send to the WhatsApp group + each worker.
+  // Uses the admin client (storage upload + cross-table reads). Failures here
+  // never fail the publish itself.
+  try {
+    const admin = createAdminClient()
+    await sendPublish(admin, periodId)
+  } catch {
+    // swallow — the schedule is published regardless of WhatsApp delivery
+  }
 
   revalidatePath('/schedule')
   return { ok: true }

@@ -56,6 +56,7 @@ test('employee requests: full flow (mark day-off, preferred shift, vacation)', a
   await empPage.getByLabel('שם מלא').fill(empName)
   await empPage.getByLabel('אימייל').fill(empEmail)
   await empPage.getByLabel('סיסמה').fill(empPassword)
+  await empPage.getByLabel('טלפון נייד').fill('0521234567')
   await empPage.getByRole('button', { name: 'הצטרפות' }).click()
   await expect(empPage).toHaveURL(/\/me$/, { timeout: 15000 })
 

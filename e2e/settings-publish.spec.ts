@@ -42,7 +42,7 @@ test('manager sets publish day + time → saved → reload → values persisted'
   await expect(page.locator('input[name="publish_time"]')).toHaveValue(/^09:00/)
 })
 
-test('manager enables GreenAPI, fills fields → saved → reload → fields visible', async ({ page }) => {
+test('manager enables WhatsApp auto-send, sets group JID → saved → reload → value persisted', async ({ page }) => {
   await signupAndOnboard(page)
   await page.goto('/settings')
 
@@ -50,23 +50,19 @@ test('manager enables GreenAPI, fills fields → saved → reload → fields vis
   await page.locator('select[name="publish_dow"]').selectOption('5')
   await page.locator('input[name="publish_time"]').fill('08:00')
 
-  // Enable GreenAPI toggle
-  await page.locator('#greenapi-toggle').check()
-  await expect(page.locator('input[name="greenapi_instance"]')).toBeVisible({ timeout: 5000 })
+  // Enable WhatsApp auto-send toggle
+  await page.locator('#whatsapp-toggle').check()
+  await expect(page.locator('input[name="whatsapp_group_jid"]')).toBeVisible({ timeout: 5000 })
 
-  // Fill GreenAPI fields
-  await page.locator('input[name="greenapi_instance"]').fill('1112223344')
-  // Token field is type=password — fill by name
-  await page.locator('input[name="greenapi_token"]').fill('faketoken123')
-  await page.locator('input[name="greenapi_group"]').fill('9998887776')
+  // Fill the group JID
+  await page.locator('input[name="whatsapp_group_jid"]').fill('120363012345678901@g.us')
 
   // Save
   await page.getByRole('button', { name: 'שמור הגדרות פרסום' }).click()
   await expect(page.getByText('הגדרות הפרסום נשמרו')).toBeVisible({ timeout: 10000 })
 
-  // Reload — toggle should be ON (fields visible) with instance/group populated
+  // Reload — toggle ON (field visible) with the group JID populated
   await page.reload()
-  await expect(page.locator('input[name="greenapi_instance"]')).toBeVisible({ timeout: 10000 })
-  await expect(page.locator('input[name="greenapi_instance"]')).toHaveValue('1112223344')
-  await expect(page.locator('input[name="greenapi_group"]')).toHaveValue('9998887776')
+  await expect(page.locator('input[name="whatsapp_group_jid"]')).toBeVisible({ timeout: 10000 })
+  await expect(page.locator('input[name="whatsapp_group_jid"]')).toHaveValue('120363012345678901@g.us')
 })

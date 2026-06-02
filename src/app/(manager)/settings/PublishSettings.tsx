@@ -9,23 +9,18 @@ const DAYS_HEB = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמיש�
 interface Props {
   initialDow: number | null
   initialTime: string | null
-  initialInstance: string | null
-  initialToken: string | null
-  initialGroup: string | null
+  initialGroupJid: string | null
 }
 
 const initialState: PublishActionState = {}
 
-export function PublishSettings({ initialDow, initialTime, initialInstance, initialToken, initialGroup }: Props) {
+export function PublishSettings({ initialDow, initialTime, initialGroupJid }: Props) {
   const [state, action, pending] = useActionState(updatePublishSettings, initialState)
-  const [enabled, setEnabled] = useState(
-    !!(initialInstance || initialToken || initialGroup),
-  )
+  const [enabled, setEnabled] = useState(!!initialGroupJid)
 
   return (
     <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* Hidden field for greenapi_enabled */}
-      <input type="hidden" name="greenapi_enabled" value={String(enabled)} />
+      <input type="hidden" name="whatsapp_enabled" value={String(enabled)} />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         <label style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>יום פרסום</label>
@@ -64,59 +59,39 @@ export function PublishSettings({ initialDow, initialTime, initialInstance, init
         )}
       </div>
 
-      {/* GreenAPI toggle */}
+      {/* WhatsApp auto-send toggle */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0' }}>
         <input
-          id="greenapi-toggle" type="checkbox" checked={enabled}
+          id="whatsapp-toggle" type="checkbox" checked={enabled}
           onChange={(e) => setEnabled(e.target.checked)}
           style={{ width: 18, height: 18, cursor: 'pointer' }}
         />
-        <label htmlFor="greenapi-toggle" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', cursor: 'pointer' }}>
-          שלח אוטומטית לווטסאפ (GreenAPI)
+        <label htmlFor="whatsapp-toggle" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', cursor: 'pointer' }}>
+          שלח אוטומטית לקבוצת הווטסאפ
         </label>
       </div>
 
       {enabled && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '0 0 4px 0' }}>
           <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0, lineHeight: 1.6 }}>
-            GreenAPI היא שירות ווטסאפ חיצוני לא-רשמי בחינם הדורש חיבור מספר ווטסאפ.
-            בלי הגדרה זו, הסידור יפורסם ויוכל להישלח ידנית בלחיצה אחת.
+            ההודעות (תמונת הסידור לקבוצה והודעה אישית לכל עובד) נשלחות מהמספר של המערכת —
+            ודאו שהמספר חבר בקבוצת הווטסאפ. בלי הגדרה זו, הסידור יפורסם ויוכל להישלח ידנית.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Instance ID</label>
+            <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>מזהה קבוצת ווטסאפ (Group JID)</label>
             <input
-              name="greenapi_instance" defaultValue={initialInstance ?? ''}
-              placeholder="למשל: 1234567890"
+              name="whatsapp_group_jid" defaultValue={initialGroupJid ?? ''}
+              placeholder="למשל: 120363012345678901@g.us"
+              dir="ltr"
               style={{
                 padding: '9px 14px', borderRadius: 'var(--r-md)',
                 border: '1px solid var(--border-strong)', background: 'var(--surface)',
-                color: 'var(--text)', fontSize: 14, fontFamily: 'var(--font)',
+                color: 'var(--text)', fontSize: 14, fontFamily: 'var(--font)', textAlign: 'left',
               }}
             />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>API Token</label>
-            <input
-              name="greenapi_token" type="password" defaultValue={initialToken ?? ''}
-              placeholder="טוקן מ-GreenAPI"
-              style={{
-                padding: '9px 14px', borderRadius: 'var(--r-md)',
-                border: '1px solid var(--border-strong)', background: 'var(--surface)',
-                color: 'var(--text)', fontSize: 14, fontFamily: 'var(--font)',
-              }}
-            />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Group ID</label>
-            <input
-              name="greenapi_group" defaultValue={initialGroup ?? ''}
-              placeholder="מזהה קבוצה (ללא @g.us)"
-              style={{
-                padding: '9px 14px', borderRadius: 'var(--r-md)',
-                border: '1px solid var(--border-strong)', background: 'var(--surface)',
-                color: 'var(--text)', fontSize: 14, fontFamily: 'var(--font)',
-              }}
-            />
+            {state.fieldErrors?.whatsapp_group_jid && (
+              <span style={{ color: '#D8423B', fontSize: 13 }}>{state.fieldErrors.whatsapp_group_jid}</span>
+            )}
           </div>
         </div>
       )}

@@ -111,9 +111,9 @@ test('authenticated user with org is redirected away from /login and /onboarding
   await expect(page.getByRole('heading', { name: workplaceName })).toBeVisible()
 })
 
-// ── Logout in bottom nav ───────────────────────────────────────────────────
+// ── Logout in top-nav expandable menu ──────────────────────────────────────
 
-test('logged-in manager sees "התנתקות" in bottom nav and clicking it lands on /login', async ({
+test('logged-in manager opens top-nav menu, sees "התנתקות", and clicking it lands on /login', async ({
   page,
 }) => {
   const uuid = crypto.randomUUID().replace(/-/g, '').slice(0, 12)
@@ -134,10 +134,36 @@ test('logged-in manager sees "התנתקות" in bottom nav and clicking it land
   await page.getByRole('button', { name: 'יצירת מקום עבודה' }).click()
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 })
 
-  // Bottom nav shows logout button
+  // Logout lives inside the expandable top-nav menu — collapsed by default.
+  await expect(page.getByRole('button', { name: 'התנתקות' })).not.toBeVisible()
+
+  // Open the menu, then the logout button is visible.
+  await page.getByRole('button', { name: 'תפריט' }).click()
   await expect(page.getByRole('button', { name: 'התנתקות' })).toBeVisible()
 
   // Click logout → lands on /login
   await page.getByRole('button', { name: 'התנתקות' }).click()
   await expect(page).toHaveURL(/\/login/, { timeout: 10000 })
+})
+
+test('top-nav menu expands and navigates to a tab', async ({ page }) => {
+  const uuid = crypto.randomUUID().replace(/-/g, '').slice(0, 12)
+  const email = `test+nav+${uuid}@example.com`
+  const password = 'TestPass123!'
+
+  await page.goto('/signup')
+  await page.getByLabel('אימייל').fill(email)
+  await page.getByLabel('סיסמה').fill(password)
+  await page.getByRole('button', { name: 'הרשמה' }).click()
+  await expect(page).toHaveURL(/\/onboarding/, { timeout: 15000 })
+  await page.getByLabel('שם הארגון').fill(`ארגון ${uuid}`)
+  await page.getByLabel('שם מקום העבודה').fill(`מקום עבודה ${uuid}`)
+  await page.getByRole('button', { name: 'יצירת מקום עבודה' }).click()
+  await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 })
+
+  // Tabs are hidden until the menu is opened.
+  await expect(page.getByRole('link', { name: 'עובדים' })).not.toBeVisible()
+  await page.getByRole('button', { name: 'תפריט' }).click()
+  await page.getByRole('link', { name: 'עובדים' }).click()
+  await expect(page).toHaveURL(/\/team/, { timeout: 10000 })
 })

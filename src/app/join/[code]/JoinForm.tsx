@@ -110,6 +110,22 @@ export function JoinForm({ action }: JoinFormProps) {
         )}
       </div>
 
+      <div>
+        <label htmlFor="phone" style={labelStyle}>טלפון נייד</label>
+        <input
+          id="phone"
+          name="phone"
+          type="tel"
+          autoComplete="tel"
+          required
+          placeholder="050-0000000"
+          style={inputStyle}
+        />
+        {state.fieldErrors?.phone && (
+          <span style={errorStyle}>{state.fieldErrors.phone}</span>
+        )}
+      </div>
+
       {/* Employment type */}
       <div>
         <span style={labelStyle}>סוג משרה</span>

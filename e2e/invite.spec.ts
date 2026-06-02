@@ -75,6 +75,7 @@ test('manager creates invite, employee joins via /join/[code] and lands on /me',
   await employeePage.getByLabel('שם מלא').fill(empName)
   await employeePage.getByLabel('אימייל').fill(empEmail)
   await employeePage.getByLabel('סיסמה').fill(empPassword)
+  await employeePage.getByLabel('טלפון נייד').fill('0521234567')
   await employeePage.getByRole('button', { name: 'הצטרפות' }).click()
 
   // ── 4. Employee lands on /me with workplace name ─────────────────────────
@@ -147,6 +148,7 @@ test('authenticated none-role user sees "join with current account" panel and jo
   // ── 4. Fill the authenticated join form and submit ───────────────────────
   const empName = 'עובד מאומת'
   await nonePage.getByLabel('שם מלא').fill(empName)
+  await nonePage.getByLabel('טלפון נייד').fill('0521234567')
   await nonePage.getByText('משרה חלקית', { exact: true }).click()
   await nonePage.getByRole('button', { name: /הצטרפות עם החשבון/ }).click()
 
@@ -204,6 +206,7 @@ test('employee joins as student + Shabbat observer and lands on /me', async ({ b
   await employeePage.getByLabel('שם מלא').fill(empName)
   await employeePage.getByLabel('אימייל').fill(empEmail)
   await employeePage.getByLabel('סיסמה').fill(empPassword)
+  await employeePage.getByLabel('טלפון נייד').fill('0521234567')
 
   // Choose "סטודנט" — radio is visually hidden inside a label, click the label text
   await employeePage.getByText('סטודנט', { exact: true }).click()

@@ -10,6 +10,7 @@ import { parseFormData, buildFieldErrors } from '@/lib/employees/form'
 import { syncEmployeeRoles } from '@/lib/employees/roles'
 import { syncEmployeeAvailability } from '@/lib/employees/availability'
 import { pickUniqueColor } from '@/lib/employees/colors'
+import { normalizeIsraeliPhone } from '@/lib/whatsapp/phone'
 
 export type EmployeeActionState = {
   ok?: boolean
@@ -51,7 +52,7 @@ export async function createEmployee(
     .insert({
       workplace_id: workplace.id,
       name,
-      phone: phone || null,
+      phone: phone ? (normalizeIsraeliPhone(phone) ?? phone) : null,
       color: pickUniqueColor(existingColors),
       min_shifts_per_week: minShifts,
       max_shifts_per_week: maxShifts,
@@ -118,7 +119,7 @@ export async function updateEmployee(
     .from('employees')
     .update({
       name,
-      phone: phone || null,
+      phone: phone ? (normalizeIsraeliPhone(phone) ?? phone) : null,
       min_shifts_per_week: minShifts,
       max_shifts_per_week: maxShifts,
       employment_type: employmentType,

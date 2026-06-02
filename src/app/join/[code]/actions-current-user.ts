@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { pickUniqueColor } from '@/lib/employees/colors'
+import { normalizeIsraeliPhone } from '@/lib/whatsapp/phone'
 import { getEmploymentDefaults } from './employment-defaults'
 import type { JoinState } from './actions'
 
@@ -13,6 +14,7 @@ const CurrentUserJoinSchema = z.object({
     .string()
     .min(2, 'שם חייב להכיל לפחות 2 תווים')
     .max(120, 'שם ארוך מדי (מקסימום 120 תווים)'),
+  phone: z.string().min(1, 'יש להזין מספר טלפון'),
   employmentType: z.enum(['full', 'part', 'student'], { error: 'יש לבחור סוג משרה' }),
   observesShabbat: z.boolean(),
 })
@@ -29,6 +31,7 @@ export async function joinAsCurrentUser(
 ): Promise<JoinState> {
   const raw = {
     name: (formData.get('name') as string ?? '').trim(),
+    phone: (formData.get('phone') as string ?? '').trim(),
     employmentType: formData.get('employmentType') as string ?? 'full',
     observesShabbat: formData.get('observesShabbat') === 'true',
   }
@@ -44,6 +47,9 @@ export async function joinAsCurrentUser(
   }
 
   const { name, employmentType, observesShabbat } = parsed.data
+
+  const phone = normalizeIsraeliPhone(parsed.data.phone)
+  if (!phone) return { fieldErrors: { phone: 'מספר טלפון לא תקין' } }
 
   const supabase = await createClient()
   const {
@@ -92,6 +98,7 @@ export async function joinAsCurrentUser(
       workplace_id: workplaceId,
       user_id: currentUser.id,
       name,
+      phone,
       status: 'active',
       color,
       employment_type: employmentType,
