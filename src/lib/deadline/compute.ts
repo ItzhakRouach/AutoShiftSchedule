@@ -37,6 +37,23 @@ export function deadlineDateTime(
   return deadlineDT.toUTC().toJSDate()
 }
 
+const HEB_DAYS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
+
+/**
+ * Human-readable Hebrew label for the request deadline, e.g.
+ * "יום חמישי, 4.6 בשעה 18:00". Computed from the same formula as deadlineDateTime.
+ */
+export function deadlineLabel(
+  weekStartISO: string,
+  dow: number,
+  time: string,
+  timeZone: string = DEFAULT_TZ,
+): string {
+  const weekStart = DateTime.fromISO(weekStartISO, { zone: timeZone })
+  const d = weekStart.minus({ days: 7 }).plus({ days: dow })
+  return `יום ${HEB_DAYS[dow] ?? ''}, ${d.day}.${d.month} בשעה ${time}`
+}
+
 /**
  * Returns true if `now` is strictly AFTER the deadline (i.e. deadline has passed).
  */

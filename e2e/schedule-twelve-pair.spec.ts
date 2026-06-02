@@ -23,57 +23,55 @@ async function addEmployee(page: Page, name: string) {
   await expect(page.getByRole('heading', { name: 'עובד חדש' })).toBeHidden({ timeout: 10000 })
 }
 
-test('manager applies a day-level 12h pair via the wizard', async ({ page }) => {
-  test.setTimeout(120_000)
-  await signupAndOnboard(page)
+/**
+ * Open the 12h-pair wizard on the first day that can actually form a pair (a role
+ * with both a morning and a night assignee). Returns true and leaves the sheet
+ * open with the role list visible, or false if no day is formable.
+ */
+async function openFormableDay(page: Page): Promise<boolean> {
+  const dayBtns = page.getByTestId('day-pair-btn')
+  const count = await dayBtns.count()
+  for (let i = 0; i < count; i++) {
+    await dayBtns.nth(i).click()
+    await expect(page.getByText(/צמד 12 שעות/)).toBeVisible({ timeout: 5000 })
+    if (await page.getByText('בחרו תפקיד').isVisible()) return true
+    await page.mouse.click(5, 5)
+    await expect(page.getByText(/צמד 12 שעות/)).toBeHidden({ timeout: 5000 })
+  }
+  return false
+}
 
+// Enough staff that the auto-scheduler fully covers at least one day → a role with
+// both a morning and a night assignee exists, so a 12h pair is formable.
+async function seedStaffAndSchedule(page: Page) {
   await page.goto('/team')
   await expect(page).toHaveURL(/\/team/, { timeout: 10000 })
-  await addEmployee(page, 'דנה כהן')
-  await addEmployee(page, 'יוסי לוי')
-  await addEmployee(page, 'מאיה בר')
-  await addEmployee(page, 'אורי טל')
+  for (let i = 0; i < 10; i++) await addEmployee(page, `עובד ${i + 1}`)
 
   await page.goto('/schedule')
   await expect(page.getByRole('heading', { name: 'שיבוץ אוטומטי' })).toBeVisible({ timeout: 10000 })
   await page.getByRole('button', { name: 'צור סידור אוטומטי' }).click()
   await expect(page.getByTestId('coverage')).toBeVisible({ timeout: 30000 })
+}
 
-  // Open the wizard on the LAST day of the week: its night 12h block extends past
-  // the period end, so it won't rest-conflict with a next-day morning shift,
-  // making a valid morning+night pair reliably available.
-  await page.getByTestId('day-pair-btn').last().click()
-  await expect(page.getByText('בחרו תפקיד')).toBeVisible({ timeout: 8000 })
+test('12h pair offers only the day\'s assigned staff and applies', async ({ page }) => {
+  test.setTimeout(180_000)
+  await signupAndOnboard(page)
+  await seedStaffAndSchedule(page)
 
-  // Choose the first role.
+  expect(await openFormableDay(page)).toBe(true)
+
   await page.locator('button', { hasText: /אחמ|מוקדן|מאבטח/ }).first().click()
   await expect(page.getByText(/עובד בוקר/)).toBeVisible({ timeout: 8000 })
 
-  // Both lists render the SAME employees in the SAME order. Pick the first
-  // enabled morning candidate, then a night candidate at a DIFFERENT list index
-  // (server rejects the same employee for both slots). Only truly-eligible
-  // candidates are enabled now, so any enabled pick validates server-side.
-  const morningBtns = page.getByTestId('pair-morning').locator('button')
-  const nightBtns = page.getByTestId('pair-night').locator('button')
-  const total = await morningBtns.count()
-  await expect(page.getByTestId('pair-morning').locator('button:not([disabled])').first()).toBeVisible({ timeout: 8000 })
-
-  let mIdx = -1
-  for (let i = 0; i < total; i++) {
-    if (await morningBtns.nth(i).isEnabled()) { mIdx = i; await morningBtns.nth(i).click(); break }
-  }
-  expect(mIdx).toBeGreaterThanOrEqual(0)
-  let clicked = false
-  for (let i = 0; i < total; i++) {
-    if (i !== mIdx && (await nightBtns.nth(i).isEnabled())) { await nightBtns.nth(i).click(); clicked = true; break }
-  }
-  expect(clicked).toBe(true)
+  // Candidates come from the day's existing morning / night assignments.
+  await expect(page.getByTestId('pair-morning').locator('button').first()).toBeVisible({ timeout: 8000 })
+  await page.getByTestId('pair-morning').locator('button').first().click()
+  await page.getByTestId('pair-night').locator('button').first().click()
 
   await page.getByRole('button', { name: 'החל צמד 12 שעות' }).click()
-  // Success warning appears inline.
   await expect(page.getByText(/הוחל צמד 12 שעות/)).toBeVisible({ timeout: 8000 })
 
-  // Close + reload, then assert a -12 marker exists in the grid.
   await page.mouse.click(5, 5)
   await page.reload()
   await expect(page.getByRole('heading', { name: 'שיבוץ אוטומטי' })).toBeVisible({ timeout: 10000 })
@@ -82,27 +80,17 @@ test('manager applies a day-level 12h pair via the wizard', async ({ page }) => 
 })
 
 test('apply is gated until both morning and night are chosen', async ({ page }) => {
-  test.setTimeout(120_000)
+  test.setTimeout(180_000)
   await signupAndOnboard(page)
-  await page.goto('/team')
-  await addEmployee(page, 'רון שמש')
-  await addEmployee(page, 'גל ניר')
-  await addEmployee(page, 'תמר זיו')
+  await seedStaffAndSchedule(page)
 
-  await page.goto('/schedule')
-  await page.getByRole('button', { name: 'צור סידור אוטומטי' }).click()
-  await expect(page.getByTestId('coverage')).toBeVisible({ timeout: 30000 })
-
-  await page.getByTestId('day-pair-btn').first().click()
-  await expect(page.getByText('בחרו תפקיד')).toBeVisible({ timeout: 8000 })
+  expect(await openFormableDay(page)).toBe(true)
   await page.locator('button', { hasText: /אחמ|מוקדן|מאבטח/ }).first().click()
   await expect(page.getByText(/עובד בוקר/)).toBeVisible({ timeout: 8000 })
 
-  // Apply button is disabled before any picks.
   const applyBtn = page.getByRole('button', { name: 'החל צמד 12 שעות' })
   await expect(applyBtn).toBeDisabled()
 
-  // After choosing only a morning candidate, apply is still disabled.
-  await page.getByTestId('pair-morning').locator('button:not([disabled])').first().click()
+  await page.getByTestId('pair-morning').locator('button').first().click()
   await expect(applyBtn).toBeDisabled()
 })

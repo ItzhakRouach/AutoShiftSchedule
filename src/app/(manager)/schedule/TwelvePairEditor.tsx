@@ -4,7 +4,6 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Sheet } from '@/components/ui/Sheet'
 import { Avatar } from '@/components/ui/Avatar'
-import { candidateStatus } from '@/lib/schedule/candidate-status'
 import type { ShiftId } from '@/lib/domain/constants'
 import type { EditMeta } from '@/lib/schedule/edit-meta'
 import type { ScheduleView } from '@/lib/schedule/view-data'
@@ -17,15 +16,20 @@ interface Props {
   meta: EditMeta
 }
 
-/** Roles required on the given day (any shift), in view order. */
+/**
+ * Roles for which a 12h pair can be formed on this day — i.e. the role has at
+ * least one employee assigned to בוקר AND one to לילה (the pair converts those
+ * existing people). Roles without both can't form a pair, so they're hidden.
+ */
 function rolesForDay(view: ScheduleView, day: number): { id: string; name: string }[] {
-  const req = view.requirements[day] ?? {}
-  const ids = new Set<string>()
-  for (const byRole of Object.values(req)) for (const [rid, c] of Object.entries(byRole)) if (c > 0) ids.add(rid)
-  return view.roles.filter((r) => ids.has(r.id))
+  return view.roles.filter((r) => {
+    const morning = view.grid[day]?.['morning']?.[r.id]?.length ?? 0
+    const night = view.grid[day]?.['night']?.[r.id]?.length ?? 0
+    return morning > 0 && night > 0
+  })
 }
 
-export function TwelvePairEditor({ day, onClose, view, meta }: Props) {
+export function TwelvePairEditor({ day, onClose, view }: Props) {
   const router = useRouter()
   const [, start] = useTransition()
   const [roleId, setRoleId] = useState<string | null>(null)
@@ -39,13 +43,22 @@ export function TwelvePairEditor({ day, onClose, view, meta }: Props) {
   const empById = new Map(view.employees.map((e) => [e.id, e]))
 
   function pick(slotKey: ShiftId, chosen: string | null) {
-    if (!roleId) return [] as { id: string; name: string; disabled: boolean; label: string; sel: boolean }[]
-    return view.employees.map((e) => {
-      const em = meta.employees[e.id]
-      if (!em) return null
-      const c = candidateStatus({ emp: em, day: day!, shiftKey: slotKey, roleId, minRestHours: meta.minRestHours })
-      return { id: e.id, name: e.name, disabled: c.disabled, label: c.label, sel: chosen === e.id }
-    }).filter(Boolean) as { id: string; name: string; disabled: boolean; label: string; sel: boolean }[]
+    type Cand = { id: string; name: string; disabled: boolean; label: string; sel: boolean }
+    if (!roleId) return [] as Cand[]
+    // Only offer employees already assigned to that base shift on this day for the
+    // chosen role: the 12h-day person comes from בוקר, the 12h-night from לילה.
+    // Shown enabled — the server (applyTwelvePair) validates rest/availability and
+    // rejects with a Hebrew reason if the conversion isn't legal.
+    const baseShift = slotKey === ('m12_day' as ShiftId) ? 'morning' : 'night'
+    const label = baseShift === 'morning' ? 'בוקר' : 'לילה'
+    const assignedIds = view.grid[day!]?.[baseShift]?.[roleId] ?? []
+    return assignedIds
+      .map((id) => {
+        const e = empById.get(id)
+        if (!e) return null
+        return { id, name: e.name, disabled: false, label, sel: chosen === id }
+      })
+      .filter(Boolean) as Cand[]
   }
 
   function apply() {
@@ -62,9 +75,18 @@ export function TwelvePairEditor({ day, onClose, view, meta }: Props) {
   }
 
   const roleName = view.roles.find((r) => r.id === roleId)?.name ?? ''
-  const list = (slot: ShiftId, chosen: string | null, set: (id: string) => void, tid: string) => (
+  const list = (slot: ShiftId, chosen: string | null, set: (id: string) => void, tid: string) => {
+    const cands = pick(slot, chosen)
+    if (cands.length === 0) {
+      return (
+        <div data-testid={tid} style={{ fontSize: 12.5, color: 'var(--text-3)', padding: '8px 11px', borderRadius: 12, background: 'var(--surface-2)' }}>
+          אין עובד מתאים המשובץ במשמרת זו ביום שנבחר.
+        </div>
+      )
+    }
+    return (
     <div data-testid={tid} style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: '24vh', overflowY: 'auto' }}>
-      {pick(slot, chosen).map((c) => (
+      {cands.map((c) => (
         <button key={c.id} disabled={c.disabled || busy} onClick={() => set(c.id)} style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '8px 11px',
           borderRadius: 12, border: `1px solid ${c.sel ? 'var(--accent)' : 'var(--border)'}`,
@@ -79,13 +101,21 @@ export function TwelvePairEditor({ day, onClose, view, meta }: Props) {
         </button>
       ))}
     </div>
-  )
+    )
+  }
 
   return (
     <Sheet open onClose={onClose} title={`צמד 12 שעות · ${view.days[day]?.short ?? ''}`}>
       {msg && <div style={{ padding: '9px 12px', borderRadius: 12, background: 'var(--accent-soft)', color: 'var(--text)', fontSize: 13, marginBottom: 12 }}>{msg}</div>}
 
-      <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-2)', margin: '6px 0 8px' }}>בחרו תפקיד</div>
+      {roles.length === 0 && (
+        <div style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.6, padding: '10px 12px', borderRadius: 12, background: 'var(--surface-2)' }}>
+          לא ניתן ליצור צמד 12 שעות ביום זה — נדרש עובד משובץ גם בבוקר וגם בלילה לאותו תפקיד.
+        </div>
+      )}
+      {roles.length > 0 && (
+        <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-2)', margin: '6px 0 8px' }}>בחרו תפקיד</div>
+      )}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
         {roles.map((r) => (
           <button key={r.id} onClick={() => { setRoleId(r.id); setMorning(null); setNight(null); setMsg(null) }} style={{

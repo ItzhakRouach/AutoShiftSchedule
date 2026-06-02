@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { upcomingWeekStartISO } from '@/lib/dates/week'
+import { deadlineLabel } from '@/lib/deadline/compute'
 
 export interface ShiftTypeRow {
   id: string
@@ -34,6 +35,8 @@ export interface EmployeeRequestsContext {
   vacations: VacationRow[]
   /** ISO timestamp of the employee's latest submission for this period, or null. */
   submittedAt: string | null
+  /** Hebrew label of when the submission window closes, or null if not configured. */
+  deadlineLabel: string | null
 }
 
 /**
@@ -67,6 +70,8 @@ export async function getEmployeeRequestsContext(
     { data: requestsRaw },
     { data: vacationsRaw },
     { data: submissionRow },
+    { data: settingsRow },
+    { data: wpRow },
   ] = await Promise.all([
     supabase
       .from('schedule_periods')
@@ -95,7 +100,23 @@ export async function getEmployeeRequestsContext(
       .eq('period_id', periodId)
       .eq('employee_id', emp.id)
       .maybeSingle(),
+    supabase
+      .from('workplace_settings')
+      .select('request_deadline_dow, request_deadline_time')
+      .eq('workplace_id', emp.workplace_id)
+      .maybeSingle(),
+    supabase
+      .from('workplaces')
+      .select('timezone')
+      .eq('id', emp.workplace_id)
+      .maybeSingle(),
   ])
+
+  const dow = settingsRow?.request_deadline_dow as number | null | undefined
+  const time = settingsRow?.request_deadline_time as string | null | undefined
+  const tz = (wpRow?.timezone as string | null | undefined) ?? 'Asia/Jerusalem'
+  const deadline =
+    dow != null && time ? deadlineLabel(weekStart, dow, time, tz) : null
 
   const requestsByDay: Record<number, RequestRow> = {}
   for (const r of requestsRaw ?? []) {
@@ -110,5 +131,6 @@ export async function getEmployeeRequestsContext(
     requestsByDay,
     vacations: (vacationsRaw ?? []) as VacationRow[],
     submittedAt: (submissionRow?.submitted_at as string | undefined) ?? null,
+    deadlineLabel: deadline,
   }
 }

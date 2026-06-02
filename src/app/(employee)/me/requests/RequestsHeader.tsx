@@ -6,9 +6,10 @@ interface RequestsHeaderProps {
   filled: number
   total: number
   isReadOnly: boolean
+  deadlineLabel?: string | null
 }
 
-export function RequestsHeader({ weekLabel, filled, total, isReadOnly }: RequestsHeaderProps) {
+export function RequestsHeader({ weekLabel, filled, total, isReadOnly, deadlineLabel }: RequestsHeaderProps) {
   const pct = Math.round((filled / Math.max(total, 1)) * 100)
 
   return (
@@ -87,6 +88,21 @@ export function RequestsHeader({ weekLabel, filled, total, isReadOnly }: Request
           <Icon name="info" size={20} color="var(--accent)" />
           <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.4, flex: 1 }}>
             לחצו על יום כדי לבחור משמרות מועדפות או לסמן יום חופש. ניתן לבחור יותר ממשמרת אחת.
+          </div>
+        </div>
+      )}
+
+      {!isReadOnly && deadlineLabel && (
+        <div
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '10px 14px', borderRadius: 'var(--r-md)',
+            background: 'var(--surface-2)', border: '1px solid var(--border)', marginBottom: 16,
+          }}
+        >
+          <Icon name="clock" size={18} color="var(--text-2)" />
+          <div style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>
+            חלון ההגשה נסגר ב{deadlineLabel}
           </div>
         </div>
       )}

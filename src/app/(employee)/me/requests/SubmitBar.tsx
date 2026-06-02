@@ -8,9 +8,10 @@ import { submitRequests } from './actions'
 interface Props {
   periodId: string
   initialSubmittedAt: string | null
+  deadlineLabel?: string | null
 }
 
-export function SubmitBar({ periodId, initialSubmittedAt }: Props) {
+export function SubmitBar({ periodId, initialSubmittedAt, deadlineLabel }: Props) {
   const [submitted, setSubmitted] = useState(initialSubmittedAt !== null)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -44,8 +45,9 @@ export function SubmitBar({ periodId, initialSubmittedAt }: Props) {
 
       <p style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--text-2)', lineHeight: 1.5 }}>
         {submitted
-          ? 'ניתן לערוך את הבקשות ולהגיש מחדש עד סגירת חלון ההגשה.'
-          : 'הבחירות נשמרות תוך כדי עריכה. לחצו כדי להגיש את הבקשות למנהל — תוכלו לערוך ולהגיש מחדש עד סגירת חלון ההגשה.'}
+          ? 'ניתן לערוך את הבקשות ולהגיש מחדש '
+          : 'הבחירות נשמרות תוך כדי עריכה. לחצו כדי להגיש את הבקשות למנהל — תוכלו לערוך ולהגיש מחדש '}
+        {deadlineLabel ? `עד ${deadlineLabel}.` : 'עד סגירת חלון ההגשה.'}
       </p>
 
       {error && (

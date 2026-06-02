@@ -20,6 +20,14 @@ export function TeamClient({ employees, roles, shiftTypes }: TeamClientProps) {
   const router = useRouter()
   const [sheetMode, setSheetMode] = useState<'add' | 'edit' | null>(null)
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeData | null>(null)
+  const [query, setQuery] = useState('')
+
+  const q = query.trim().toLowerCase()
+  const filtered = q
+    ? employees.filter(
+        (e) => e.name.toLowerCase().includes(q) || (e.phone ?? '').toLowerCase().includes(q),
+      )
+    : employees
 
   const openAdd = () => {
     setSelectedEmployee(null)
@@ -100,6 +108,28 @@ export function TeamClient({ employees, roles, shiftTypes }: TeamClientProps) {
         </button>
       </div>
 
+      {/* Search */}
+      {employees.length > 0 && (
+        <div style={{ position: 'relative', marginBottom: 14 }}>
+          <span style={{ position: 'absolute', insetInlineStart: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)', pointerEvents: 'none' }}>
+            <Icon name="users" size={18} />
+          </span>
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="חיפוש עובד לפי שם או טלפון…"
+            aria-label="חיפוש עובד"
+            style={{
+              width: '100%', boxSizing: 'border-box', padding: '11px 42px 11px 14px',
+              borderRadius: 'var(--r-md)', border: '1px solid var(--border-strong)',
+              background: 'var(--surface)', color: 'var(--text)', fontSize: 14,
+              fontFamily: 'var(--font)', direction: 'rtl',
+            }}
+          />
+        </div>
+      )}
+
       {/* Employee list */}
       {employees.length === 0 ? (
         <div
@@ -116,9 +146,13 @@ export function TeamClient({ employees, roles, shiftTypes }: TeamClientProps) {
           </div>
           <div>לחצו על + כדי להוסיף את העובד הראשון</div>
         </div>
+      ) : filtered.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '32px 24px', color: 'var(--text-3)', fontSize: 14 }}>
+          לא נמצאו עובדים התואמים לחיפוש
+        </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-          {employees.map((emp) => {
+          {filtered.map((emp) => {
             const empRoles = roles.filter((r) => emp.roleIds.includes(r.id))
             return (
               <Card

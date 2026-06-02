@@ -13,7 +13,7 @@ export default async function RequestsPage() {
 
   if (!ctx) redirect('/login')
 
-  const { employee, weekStart, period, shiftTypes, requestsByDay, vacations, submittedAt } = ctx
+  const { employee, weekStart, period, shiftTypes, requestsByDay, vacations, submittedAt, deadlineLabel } = ctx
   const isReadOnly = !period || period.status !== 'collecting'
 
   const weekStartDate = new Date(weekStart + 'T00:00:00')
@@ -39,6 +39,7 @@ export default async function RequestsPage() {
         filled={filled}
         total={7}
         isReadOnly={isReadOnly}
+        deadlineLabel={deadlineLabel}
       />
 
       <DayList
@@ -57,7 +58,7 @@ export default async function RequestsPage() {
 
       {!isReadOnly && period && (
         <div style={{ marginTop: 20 }}>
-          <SubmitBar periodId={period.id} initialSubmittedAt={submittedAt} />
+          <SubmitBar periodId={period.id} initialSubmittedAt={submittedAt} deadlineLabel={deadlineLabel} />
         </div>
       )}
     </main>
