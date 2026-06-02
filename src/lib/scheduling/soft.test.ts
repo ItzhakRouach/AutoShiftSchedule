@@ -31,6 +31,32 @@ describe('mustAccept', () => {
     // seed 2 would pick 'other' (alphabetically/lottery) but mustAccept requester wins.
     expect(res.grid[0].morning[GUARD]).toEqual(['ma'])
   })
+
+  it('honors ALL feasible requested shifts, beyond the 2-slot reservation cap', () => {
+    // ma requests morning on days 0,1,2. Each day also has a noon slot, and a
+    // rival who can ONLY work morning that day. Without the must-accept pre-pass,
+    // the reservation cap (2) leaves day-2 to general fill, where max-matching
+    // routes ma to NOON (so the rival can take morning) — losing ma's request.
+    // The must-accept pre-pass must secure all three mornings for ma.
+    const ma = emp('ma', { mustAccept: true })
+    const rivals = [0, 1, 2].map((d) =>
+      emp(`r${d}`, { availability: { [d]: ['morning'] } as Record<number, ('morning' | 'noon' | 'night')[]> }),
+    )
+    const requests = buildRequests([ma, ...rivals], (id, d) =>
+      id === 'ma' && d <= 2 ? { preferred: ['morning'] } : {},
+    )
+    const requirements = mergeReqs(
+      reqFor([0, 1, 2], 'morning', GUARD, 1),
+      reqFor([0, 1, 2], 'noon', GUARD, 1),
+    )
+    const res = generateSchedule(
+      input({ employees: [ma, ...rivals], requirements, requests, seed: 1 }),
+    )
+    expect(res.stats.ma.requestsSatisfied).toBe(3)
+    expect(res.grid[0].morning[GUARD]).toContain('ma')
+    expect(res.grid[1].morning[GUARD]).toContain('ma')
+    expect(res.grid[2].morning[GUARD]).toContain('ma')
+  })
 })
 
 describe('employment-type ordering (FIX A — only among below-min employees)', () => {

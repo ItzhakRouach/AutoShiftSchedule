@@ -63,6 +63,33 @@ function reservationRound(
 }
 
 /**
+ * Must-accept pre-pass: an employee flagged `mustAccept` has their requested
+ * shifts honored above everyone else's. Runs FIRST, so their requested slots are
+ * still open and they claim them before any other reservation/general fill — i.e.
+ * a must-accept request overrides a competing employee's request for the same
+ * slot. Only their REQUESTED slots are eligible (slotFilter), capacity 1/day, and
+ * `isAssignable` still enforces the hard rules (rest, one-shift/day, max shifts,
+ * role, Shabbat/holiday) — so genuinely-impossible requests are simply skipped.
+ */
+function mustAcceptRound(
+  input: EngineInput,
+  st: FillState,
+  metas: Record<number, DayMeta>,
+): void {
+  if (!input.employees.some((e) => e.mustAccept)) return
+  for (const d of input.days) {
+    const meta = metas[d.index]
+    matchDay(
+      input,
+      meta,
+      st,
+      (e) => (e.mustAccept ? 1 : 0),
+      (e, slot) => e.mustAccept && requestsSlot(input, e, slot),
+    )
+  }
+}
+
+/**
  * Cross-week fairness pre-pass: reserve legal slots toward minShifts for
  * employees carrying a positive priorDeficit (short of their minimum LAST
  * published week), processed deficit-desc so the most short-changed fill first.
@@ -119,6 +146,9 @@ export function runFill(input: EngineInput, skipTwelve = false, skipDiversity = 
     st.satisfied[e.id] = 0
   }
   const metas = metaMap(input)
+  // MUST-ACCEPT FIRST: honor every feasible requested shift of must-accept
+  // employees before any other reservation, so their requests win all contention.
+  mustAcceptRound(input, st, metas)
   // FIX 5: reserve up to 2 requested slots each, then ensure >=1 for anyone at 0.
   reservationRound(input, st, metas, 2, false)
   reservationRound(input, st, metas, 1, true)
