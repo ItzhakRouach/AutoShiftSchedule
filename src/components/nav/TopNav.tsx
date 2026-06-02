@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import { Icon, type IconName } from '@/components/ui/Icon'
 import { signOut } from '@/app/(auth)/actions'
+import { WorkplaceSwitcher } from './WorkplaceSwitcher'
 
 interface Tab {
   href: string
@@ -50,7 +51,7 @@ const rowBase: React.CSSProperties = {
   transition: 'background .12s ease, color .12s ease',
 }
 
-function TopBar({ tabs }: { tabs: Tab[] }) {
+function TopBar({ tabs, centerSlot }: { tabs: Tab[]; centerSlot?: React.ReactNode }) {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
 
@@ -103,10 +104,14 @@ function TopBar({ tabs }: { tabs: Tab[] }) {
         >
           <HamburgerIcon open={open} />
         </button>
-        <span style={{ flex: 1, textAlign: 'center', fontSize: 19, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>
-          מִשְׁמֶרֶת
-        </span>
-        {/* Spacer to keep the brand visually centered opposite the hamburger. */}
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'center', minWidth: 0 }}>
+          {centerSlot ?? (
+            <span style={{ fontSize: 19, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>
+              מִשְׁמֶרֶת
+            </span>
+          )}
+        </div>
+        {/* Spacer to keep the center element balanced opposite the hamburger. */}
         <span aria-hidden style={{ width: 40, flexShrink: 0 }} />
       </div>
 
@@ -184,8 +189,18 @@ function TopBar({ tabs }: { tabs: Tab[] }) {
   )
 }
 
-export function ManagerTopNav() {
-  return <TopBar tabs={MANAGER_TABS} />
+export function ManagerTopNav({
+  workplaces = [],
+  activeWorkplaceId,
+}: {
+  workplaces?: { id: string; name: string }[]
+  activeWorkplaceId?: string
+}) {
+  const centerSlot =
+    workplaces.length > 0 && activeWorkplaceId ? (
+      <WorkplaceSwitcher workplaces={workplaces} activeId={activeWorkplaceId} />
+    ) : undefined
+  return <TopBar tabs={MANAGER_TABS} centerSlot={centerSlot} />
 }
 
 export function EmployeeTopNav() {
