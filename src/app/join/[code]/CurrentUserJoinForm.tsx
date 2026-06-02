@@ -96,12 +96,13 @@ export function CurrentUserJoinForm({ action, workplaceName }: CurrentUserJoinFo
       </div>
 
       <div>
-        <label htmlFor="phone" style={labelStyle}>טלפון נייד (אופציונלי)</label>
+        <label htmlFor="phone" style={labelStyle}>טלפון נייד</label>
         <input
           id="phone"
           name="phone"
           type="tel"
           autoComplete="tel"
+          required
           placeholder="050-0000000"
           style={{ ...inputStyle, direction: 'ltr', textAlign: 'left' }}
         />
