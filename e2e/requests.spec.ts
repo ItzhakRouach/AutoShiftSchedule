@@ -75,7 +75,7 @@ test('employee requests: full flow (mark day-off, preferred shift, vacation)', a
   await empPage.getByText('יום חופש / לא זמין').click()
 
   // Save and wait for the sheet to close (day card shows "יום חופש" chip)
-  await empPage.getByRole('button', { name: 'שמירה' }).click()
+  await empPage.getByRole('button', { name: 'שמירה', exact: true }).click()
   await expect(empPage.locator('span').filter({ hasText: 'יום חופש' })).toBeVisible({ timeout: 8000 })
 
   // ── 6. Select a preferred shift on day 1 (שני) ──────────────────────────
@@ -92,7 +92,7 @@ test('employee requests: full flow (mark day-off, preferred shift, vacation)', a
   const morningShiftBtn = empPage.locator('button').filter({ has: empPage.locator('div', { hasText: 'בוקר' }) }).first()
   await morningShiftBtn.click()
 
-  await empPage.getByRole('button', { name: 'שמירה' }).click()
+  await empPage.getByRole('button', { name: 'שמירה', exact: true }).click()
 
   // After save, the sheet closes. The "שני" card now shows a "בוקר" chip.
   await expect(empPage.locator('span').filter({ hasText: 'בוקר' })).toBeVisible({ timeout: 8000 })
@@ -112,6 +112,15 @@ test('employee requests: full flow (mark day-off, preferred shift, vacation)', a
   // Reload and assert vacation persists
   await empPage.reload()
   await expect(empPage.getByText('2026-07-01 – 2026-07-07')).toBeVisible({ timeout: 10000 })
+
+  // ── 9. Save & submit requests; confirmation persists across reload ───────
+  await empPage.getByRole('button', { name: 'שמירה והגשה של הבקשות' }).click()
+  await expect(empPage.getByText('הבקשות הוגשו')).toBeVisible({ timeout: 10000 })
+  // After submitting, the button becomes a re-submit and editing is still open.
+  await expect(empPage.getByRole('button', { name: 'עדכון והגשה מחדש' })).toBeVisible()
+
+  await empPage.reload()
+  await expect(empPage.getByText('הבקשות הוגשו')).toBeVisible({ timeout: 10000 })
 
   await empContext.close()
   await managerContext.close()

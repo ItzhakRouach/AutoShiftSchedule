@@ -32,6 +32,8 @@ export interface EmployeeRequestsContext {
   /** Map: day_of_week (0–6) → RequestRow */
   requestsByDay: Record<number, RequestRow>
   vacations: VacationRow[]
+  /** ISO timestamp of the employee's latest submission for this period, or null. */
+  submittedAt: string | null
 }
 
 /**
@@ -59,30 +61,41 @@ export async function getEmployeeRequestsContext(
 
   if (rpcError || !periodId) return null
 
-  const [{ data: periodRow }, { data: shiftTypesRaw }, { data: requestsRaw }, { data: vacationsRaw }] =
-    await Promise.all([
-      supabase
-        .from('schedule_periods')
-        .select('id, status')
-        .eq('id', periodId)
-        .maybeSingle(),
-      supabase
-        .from('shift_types')
-        .select('id, key, name, start_hour, hours, color, sort')
-        .eq('workplace_id', emp.workplace_id)
-        .eq('is_fallback', false)
-        .order('sort'),
-      supabase
-        .from('requests')
-        .select('id, day_of_week, is_off, preferred_shift_ids')
-        .eq('period_id', periodId)
-        .eq('employee_id', emp.id),
-      supabase
-        .from('employee_vacations')
-        .select('id, date_from, date_to')
-        .eq('employee_id', emp.id)
-        .order('date_from'),
-    ])
+  const [
+    { data: periodRow },
+    { data: shiftTypesRaw },
+    { data: requestsRaw },
+    { data: vacationsRaw },
+    { data: submissionRow },
+  ] = await Promise.all([
+    supabase
+      .from('schedule_periods')
+      .select('id, status')
+      .eq('id', periodId)
+      .maybeSingle(),
+    supabase
+      .from('shift_types')
+      .select('id, key, name, start_hour, hours, color, sort')
+      .eq('workplace_id', emp.workplace_id)
+      .eq('is_fallback', false)
+      .order('sort'),
+    supabase
+      .from('requests')
+      .select('id, day_of_week, is_off, preferred_shift_ids')
+      .eq('period_id', periodId)
+      .eq('employee_id', emp.id),
+    supabase
+      .from('employee_vacations')
+      .select('id, date_from, date_to')
+      .eq('employee_id', emp.id)
+      .order('date_from'),
+    supabase
+      .from('request_submissions')
+      .select('submitted_at')
+      .eq('period_id', periodId)
+      .eq('employee_id', emp.id)
+      .maybeSingle(),
+  ])
 
   const requestsByDay: Record<number, RequestRow> = {}
   for (const r of requestsRaw ?? []) {
@@ -96,5 +109,6 @@ export async function getEmployeeRequestsContext(
     shiftTypes: (shiftTypesRaw ?? []) as ShiftTypeRow[],
     requestsByDay,
     vacations: (vacationsRaw ?? []) as VacationRow[],
+    submittedAt: (submissionRow?.submitted_at as string | undefined) ?? null,
   }
 }

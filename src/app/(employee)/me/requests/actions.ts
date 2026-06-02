@@ -64,6 +64,37 @@ export async function saveDayRequest(input: unknown): Promise<ActionResult> {
   return { ok: true }
 }
 
+/** Marks (or re-marks) the employee's requests as submitted for a period. */
+export async function submitRequests(periodId: string): Promise<ActionResult> {
+  if (!periodId) return { error: 'תקופה לא נמצאה' }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'אין הרשאה' }
+
+  const employee = await resolveEmployee(supabase, user.id)
+  if (!employee) return { error: 'אין הרשאה' }
+
+  const { data: period } = await supabase
+    .from('schedule_periods')
+    .select('status')
+    .eq('id', periodId)
+    .maybeSingle()
+  if (!period) return { error: 'תקופה לא נמצאה' }
+  if (period.status !== 'collecting') {
+    return { error: 'הבקשות נעולות — חלון ההגשה נסגר' }
+  }
+
+  const { error } = await supabase.from('request_submissions').upsert(
+    { period_id: periodId, employee_id: employee.id, submitted_at: new Date().toISOString() },
+    { onConflict: 'period_id,employee_id' },
+  )
+  if (error) return { error: 'שגיאה בהגשת הבקשות' }
+
+  revalidatePath('/me/requests')
+  return { ok: true }
+}
+
 export async function addVacation(input: unknown): Promise<ActionResult> {
   const parsed = addVacationSchema.safeParse(input)
   if (!parsed.success) {

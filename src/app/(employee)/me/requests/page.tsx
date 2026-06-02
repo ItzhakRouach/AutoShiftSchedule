@@ -5,6 +5,7 @@ import { formatHebDate } from '@/lib/dates/week'
 import { RequestsHeader } from './RequestsHeader'
 import { DayList } from './DayList'
 import { VacationSection } from './VacationSection'
+import { SubmitBar } from './SubmitBar'
 
 export default async function RequestsPage() {
   const supabase = await createClient()
@@ -12,7 +13,7 @@ export default async function RequestsPage() {
 
   if (!ctx) redirect('/login')
 
-  const { employee, weekStart, period, shiftTypes, requestsByDay, vacations } = ctx
+  const { employee, weekStart, period, shiftTypes, requestsByDay, vacations, submittedAt } = ctx
   const isReadOnly = !period || period.status !== 'collecting'
 
   const weekStartDate = new Date(weekStart + 'T00:00:00')
@@ -53,6 +54,12 @@ export default async function RequestsPage() {
         vacations={vacations}
         isReadOnly={isReadOnly}
       />
+
+      {!isReadOnly && period && (
+        <div style={{ marginTop: 20 }}>
+          <SubmitBar periodId={period.id} initialSubmittedAt={submittedAt} />
+        </div>
+      )}
     </main>
   )
 }
