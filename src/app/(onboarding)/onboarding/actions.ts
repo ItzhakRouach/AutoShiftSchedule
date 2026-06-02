@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createWorkplaceSchema } from '@/lib/validation/workplace'
-import { buildSeed } from '@/lib/workplace/seed'
+import { createWorkplaceWithDefaults } from '@/lib/workplace/create'
 
 export type WorkplaceState = {
   error?: string
@@ -65,102 +65,12 @@ export async function createWorkplace(
     return { error: 'שגיאה ביצירת הארגון' }
   }
 
-  // From here on the org exists. If ANY subsequent step fails we must delete it
-  // (cascades children) so no orphan rows remain and a retry can succeed.
-  const orgId = org.id
-  const fail = async (message: string): Promise<WorkplaceState> => {
-    await supabase.from('organizations').delete().eq('id', orgId)
-    return { error: message }
-  }
-
-  const setupError = 'שגיאה בהקמת מקום העבודה'
-
-  // Insert workplace
-  const { data: workplace, error: workplaceError } = await supabase
-    .from('workplaces')
-    .insert({ org_id: orgId, name: workplaceName, timezone })
-    .select('id')
-    .single()
-
-  if (workplaceError || !workplace) {
-    return fail(setupError)
-  }
-
-  const workplaceId = workplace.id
-  const seed = buildSeed()
-
-  // Insert roles
-  const { data: insertedRoles, error: rolesError } = await supabase
-    .from('roles')
-    .insert(seed.roles.map(r => ({ workplace_id: workplaceId, name: r.name, color: r.color, rank: r.rank })))
-    .select('id, name')
-
-  if (rolesError || !insertedRoles) {
-    return fail(setupError)
-  }
-
-  // Insert shift types
-  const { data: insertedShiftTypes, error: shiftTypesError } = await supabase
-    .from('shift_types')
-    .insert(
-      seed.shiftTypes.map(s => ({
-        workplace_id: workplaceId,
-        key: s.key,
-        name: s.name,
-        start_hour: s.start_hour,
-        hours: s.hours,
-        color: s.color,
-        is_fallback: s.is_fallback,
-        sort: s.sort,
-      })),
-    )
-    .select('id, key')
-
-  if (shiftTypesError || !insertedShiftTypes) {
-    return fail(setupError)
-  }
-
-  // Insert workplace settings
-  const { error: settingsError } = await supabase
-    .from('workplace_settings')
-    .insert({ workplace_id: workplaceId, ...seed.settings })
-
-  if (settingsError) {
-    return fail(setupError)
-  }
-
-  // Build lookup maps
-  const roleIdByName = new Map(insertedRoles.map(r => [r.name, r.id]))
-  const shiftTypeIdByKey = new Map(insertedShiftTypes.map(s => [s.key, s.id]))
-
-  // Build shift requirements, asserting every seed key resolved to a real row.
-  const requirementRows: {
-    workplace_id: string
-    day_of_week: number
-    shift_type_id: string
-    role_id: string
-    count: number
-  }[] = []
-
-  for (const req of seed.requirements) {
-    const shiftTypeId = shiftTypeIdByKey.get(req.shiftKey)
-    const roleId = roleIdByName.get(req.roleName)
-    if (!shiftTypeId || !roleId) {
-      return fail(setupError)
-    }
-    requirementRows.push({
-      workplace_id: workplaceId,
-      day_of_week: req.day_of_week,
-      shift_type_id: shiftTypeId,
-      role_id: roleId,
-      count: req.count,
-    })
-  }
-
-  const { error: reqError } = await supabase.from('shift_requirements').insert(requirementRows)
-
-  if (reqError) {
-    return fail(setupError)
+  // Seed the first workplace under the new org. If it fails, delete the org
+  // (cascades) so no orphan remains and a retry can succeed.
+  const result = await createWorkplaceWithDefaults(supabase, org.id, workplaceName, timezone)
+  if ('error' in result) {
+    await supabase.from('organizations').delete().eq('id', org.id)
+    return { error: result.error }
   }
 
   // redirect must be outside try/catch — it throws internally
