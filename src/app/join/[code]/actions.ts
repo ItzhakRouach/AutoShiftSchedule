@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { pickUniqueColor } from '@/lib/employees/colors'
+import { normalizeIsraeliPhone } from '@/lib/whatsapp/phone'
 import { getEmploymentDefaults } from './employment-defaults'
 
 export type JoinState = {
@@ -23,6 +24,7 @@ const JoinSchema = z.object({
     .max(120, 'שם ארוך מדי (מקסימום 120 תווים)'),
   email: z.string().email('אימייל לא תקין'),
   password: z.string().min(8, 'הסיסמה חייבת לפחות 8 תווים'),
+  phone: z.string().min(1, 'יש להזין מספר טלפון'),
   employmentType: z.enum(['full', 'part', 'student'], { error: 'יש לבחור סוג משרה' }),
   observesShabbat: z.boolean(),
 })
@@ -36,6 +38,7 @@ export async function joinWithInvite(
     name: (formData.get('name') as string ?? '').trim(),
     email: (formData.get('email') as string ?? '').trim(),
     password: formData.get('password') as string ?? '',
+    phone: (formData.get('phone') as string ?? '').trim(),
     employmentType: formData.get('employmentType') as string ?? 'full',
     observesShabbat: formData.get('observesShabbat') === 'true',
   }
@@ -51,6 +54,9 @@ export async function joinWithInvite(
   }
 
   const { name, email, password, employmentType, observesShabbat } = parsed.data
+
+  const phone = normalizeIsraeliPhone(parsed.data.phone)
+  if (!phone) return { fieldErrors: { phone: 'מספר טלפון לא תקין' } }
 
   // Defensive: this flow creates a brand-new account. If someone is already
   // authenticated, refuse — they should be routed by their role, not join here.
@@ -138,6 +144,7 @@ export async function joinWithInvite(
       workplace_id: workplaceId,
       user_id: userId,
       name,
+      phone,
       status: 'active',
       color,
       employment_type: employmentType,

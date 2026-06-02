@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { resolveUserRole } from '@/lib/auth/role'
-import { ManagerBottomNav } from '@/components/nav/BottomNav'
+import { ManagerTopNav } from '@/components/nav/TopNav'
 
 export default async function ManagerLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -13,10 +13,10 @@ export default async function ManagerLayout({ children }: { children: React.Reac
 
   return (
     <div dir="rtl" style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ flex: 1, paddingBottom: 72 }}>
+      <ManagerTopNav />
+      <div style={{ flex: 1 }}>
         {children}
       </div>
-      <ManagerBottomNav />
     </div>
   )
 }

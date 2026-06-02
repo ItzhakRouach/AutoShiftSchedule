@@ -1,9 +1,8 @@
 'use server'
 
-// security note: The GreenAPI token is stored as a plain DB column.
-// RLS restricts access to the owning manager only.
-// For a production system, consider encrypting sensitive fields at rest
-// (e.g. via Supabase Vault or an application-level encryption layer).
+// WhatsApp delivery uses a self-hosted Evolution API. The connection
+// (URL / apikey / instance) is configured app-wide via env vars; per workplace
+// we only store the target group JID here.
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
@@ -26,10 +25,8 @@ const publishSchema = z.object({
   publish_time: z
     .string()
     .regex(/^([01]\d|2[0-3]):[0-5]\d$/, { message: 'שעה לא תקינה (HH:MM)' }),
-  greenapi_enabled: z.boolean().default(false),
-  greenapi_instance: z.string().max(80).optional(),
-  greenapi_token: z.string().max(120).optional(),
-  greenapi_group: z.string().max(80).optional(),
+  whatsapp_enabled: z.boolean().default(false),
+  whatsapp_group_jid: z.string().max(120).optional(),
 })
 
 export async function updatePublishSettings(
@@ -46,10 +43,8 @@ export async function updatePublishSettings(
   const raw = {
     publish_dow: formData.get('publish_dow'),
     publish_time: formData.get('publish_time'),
-    greenapi_enabled: formData.get('greenapi_enabled') === 'true',
-    greenapi_instance: formData.get('greenapi_instance') ?? undefined,
-    greenapi_token: formData.get('greenapi_token') ?? undefined,
-    greenapi_group: formData.get('greenapi_group') ?? undefined,
+    whatsapp_enabled: formData.get('whatsapp_enabled') === 'true',
+    whatsapp_group_jid: formData.get('whatsapp_group_jid') ?? undefined,
   }
 
   const parsed = publishSchema.safeParse(raw)
@@ -61,8 +56,7 @@ export async function updatePublishSettings(
     return { fieldErrors }
   }
 
-  const { publish_dow, publish_time, greenapi_enabled, greenapi_instance, greenapi_token, greenapi_group } =
-    parsed.data
+  const { publish_dow, publish_time, whatsapp_enabled, whatsapp_group_jid } = parsed.data
 
   const { error: upsertError } = await supabase
     .from('workplace_settings')
@@ -71,9 +65,7 @@ export async function updatePublishSettings(
         workplace_id: workplace.id,
         publish_dow,
         publish_time,
-        greenapi_instance: greenapi_enabled ? (greenapi_instance ?? null) : null,
-        greenapi_token: greenapi_enabled ? (greenapi_token ?? null) : null,
-        greenapi_group: greenapi_enabled ? (greenapi_group ?? null) : null,
+        whatsapp_group_jid: whatsapp_enabled ? (whatsapp_group_jid?.trim() || null) : null,
       },
       { onConflict: 'workplace_id' },
     )

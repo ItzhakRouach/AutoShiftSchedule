@@ -25,7 +25,7 @@ export default async function SettingsPage() {
     supabase
       .from('workplace_settings')
       .select(
-        'request_deadline_dow, request_deadline_time, publish_dow, publish_time, greenapi_instance, greenapi_token, greenapi_group',
+        'request_deadline_dow, request_deadline_time, publish_dow, publish_time, whatsapp_group_jid',
       )
       .eq('workplace_id', workplace.id)
       .maybeSingle(),
@@ -94,20 +94,19 @@ export default async function SettingsPage() {
           />
         </section>
 
-        {/* Publish + GreenAPI */}
+        {/* Publish + WhatsApp (Evolution API) */}
         <section style={section}>
           <h2 style={{ fontSize: 17, fontWeight: 700, margin: '0 0 6px', color: 'var(--text)' }}>
             פרסום אוטומטי לווטסאפ
           </h2>
           <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '0 0 20px', lineHeight: 1.5 }}>
-            קבע מתי הסידור יפורסם אוטומטית לעובדים. ניתן גם לשלוח ישירות לקבוצת ווטסאפ דרך GreenAPI.
+            קבע מתי הסידור יפורסם אוטומטית. ניתן לשלוח את תמונת הסידור לקבוצת הווטסאפ
+            ולכל עובד הודעה אישית עם המשמרות שלו.
           </p>
           <PublishSettings
             initialDow={settings?.publish_dow ?? null}
             initialTime={settings?.publish_time ?? null}
-            initialInstance={settings?.greenapi_instance ?? null}
-            initialToken={settings?.greenapi_token ?? null}
-            initialGroup={settings?.greenapi_group ?? null}
+            initialGroupJid={settings?.whatsapp_group_jid ?? null}
           />
         </section>
 

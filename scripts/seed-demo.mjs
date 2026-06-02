@@ -168,9 +168,11 @@ async function main() {
 
   // 6. employees + roles + availability
   const empIds = []
-  for (const e of EMPLOYEES) {
+  for (const [idx, e] of EMPLOYEES.entries()) {
+    // Deterministic demo phones (already normalized: 972 + 9-digit subscriber).
+    const phone = e.phone ?? `97252${String(1000000 + idx)}`
     const { data: emp } = await db.from('employees').insert({
-      workplace_id: W, name: e.name, color: e.color, status: 'active',
+      workplace_id: W, name: e.name, color: e.color, status: 'active', phone,
       employment_type: e.type, min_shifts_per_week: e.min ?? 0, max_shifts_per_week: e.max ?? null,
       observes_shabbat: !!e.shabbat, observes_holidays: !!e.holidays, must_accept: !!e.mustAccept,
     }).select('id').single()
