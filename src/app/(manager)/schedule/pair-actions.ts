@@ -151,13 +151,22 @@ export async function cancelTwelvePair(
     (r) => r && r.employee_id && r.shift_type_id && r.role_id,
   )
 
-  const { error: delErr } = await supabase
+  // Find the actual 12h rows on this day for this role's pair. The m12_night
+  // row may carry a DIFFERENT role_id than the wizard's pair role (it preserves
+  // the night-employee's existing night role under Bug 1's fix). To delete both
+  // m12 rows reliably, scope by the employee_ids captured in the snapshot —
+  // those identify the morning + night employees the pair promoted.
+  const snapshotEmployeeIds = [...new Set(toRestore.map((r) => r.employee_id))]
+  let delQuery = supabase
     .from('assignments')
     .delete()
     .eq('period_id', periodId)
     .eq('day_of_week', dayIndex)
-    .eq('role_id', roleId)
     .eq('source', 'fallback_12h')
+  delQuery = snapshotEmployeeIds.length > 0
+    ? delQuery.in('employee_id', snapshotEmployeeIds)
+    : delQuery.eq('role_id', roleId) // legacy pairs (no snapshot) — old behavior
+  const { error: delErr } = await delQuery
   if (delErr) return { ok: false, error: GENERIC }
 
   if (toRestore.length > 0) {
