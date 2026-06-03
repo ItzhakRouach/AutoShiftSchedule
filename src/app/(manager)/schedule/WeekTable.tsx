@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { type ShiftId } from '@/lib/domain/constants'
 import { shiftMetaFromRow, roleMetaFromRow } from '@/lib/domain/meta'
-import { buildWeekGrid, buildEmpTotals } from '@/lib/schedule/week-table-data'
+import { buildWeekGrid, buildEmpTotals, coveredByTwelve } from '@/lib/schedule/week-table-data'
 import type { ScheduleView } from '@/lib/schedule/view-data'
 import type { SlotCtx } from './SwapEditor'
 import type { ShiftKey } from '@/lib/scheduling/types'
@@ -36,10 +36,12 @@ function Badge() {
   )
 }
 
-function Cell({ entries, empById, isFilled, selectedId, onClick, onSelectEmp, showUnfilled }: {
+function Cell({ entries, empById, isFilled, covered, selectedId, onClick, onSelectEmp, showUnfilled }: {
   entries: { employeeId: string; is12h: boolean; requested: boolean }[]
   empById: Map<string, { name: string; color: string }>
   isFilled: boolean
+  /** True when this cell's coverage comes from a 12h shift in an adjacent slot. */
+  covered: boolean
   selectedId: string | null
   onClick?: () => void
   onSelectEmp: (id: string) => void
@@ -47,7 +49,7 @@ function Cell({ entries, empById, isFilled, selectedId, onClick, onSelectEmp, sh
 }) {
   const hasSelected = selectedId !== null
   const cellHasSelected = hasSelected && entries.some((e) => e.employeeId === selectedId)
-  const bg = entries.length === 0 && !isFilled && showUnfilled ? 'rgba(235,106,78,0.06)' : 'var(--surface)'
+  const bg = entries.length === 0 && !isFilled && !covered && showUnfilled ? 'rgba(235,106,78,0.06)' : 'var(--surface)'
   const dimCell = hasSelected && !cellHasSelected
   const highlightCell = cellHasSelected
 
@@ -65,7 +67,11 @@ function Cell({ entries, empById, isFilled, selectedId, onClick, onSelectEmp, sh
   if (entries.length === 0) {
     return (
       <td style={cellStyle} onClick={onClick}>
-        {showUnfilled && <span style={{ color: '#EB6A4E', fontWeight: 600, fontSize: 12 }}>לא מאויש</span>}
+        {covered ? (
+          <span title="מאויש ע״י משמרת 12 שעות" style={{ color: 'var(--text-3)', fontWeight: 700, fontSize: 11 }}>12ש׳</span>
+        ) : (
+          showUnfilled && <span style={{ color: '#EB6A4E', fontWeight: 600, fontSize: 12 }}>לא מאויש</span>
+        )}
       </td>
     )
   }
@@ -106,6 +112,7 @@ function Cell({ entries, empById, isFilled, selectedId, onClick, onSelectEmp, sh
 export function WeekTable({ view, onSlot, onDayPair, initialSelectedId, showUnfilled = true }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId ?? null)
   const weekGrid = buildWeekGrid(view)
+  const coveredSet = coveredByTwelve(view)
   const empTotals = buildEmpTotals(view, view.employees)
   const empById = new Map(view.employees.map((e) => [e.id, e]))
   const roleById = new Map(view.roles.map((r) => [r.id, r]))
@@ -172,6 +179,7 @@ export function WeekTable({ view, onSlot, onDayPair, initialSelectedId, showUnfi
                         entries={weekGrid[d.index]?.[shift]?.[roleId] ?? []}
                         empById={empById}
                         isFilled={(weekGrid[d.index]?.[shift]?.[roleId] ?? []).length >= (view.requirements[d.index]?.[shift]?.[roleId] ?? 0) && (view.requirements[d.index]?.[shift]?.[roleId] ?? 0) > 0}
+                        covered={coveredSet.has(`${d.index}:${shift}:${roleId}`)}
                         selectedId={selectedId}
                         onClick={onSlot ? () => handleCellClick(d.index, shift, roleId) : undefined}
                         onSelectEmp={toggleSelect}

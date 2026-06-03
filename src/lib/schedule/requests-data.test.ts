@@ -88,16 +88,16 @@ describe('buildWeekGrid — requested flag', () => {
     expect(grid[0]?.morning?.['r1']?.[0].requested).toBe(false)
   })
 
-  it('sets requested=true for 12h if any covered base shift was requested', () => {
-    // m12_day covers morning + noon; employee requested morning
+  it('sets requested=true on the 12h anchor cell if any covered base shift was requested', () => {
+    // m12_day covers morning + noon; employee requested morning. The 12h now
+    // shows in its anchor (morning) only; noon stays empty (covered).
     const view = makeView({
       grid: {},
       twelve: [{ day: 0, variant: 'm12_day', roleId: 'r1', employeeId: 'e1' }],
       requestedSet: new Set(['e1:0:st-morning']),
     })
     const grid = buildWeekGrid(view)
-    // Both cells (morning and noon) should show requested=true
     expect(grid[0]?.morning?.['r1']?.[0].requested).toBe(true)
-    expect(grid[0]?.noon?.['r1']?.[0].requested).toBe(true)
+    expect(grid[0]?.noon?.['r1'] ?? []).toHaveLength(0)
   })
 })

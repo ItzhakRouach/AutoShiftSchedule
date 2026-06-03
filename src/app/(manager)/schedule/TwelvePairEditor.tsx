@@ -7,7 +7,8 @@ import { Avatar } from '@/components/ui/Avatar'
 import type { ShiftId } from '@/lib/domain/constants'
 import type { EditMeta } from '@/lib/schedule/edit-meta'
 import type { ScheduleView } from '@/lib/schedule/view-data'
-import { applyTwelvePair } from './pair-actions'
+import { expandRolesByRank } from '@/lib/schedule/role-rank'
+import { applyTwelvePair, cancelTwelvePair } from './pair-actions'
 
 interface Props {
   day: number | null
@@ -16,20 +17,35 @@ interface Props {
   meta: EditMeta
 }
 
+/** True if the employee can fill `roleId` — their held roles, expanded by rank. */
+function canFillRole(view: ScheduleView, meta: EditMeta, empId: string, roleId: string): boolean {
+  const m = meta.employees[empId]
+  if (!m) return false
+  return expandRolesByRank(m.roleIds, view.roles).includes(roleId)
+}
+
+/** Everyone assigned to a base shift that day (any role). */
+function assigneesAt(view: ScheduleView, day: number, shift: 'morning' | 'night'): string[] {
+  const byRole = view.grid[day]?.[shift] ?? {}
+  const ids: string[] = []
+  for (const list of Object.values(byRole)) for (const id of list) ids.push(id)
+  return ids
+}
+
 /**
- * Roles for which a 12h pair can be formed on this day — i.e. the role has at
- * least one employee assigned to בוקר AND one to לילה (the pair converts those
- * existing people). Roles without both can't form a pair, so they're hidden.
+ * Roles for which a 12h pair can be formed on this day: a role R is offered when
+ * someone on בוקר AND someone on לילה can FILL R (held roles expanded by rank) —
+ * so e.g. a night מוקדן who also holds אחמ״ש counts toward an אחמ״ש pair.
  */
-function rolesForDay(view: ScheduleView, day: number): { id: string; name: string }[] {
+function rolesForDay(view: ScheduleView, day: number, meta: EditMeta): { id: string; name: string }[] {
   return view.roles.filter((r) => {
-    const morning = view.grid[day]?.['morning']?.[r.id]?.length ?? 0
-    const night = view.grid[day]?.['night']?.[r.id]?.length ?? 0
-    return morning > 0 && night > 0
+    const m = assigneesAt(view, day, 'morning').some((id) => canFillRole(view, meta, id, r.id))
+    const n = assigneesAt(view, day, 'night').some((id) => canFillRole(view, meta, id, r.id))
+    return m && n
   })
 }
 
-export function TwelvePairEditor({ day, onClose, view }: Props) {
+export function TwelvePairEditor({ day, onClose, view, meta }: Props) {
   const router = useRouter()
   const [, start] = useTransition()
   const [roleId, setRoleId] = useState<string | null>(null)
@@ -39,26 +55,29 @@ export function TwelvePairEditor({ day, onClose, view }: Props) {
   const [msg, setMsg] = useState<string | null>(null)
 
   if (day === null) return null
-  const roles = rolesForDay(view, day)
+  const roles = rolesForDay(view, day, meta)
   const empById = new Map(view.employees.map((e) => [e.id, e]))
+  const roleNameById = new Map(view.roles.map((r) => [r.id, r.name]))
+  const existing12h = roleId ? view.twelve.filter((t) => t.day === day && t.roleId === roleId) : []
 
   function pick(slotKey: ShiftId, chosen: string | null) {
     type Cand = { id: string; name: string; disabled: boolean; label: string; sel: boolean }
     if (!roleId) return [] as Cand[]
-    // Only offer employees already assigned to that base shift on this day for the
-    // chosen role: the 12h-day person comes from בוקר, the 12h-night from לילה.
-    // Shown enabled — the server (applyTwelvePair) validates rest/availability and
-    // rejects with a Hebrew reason if the conversion isn't legal.
+    // Offer everyone on that base shift (any role) who can FILL the chosen role —
+    // a higher/equal-rank holder qualifies (e.g. an אחמ״ש covers a מוקדן pair).
+    // The label shows their CURRENT role at that shift. The server re-validates.
     const baseShift = slotKey === ('m12_day' as ShiftId) ? 'morning' : 'night'
-    const label = baseShift === 'morning' ? 'בוקר' : 'לילה'
-    const assignedIds = view.grid[day!]?.[baseShift]?.[roleId] ?? []
-    return assignedIds
-      .map((id) => {
+    const byRole = view.grid[day!]?.[baseShift] ?? {}
+    const out: Cand[] = []
+    for (const [assignedRoleId, ids] of Object.entries(byRole)) {
+      for (const id of ids) {
+        if (!canFillRole(view, meta, id, roleId)) continue
         const e = empById.get(id)
-        if (!e) return null
-        return { id, name: e.name, disabled: false, label, sel: chosen === id }
-      })
-      .filter(Boolean) as Cand[]
+        if (!e) continue
+        out.push({ id, name: e.name, disabled: false, label: roleNameById.get(assignedRoleId) ?? '', sel: chosen === id })
+      }
+    }
+    return out
   }
 
   function apply() {
@@ -69,6 +88,20 @@ export function TwelvePairEditor({ day, onClose, view }: Props) {
         const res = await applyTwelvePair(view.periodId, day!, roleId, morning, night)
         if (!res.ok) { setMsg(res.error ?? 'שגיאה'); return }
         setMsg(res.warning ?? null)
+        start(() => router.refresh())
+      } finally { setBusy(false) }
+    })()
+  }
+
+  function cancel() {
+    if (!roleId) return
+    setMsg(null); setBusy(true)
+    void (async () => {
+      try {
+        const res = await cancelTwelvePair(view.periodId, day!, roleId)
+        if (!res.ok) { setMsg(res.error ?? 'שגיאה'); return }
+        setMsg(res.warning ?? null)
+        setMorning(null); setNight(null)
         start(() => router.refresh())
       } finally { setBusy(false) }
     })()
@@ -144,6 +177,13 @@ export function TwelvePairEditor({ day, onClose, view }: Props) {
             background: !morning || !night || busy ? 'var(--border)' : 'var(--accent)',
             color: !morning || !night || busy ? 'var(--text-2)' : '#fff',
           }}>{busy ? 'מחיל…' : 'החל צמד 12 שעות'}</button>
+
+          {existing12h.length > 0 && (
+            <button data-testid="cancel-12h" disabled={busy} onClick={cancel} style={{
+              width: '100%', marginTop: 8, padding: '10px', borderRadius: 14, fontSize: 13.5, fontWeight: 700, fontFamily: 'var(--font)',
+              border: '1px solid var(--danger)', background: 'none', color: 'var(--danger)', cursor: busy ? 'default' : 'pointer',
+            }}>בטל צמד 12 שעות ליום זה</button>
+          )}
         </>
       )}
     </Sheet>
