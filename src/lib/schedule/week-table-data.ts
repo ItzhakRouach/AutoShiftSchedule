@@ -3,7 +3,7 @@
  * Pure — no IO, no Supabase. Testable with plain fixtures.
  */
 import type { ScheduleView, ViewEmployee } from './view-data'
-import { TWELVE_HOUR_FILLS } from '@/lib/scheduling/fallback'
+import { TWELVE_HOUR_COVERS, TWELVE_HOUR_FILLS } from '@/lib/scheduling/fallback'
 import type { TwelveHourKey } from '@/lib/scheduling/types'
 
 export interface CellEntry {
@@ -63,16 +63,25 @@ export function buildWeekGrid(view: ScheduleView): WeekGrid {
 }
 
 /**
- * Cells covered by a 12h shift from an adjacent anchor — the "in-between" shifts
- * (fills[1..]) a 12h assignment spans. Keys: `${day}:${shiftKey}:${roleId}`.
- * The table renders these EMPTY but NOT as gaps (they're staffed by the 12h).
+ * Cells visually marked as covered by a 12h shift — every base-shift the 12h
+ * variant PHYSICALLY occupies (TWELVE_HOUR_COVERS) at the 12h person's role,
+ * minus the anchor (where the name actually shows). Keys:
+ * `${day}:${shiftKey}:${roleId}`. The table renders these as the "12ש׳" chip
+ * instead of the red "לא מאויש" — even when the role differs from the wizard's
+ * pair role (e.g. a night-מוקדן on m12_night also marks noon-מוקדן as covered,
+ * because that person physically holds 19:00–23:00 of the noon window).
  */
 export function coveredByTwelve(view: ScheduleView): Set<string> {
   const covered = new Set<string>()
   for (const t of view.twelve) {
+    const physical = TWELVE_HOUR_COVERS[t.variant as TwelveHourKey]
     const fills = TWELVE_HOUR_FILLS[t.variant as TwelveHourKey]
-    if (!fills || fills.length <= 1) continue
-    for (const baseShift of fills.slice(1)) covered.add(`${t.day}:${baseShift}:${t.roleId}`)
+    if (!physical || physical.length === 0) continue
+    const anchor = fills?.[0]
+    for (const baseShift of physical) {
+      if (baseShift === anchor) continue
+      covered.add(`${t.day}:${baseShift}:${t.roleId}`)
+    }
   }
   return covered
 }

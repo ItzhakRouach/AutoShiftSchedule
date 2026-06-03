@@ -83,6 +83,19 @@ describe('buildWeekGrid — 12h expansion', () => {
     expect(grid[1]?.night?.['r-achm'] ?? []).toEqual([{ employeeId: 'e2', is12h: true, requested: false }])
     expect(grid[1]?.morning?.['r-achm'] ?? []).toHaveLength(0)
   })
+
+  it('m12_night marks noon as covered at the 12h person\'s role (physical overlap)', () => {
+    // m12_night = 19–07; physically covers ['noon','night']. Anchor=night. So
+    // an empty noon cell at the SAME role (e.g. מוקדן when the wizard pair was
+    // אחמ״ש) should render the 12ש׳ chip — not "לא מאויש".
+    const view = makeView({
+      grid: {},
+      twelve: [{ day: 1, variant: 'm12_night', roleId: 'r-moked', employeeId: 'e2' }],
+    })
+    const covered = coveredByTwelve(view)
+    expect(covered.has('1:noon:r-moked')).toBe(true)
+    expect(covered.has('1:night:r-moked')).toBe(false) // anchor — the name lives here
+  })
 })
 
 describe('buildEmpTotals', () => {
