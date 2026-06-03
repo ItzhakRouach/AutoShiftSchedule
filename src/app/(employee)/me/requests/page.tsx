@@ -6,6 +6,7 @@ import { RequestsHeader } from './RequestsHeader'
 import { DayList } from './DayList'
 import { VacationSection } from './VacationSection'
 import { SubmitBar } from './SubmitBar'
+import { ClearAllButton } from './ClearAllButton'
 
 export default async function RequestsPage() {
   const supabase = await createClient()
@@ -57,9 +58,12 @@ export default async function RequestsPage() {
       />
 
       {!isReadOnly && period && (
-        <div style={{ marginTop: 20 }}>
-          <SubmitBar periodId={period.id} initialSubmittedAt={submittedAt} deadlineLabel={deadlineLabel} />
-        </div>
+        <>
+          <ClearAllButton periodId={period.id} hasAnyRequest={filled > 0} />
+          <div style={{ marginTop: 20 }}>
+            <SubmitBar periodId={period.id} initialSubmittedAt={submittedAt} deadlineLabel={deadlineLabel} />
+          </div>
+        </>
       )}
     </main>
   )

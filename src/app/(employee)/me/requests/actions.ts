@@ -122,6 +122,49 @@ export async function addVacation(input: unknown): Promise<ActionResult> {
   return { ok: true }
 }
 
+/**
+ * Wipe ALL of the authenticated employee's per-day requests for a period AND
+ * clear their submission marker (so the next visit is a clean slate they can
+ * resubmit). Locked once the period is no longer 'collecting'.
+ */
+export async function clearAllRequests(periodId: string): Promise<ActionResult> {
+  if (!periodId) return { error: 'תקופה לא נמצאה' }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'אין הרשאה' }
+
+  const employee = await resolveEmployee(supabase, user.id)
+  if (!employee) return { error: 'אין הרשאה' }
+
+  const { data: period } = await supabase
+    .from('schedule_periods')
+    .select('status')
+    .eq('id', periodId)
+    .maybeSingle()
+  if (!period) return { error: 'תקופה לא נמצאה' }
+  if (period.status !== 'collecting') {
+    return { error: 'הבקשות נעולות — חלון ההגשה נסגר' }
+  }
+
+  const { error: delErr } = await supabase
+    .from('requests')
+    .delete()
+    .eq('period_id', periodId)
+    .eq('employee_id', employee.id)
+  if (delErr) return { error: 'שגיאה בניקוי הבקשות' }
+
+  // Clear the submission marker too — the employee can resubmit from scratch.
+  await supabase
+    .from('request_submissions')
+    .delete()
+    .eq('period_id', periodId)
+    .eq('employee_id', employee.id)
+
+  revalidatePath('/me/requests')
+  return { ok: true }
+}
+
 export async function removeVacation(id: string): Promise<ActionResult> {
   if (!id) return { error: 'מזהה חופשה חסר' }
 
