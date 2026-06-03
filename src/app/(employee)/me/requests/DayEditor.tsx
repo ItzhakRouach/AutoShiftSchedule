@@ -13,6 +13,8 @@ interface DayEditorProps {
   employeeId: string
   dayOfWeek: number
   onDone: () => void
+  /** True when the workplace's max-off-days cap is reached EXCLUDING this day. */
+  offCapReached: boolean
 }
 
 const circle = (active: boolean, color: string): React.CSSProperties => ({
@@ -22,11 +24,15 @@ const circle = (active: boolean, color: string): React.CSSProperties => ({
   color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13,
 })
 
-export function DayEditor({ shiftTypes, request, periodId, employeeId, dayOfWeek, onDone }: DayEditorProps) {
+export function DayEditor({ shiftTypes, request, periodId, employeeId, dayOfWeek, onDone, offCapReached }: DayEditorProps) {
   const [isOff, setIsOff] = useState(request?.is_off ?? false)
   const [selectedIds, setSelectedIds] = useState<string[]>(request?.preferred_shift_ids ?? [])
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+
+  // Disable the off-button when the workplace cap is reached AND this day is
+  // not already marked off (toggling OFF an existing off-day is always allowed).
+  const offDisabled = offCapReached && !isOff
 
   function toggleShift(id: string) {
     if (isOff) return
@@ -34,6 +40,7 @@ export function DayEditor({ shiftTypes, request, periodId, employeeId, dayOfWeek
   }
 
   function toggleOff() {
+    if (offDisabled) return
     setIsOff((prev) => !prev)
     if (!isOff) setSelectedIds([])
   }
@@ -88,11 +95,13 @@ export function DayEditor({ shiftTypes, request, periodId, employeeId, dayOfWeek
 
       <div style={{ height: 1, background: 'var(--border)', margin: '16px 0' }} />
 
-      <button onClick={toggleOff} style={{
+      <button onClick={toggleOff} disabled={offDisabled} style={{
         display: 'flex', alignItems: 'center', gap: 13, padding: '12px 14px', width: '100%',
-        textAlign: 'start', borderRadius: 'var(--r-md)', cursor: 'pointer',
+        textAlign: 'start', borderRadius: 'var(--r-md)',
+        cursor: offDisabled ? 'not-allowed' : 'pointer',
         fontFamily: 'var(--font)', border: `1.5px solid ${isOff ? '#C0598F' : 'var(--border)'}`,
-        background: isOff ? 'rgba(192,89,143,0.1)' : 'var(--surface)', transition: 'all .12s ease',
+        background: isOff ? 'rgba(192,89,143,0.1)' : 'var(--surface)',
+        opacity: offDisabled ? 0.45 : 1, transition: 'all .12s ease',
       }}>
         <div style={{
           width: 42, height: 42, borderRadius: 'var(--r-sm)', background: 'rgba(192,89,143,0.13)',
@@ -100,7 +109,9 @@ export function DayEditor({ shiftTypes, request, periodId, employeeId, dayOfWeek
         }}>✈</div>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>יום חופש / לא זמין</div>
-          <div style={{ fontSize: 13, color: 'var(--text-2)' }}>לא אשובץ ביום זה</div>
+          <div style={{ fontSize: 13, color: 'var(--text-2)' }}>
+            {offDisabled ? 'הגעת למקסימום ימי חופש לשבוע' : 'לא אשובץ ביום זה'}
+          </div>
         </div>
         <span style={circle(isOff, '#C0598F')}>{isOff && '✓'}</span>
       </button>

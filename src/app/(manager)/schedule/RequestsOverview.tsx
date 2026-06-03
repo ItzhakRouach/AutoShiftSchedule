@@ -87,6 +87,17 @@ export function RequestsOverview({ view }: Props) {
   const reqMap = buildRequestMap(view.requests)
   const submitted = submittedCount(view.employees, reqMap)
   const total = view.employees.length
+  // Off-day visibility: how many off-requests across the team this week, and
+  // how many distinct employees filed at least one. Helps the manager spot a
+  // week where mass-off requests will strain coverage.
+  const offTotals = (() => {
+    let total = 0
+    const empsWithOff = new Set<string>()
+    for (const r of view.requests) {
+      if (r.isOff) { total += 1; empsWithOff.add(r.employeeId) }
+    }
+    return { total, employees: empsWithOff.size }
+  })()
 
   const stickyName: React.CSSProperties = {
     position: 'sticky',
@@ -116,6 +127,18 @@ export function RequestsOverview({ view }: Props) {
         <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-2)' }}>
           הגישו {submitted}/{total} עובדים
         </span>
+        {offTotals.total > 0 && (
+          <span
+            data-testid="off-requests-summary"
+            title="כמות בקשות 'יום חופש / לא זמין' השבוע"
+            style={{
+              fontSize: 12.5, fontWeight: 700, color: '#5B61D6',
+              background: 'rgba(91,97,214,0.08)', padding: '4px 10px', borderRadius: 99,
+            }}
+          >
+            {offTotals.total} ימי חופש · {offTotals.employees} עובדים
+          </span>
+        )}
       </div>
 
       <div

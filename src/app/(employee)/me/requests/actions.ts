@@ -46,6 +46,37 @@ export async function saveDayRequest(input: unknown): Promise<ActionResult> {
     return { error: 'הבקשות נעולות — חלון ההגשה נסגר' }
   }
 
+  // Enforce the workplace cap on "יום חופש / לא זמין" requests. Only when the
+  // employee is FLIPPING a day TO off (isOff=true). Counts existing off-days
+  // for OTHER days in the same period; the day being saved is excluded since
+  // the upsert will replace it.
+  if (isOff) {
+    const { data: empRow } = await supabase
+      .from('employees')
+      .select('workplace_id')
+      .eq('id', employeeId)
+      .maybeSingle()
+    if (empRow) {
+      const { data: settingsRow } = await supabase
+        .from('workplace_settings')
+        .select('max_off_days_per_week')
+        .eq('workplace_id', empRow.workplace_id)
+        .maybeSingle()
+      const cap = (settingsRow?.max_off_days_per_week as number | null) ?? 2
+      const { data: otherOffs } = await supabase
+        .from('requests')
+        .select('day_of_week')
+        .eq('period_id', periodId)
+        .eq('employee_id', employeeId)
+        .eq('is_off', true)
+        .neq('day_of_week', dayOfWeek)
+      const usedExcludingThisDay = (otherOffs ?? []).length
+      if (usedExcludingThisDay + 1 > cap) {
+        return { error: `הגעת למקסימום ימי חופש לשבוע (${cap})` }
+      }
+    }
+  }
+
   const { error } = await supabase.from('requests').upsert(
     {
       period_id: periodId,

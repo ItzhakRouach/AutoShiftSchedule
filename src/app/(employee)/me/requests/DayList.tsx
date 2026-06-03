@@ -22,15 +22,45 @@ interface DayListProps {
   periodId: string
   employeeId: string
   isReadOnly: boolean
+  /** Workplace cap on off-days per period (0..7). */
+  maxOffDaysPerWeek: number
+  /** Off-days the employee has ALREADY taken in this period. */
+  currentOffDayCount: number
 }
 
-export function DayList({ days, shiftTypes, periodId, employeeId, isReadOnly }: DayListProps) {
+export function DayList({
+  days, shiftTypes, periodId, employeeId, isReadOnly,
+  maxOffDaysPerWeek, currentOffDayCount,
+}: DayListProps) {
   const [editDay, setEditDay] = useState<number | null>(null)
 
   const activeDayCard = editDay !== null ? (days.find((d) => d.dayOfWeek === editDay) ?? null) : null
+  // The active day's current off state is excluded from the cap calc (the
+  // upsert would replace it). So "remaining" accounts for that.
+  const activeDayWasOff = activeDayCard?.request?.is_off ?? false
+  const usedExcludingActive = currentOffDayCount - (activeDayWasOff ? 1 : 0)
+  const offCapReached = usedExcludingActive >= maxOffDaysPerWeek
 
   return (
     <>
+      {!isReadOnly && maxOffDaysPerWeek < 7 && (
+        <div
+          data-testid="off-cap-banner"
+          style={{
+            marginBottom: 12, padding: '9px 14px', borderRadius: 'var(--r-md)',
+            background: currentOffDayCount >= maxOffDaysPerWeek
+              ? 'rgba(245,158,11,0.12)' : 'var(--surface-2)',
+            border: `1px solid ${currentOffDayCount >= maxOffDaysPerWeek
+              ? 'rgba(245,158,11,0.35)' : 'var(--border)'}`,
+            fontSize: 13, color: 'var(--text)', fontWeight: 600,
+          }}
+        >
+          ימי חופש בשבוע זה: <b>{currentOffDayCount}</b> מתוך <b>{maxOffDaysPerWeek}</b>
+          {currentOffDayCount >= maxOffDaysPerWeek && (
+            <span style={{ marginInlineStart: 8, color: '#9A6500' }}>· הגעת למקסימום</span>
+          )}
+        </div>
+      )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
         {days.map((day) => {
           const r = day.request
@@ -138,6 +168,7 @@ export function DayList({ days, shiftTypes, periodId, employeeId, isReadOnly }: 
             employeeId={employeeId}
             dayOfWeek={editDay}
             onDone={() => setEditDay(null)}
+            offCapReached={offCapReached}
           />
         )}
       </Sheet>

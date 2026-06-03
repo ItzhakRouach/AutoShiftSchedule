@@ -14,7 +14,10 @@ export default async function RequestsPage() {
 
   if (!ctx) redirect('/login')
 
-  const { employee, weekStart, period, shiftTypes, requestsByDay, vacations, submittedAt, deadlineLabel } = ctx
+  const {
+    employee, weekStart, period, shiftTypes, requestsByDay, vacations,
+    submittedAt, deadlineLabel, maxOffDaysPerWeek, currentOffDayCount,
+  } = ctx
   const isReadOnly = !period || period.status !== 'collecting'
 
   const weekStartDate = new Date(weekStart + 'T00:00:00')
@@ -49,6 +52,8 @@ export default async function RequestsPage() {
         periodId={period?.id ?? ''}
         employeeId={employee.id}
         isReadOnly={isReadOnly}
+        maxOffDaysPerWeek={maxOffDaysPerWeek}
+        currentOffDayCount={currentOffDayCount}
       />
 
       <VacationSection

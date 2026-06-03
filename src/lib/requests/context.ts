@@ -37,6 +37,10 @@ export interface EmployeeRequestsContext {
   submittedAt: string | null
   /** Hebrew label of when the submission window closes, or null if not configured. */
   deadlineLabel: string | null
+  /** Workplace cap on "יום חופש" requests per period (0..7, default 2). */
+  maxOffDaysPerWeek: number
+  /** How many of the cap the employee has already used this period. */
+  currentOffDayCount: number
 }
 
 /**
@@ -102,7 +106,7 @@ export async function getEmployeeRequestsContext(
       .maybeSingle(),
     supabase
       .from('workplace_settings')
-      .select('request_deadline_dow, request_deadline_time')
+      .select('request_deadline_dow, request_deadline_time, max_off_days_per_week')
       .eq('workplace_id', emp.workplace_id)
       .maybeSingle(),
     supabase
@@ -119,9 +123,14 @@ export async function getEmployeeRequestsContext(
     dow != null && time ? deadlineLabel(weekStart, dow, time, tz) : null
 
   const requestsByDay: Record<number, RequestRow> = {}
+  let currentOffDayCount = 0
   for (const r of requestsRaw ?? []) {
     requestsByDay[r.day_of_week] = r as RequestRow
+    if (r.is_off) currentOffDayCount += 1
   }
+
+  const maxOffDaysPerWeek =
+    (settingsRow?.max_off_days_per_week as number | null | undefined) ?? 2
 
   return {
     employee: emp,
@@ -132,5 +141,7 @@ export async function getEmployeeRequestsContext(
     vacations: (vacationsRaw ?? []) as VacationRow[],
     submittedAt: (submissionRow?.submitted_at as string | undefined) ?? null,
     deadlineLabel: deadline,
+    maxOffDaysPerWeek,
+    currentOffDayCount,
   }
 }
