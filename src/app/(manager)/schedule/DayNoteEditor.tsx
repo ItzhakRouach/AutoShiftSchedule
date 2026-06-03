@@ -23,6 +23,18 @@ export function DayNoteEditor({ open, onClose, view }: { open: boolean; onClose:
   const empById = new Map(view.employees.map((e) => [e.id, e]))
   const notes = view.dayNotes ?? []
 
+  // Day-after-night context: when both day + employee are picked, surface a
+  // quiet inline notice if this person was on a night/m12_night/m12_15to3 the
+  // PREVIOUS day. Doesn't block save — just informs the manager (e.g. so the
+  // רענון label is a confirmed deliberate choice, not an oversight).
+  const showNightBeforeNotice =
+    day !== null &&
+    !!employeeId &&
+    !!view.nightBeforeByDay?.[day]?.includes(employeeId)
+  const nightBeforeName = showNightBeforeNotice
+    ? empById.get(employeeId)?.name ?? ''
+    : ''
+
   function save() {
     if (day === null || !employeeId || !label.trim()) return
     setMsg(null)
@@ -77,6 +89,15 @@ export function DayNoteEditor({ open, onClose, view }: { open: boolean; onClose:
         ))}
       </div>
       <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="לדוגמה: רענון נשק" dir="rtl" style={{ ...inputStyle, marginBottom: 14 }} />
+
+      {showNightBeforeNotice && (
+        <div data-testid="night-before-notice" role="status" style={{
+          padding: '9px 12px', borderRadius: 12, marginBottom: 14, fontSize: 13, lineHeight: 1.5,
+          background: 'rgba(245,158,11,0.12)', color: '#9A6500', border: '1px solid rgba(245,158,11,0.35)',
+        }}>
+          ⚠️ <b>{nightBeforeName}</b> עבד אתמול במשמרת לילה — ודאו שההערה מכוונת (לרוב מסמנים רענון אחרי לילה).
+        </div>
+      )}
 
       <button data-testid="save-day-note" disabled={day === null || !employeeId || !label.trim() || busy} onClick={save} style={{
         width: '100%', padding: '11px', borderRadius: 14, fontSize: 14, fontWeight: 800, fontFamily: 'var(--font)', border: 'none',

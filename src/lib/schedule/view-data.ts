@@ -1,10 +1,12 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { upcomingWeekStartISO, formatHebDate } from '@/lib/dates/week'
+import { upcomingWeekStartISO } from '@/lib/dates/week'
 import { checkFeasibility } from '@/lib/scheduling'
 import { buildEngineInput } from './build-input'
 import { weekDatesFrom } from './map-rows'
 import { shiftMetaFromRow, type ShiftDisplay } from '@/lib/domain/meta'
+import { buildNightBeforeByDay, toSerializable, type NightBeforeMap } from './night-before'
+import { buildDayInfos, splitAssignments } from './view-data-grid'
 import type { FeasibilityResult, ShiftKey } from '@/lib/scheduling/types'
 
 export interface ViewEmployee { id: string; name: string; color: string }
@@ -65,9 +67,16 @@ export interface ScheduleView {
   requestedSet: Set<string>
   /** Manager-assigned day notes (רענון / free text) for this period. */
   dayNotes?: DayNote[]
+  /**
+   * Per day D (0..6), the list of employee IDs whose previous shift extended
+   * past midnight of D — i.e. they were physically working overnight when D
+   * begins. Used by the day-note UI to warn the manager when labeling someone
+   * the day after a night/m12_night/m12_15to3 shift. D=0 (Sunday) consults the
+   * prior-week tail to catch Saturday-night → Sunday cases. Optional for
+   * legacy callers (published-view, tests) that don't populate it.
+   */
+  nightBeforeByDay?: NightBeforeMap
 }
-
-const DAY_SHORTS = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳']
 
 /**
  * Pure helper — builds a Set of "employeeId:day:shiftTypeId" keys where the
@@ -100,7 +109,6 @@ export async function getScheduleView(
   const built = await buildEngineInput(supabase, periodId)
   if (!built) return null
 
-  const baseKeys = new Set(['morning', 'noon', 'night'])
   const idToKey: Record<string, ShiftKey> = {}
   for (const [key, id] of Object.entries(built.keyToShiftTypeId)) idToKey[id] = key as ShiftKey
 
@@ -144,21 +152,8 @@ export async function getScheduleView(
     shiftMeta[st.key] = shiftMetaFromRow(st)
   }
 
-  // Grid (base shifts) + separate 12h list from persisted assignments.
-  const grid: ViewGrid = {}
-  const twelve: ViewTwelve[] = []
-  for (const a of assignsRaw ?? []) {
-    const anyKey = idToAnyKey[a.shift_type_id]
-    if (anyKey && !baseKeys.has(anyKey)) {
-      twelve.push({ day: a.day_of_week, variant: anyKey, roleId: a.role_id, employeeId: a.employee_id })
-      continue
-    }
-    const key = idToKey[a.shift_type_id]
-    if (!key) continue
-    const day = (grid[a.day_of_week] ??= {})
-    const byShift = (day[key] ??= {})
-    ;(byShift[a.role_id] ??= []).push(a.employee_id)
-  }
+  // Grid (base shifts) + separate 12h list + per-day index (one pass).
+  const { grid, twelve, byDay } = splitAssignments(assignsRaw ?? [], idToAnyKey)
 
   // Requirements keyed by role UUID (view uses UUIDs; engine input uses names).
   const requirements: ViewReq = {}
@@ -170,12 +165,7 @@ export async function getScheduleView(
     byShift[r.role_id] = (byShift[r.role_id] ?? 0) + r.count
   }
 
-  const weekDates = weekDatesFrom(weekStart)
-  const days: DayInfo[] = Array.from({ length: 7 }, (_, i) => ({
-    index: i,
-    short: DAY_SHORTS[i],
-    date: formatHebDate(weekDates[i]),
-  }))
+  const days = buildDayInfos(weekDatesFrom(weekStart))
 
   let feasibility: FeasibilityResult | null = null
   try {
@@ -193,6 +183,10 @@ export async function getScheduleView(
   }))
 
   const requestedSet = buildRequestedSet(requests)
+
+  const nightBeforeByDay = toSerializable(
+    buildNightBeforeByDay({ byDay, priorWeekTail: built.input.priorWeekTail ?? {} }),
+  )
 
   return {
     periodId,
@@ -216,5 +210,6 @@ export async function getScheduleView(
       day: n.day_of_week,
       label: n.label,
     })),
+    nightBeforeByDay,
   }
 }
