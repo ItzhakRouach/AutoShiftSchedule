@@ -35,6 +35,7 @@ export async function getPublishedScheduleView(
     { data: assignsRaw },
     { data: shiftTypesRaw },
     { data: requestsRaw },
+    { data: dayNotesRaw },
   ] = await Promise.all([
     supabase.from('roles').select('id, name, color, rank').eq('workplace_id', workplaceId).eq('is_active', true).order('rank', { ascending: false }),
     supabase.from('employees').select('id, name, color').eq('workplace_id', workplaceId).order('name'),
@@ -46,6 +47,10 @@ export async function getPublishedScheduleView(
     supabase
       .from('requests')
       .select('employee_id, day_of_week, is_off, preferred_shift_ids')
+      .eq('period_id', period.id),
+    supabase
+      .from('day_notes')
+      .select('employee_id, day_of_week, label')
       .eq('period_id', period.id),
   ])
 
@@ -103,5 +108,10 @@ export async function getPublishedScheduleView(
     feasibility: null,
     requests,
     requestedSet: buildRequestedSet(requests),
+    dayNotes: (dayNotesRaw ?? []).map((n) => ({
+      employeeId: n.employee_id,
+      day: n.day_of_week,
+      label: n.label,
+    })),
   }
 }

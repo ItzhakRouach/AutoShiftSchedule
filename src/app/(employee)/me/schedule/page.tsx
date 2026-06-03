@@ -18,6 +18,7 @@ export default async function MeSchedulePage() {
 
   const view = await getPublishedScheduleView(supabase, employee.workplace_id)
   const weekLabel = view ? `${view.days[0]?.date} – ${view.days[6]?.date}` : ''
+  const myNotes = (view?.dayNotes ?? []).filter((n) => n.employeeId === employee.id)
 
   return (
     <main className="page-wrap wide" style={{ direction: 'rtl' }}>
@@ -27,6 +28,17 @@ export default async function MeSchedulePage() {
         </h1>
         {weekLabel && <p style={{ margin: 0, fontSize: 13, color: 'var(--text-2)' }}>שבוע {weekLabel}</p>}
       </div>
+
+      {myNotes.length > 0 && (
+        <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {myNotes.map((n) => (
+            <div key={`${n.day}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', borderRadius: 'var(--r-md)', background: 'var(--accent-soft)', color: 'var(--accent)', fontSize: 14, fontWeight: 700 }}>
+              <span style={{ background: 'var(--accent)', color: '#fff', borderRadius: 8, padding: '2px 8px', fontSize: 12 }}>{view!.days[n.day]?.short ?? ''}</span>
+              {n.label}
+            </div>
+          ))}
+        </div>
+      )}
 
       {view ? (
         <WeekTable view={view} initialSelectedId={employee.id} showUnfilled={false} />
