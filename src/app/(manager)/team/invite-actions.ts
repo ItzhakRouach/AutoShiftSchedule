@@ -7,7 +7,8 @@ import { getActiveWorkplace } from '@/lib/workplace/current'
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 const CODE_LENGTH = 8
-const EXPIRE_DAYS = 14
+// Reusable invite window: long enough for the whole team to join from one link.
+const EXPIRE_DAYS = 90
 
 function generateCode(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(CODE_LENGTH))
