@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { type ShiftId } from '@/lib/domain/constants'
 import { shiftMetaFromRow, roleMetaFromRow } from '@/lib/domain/meta'
 import { buildWeekGrid, buildEmpTotals, coveredByTwelve } from '@/lib/schedule/week-table-data'
@@ -8,6 +8,7 @@ import type { ScheduleView } from '@/lib/schedule/view-data'
 import type { SlotCtx } from './SwapEditor'
 import type { ShiftKey } from '@/lib/scheduling/types'
 import { EmpTotalsBar } from './EmpTotalsBar'
+import { WeekTableCell } from './WeekTableCell'
 
 interface Props {
   view: ScheduleView
@@ -24,98 +25,20 @@ const BASE_SHIFTS: ShiftKey[] = ['morning', 'noon', 'night']
 
 const S = {
   sticky: { position: 'sticky', background: 'var(--surface-2)', fontWeight: 700, borderLeft: '1px solid var(--border)', borderBottom: '1px solid var(--border)', zIndex: 2 } as React.CSSProperties,
-  cellBase: { padding: '10px 12px', verticalAlign: 'middle', borderLeft: '1px solid var(--border)', borderBottom: '1px solid var(--border)', fontSize: 13, textAlign: 'center' } as React.CSSProperties,
   dayPairBtn: { marginTop: 4, padding: '2px 8px', fontSize: 10.5, fontWeight: 700, borderRadius: 99, border: '1px solid var(--accent)', background: 'var(--accent-soft)', color: 'var(--accent)', cursor: 'pointer', fontFamily: 'var(--font)' } as React.CSSProperties,
-}
-
-function Badge() {
-  return (
-    <span title="ביקש משמרת זו" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 14, height: 14, borderRadius: '50%', background: 'rgba(19,169,142,0.18)', color: '#13A98E', fontSize: 9, fontWeight: 800, marginRight: 3, flexShrink: 0, cursor: 'help' }}>
-      ✓
-    </span>
-  )
-}
-
-function Cell({ entries, empById, isFilled, covered, selectedId, onClick, onSelectEmp, showUnfilled }: {
-  entries: { employeeId: string; is12h: boolean; requested: boolean }[]
-  empById: Map<string, { name: string; color: string }>
-  isFilled: boolean
-  /** True when this cell's coverage comes from a 12h shift in an adjacent slot. */
-  covered: boolean
-  selectedId: string | null
-  onClick?: () => void
-  onSelectEmp: (id: string) => void
-  showUnfilled: boolean
-}) {
-  const hasSelected = selectedId !== null
-  const cellHasSelected = hasSelected && entries.some((e) => e.employeeId === selectedId)
-  const bg = entries.length === 0 && !isFilled && !covered && showUnfilled ? 'rgba(235,106,78,0.06)' : 'var(--surface)'
-  const dimCell = hasSelected && !cellHasSelected
-  const highlightCell = cellHasSelected
-
-  const cellStyle: React.CSSProperties = {
-    ...S.cellBase,
-    background: bg,
-    cursor: onClick ? 'pointer' : 'default',
-    minWidth: 96,
-    opacity: dimCell ? 0.4 : 1,
-    outline: highlightCell ? '2px solid var(--accent, #13A98E)' : undefined,
-    outlineOffset: highlightCell ? '-2px' : undefined,
-    transition: 'opacity 0.15s, outline 0.15s',
-  }
-
-  if (entries.length === 0) {
-    return (
-      <td style={cellStyle} onClick={onClick}>
-        {covered ? (
-          <span title="מאויש ע״י משמרת 12 שעות" style={{ color: 'var(--text-3)', fontWeight: 700, fontSize: 11 }}>12ש׳</span>
-        ) : (
-          showUnfilled && <span style={{ color: '#EB6A4E', fontWeight: 600, fontSize: 12 }}>לא מאויש</span>
-        )}
-      </td>
-    )
-  }
-  return (
-    <td style={cellStyle} onClick={onClick}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {entries.map((en, i) => {
-          const emp = empById.get(en.employeeId)
-          const isSelected = selectedId === en.employeeId
-          return (
-            <span
-              key={i}
-              role="button"
-              aria-pressed={isSelected}
-              title={isSelected ? 'לחץ לביטול הסימון' : 'לחץ לסימון עובד'}
-              onClick={(ev) => { ev.stopPropagation(); onSelectEmp(en.employeeId) }}
-              style={{
-                display: 'inline-flex', alignItems: 'center',
-                color: emp?.color ?? 'var(--text)', fontWeight: 700,
-                whiteSpace: 'nowrap', fontSize: 13, lineHeight: 1.4,
-                cursor: 'pointer',
-                opacity: hasSelected && !isSelected ? 0.35 : 1,
-                textDecoration: isSelected ? 'underline' : undefined,
-                transition: 'opacity 0.15s',
-              }}
-            >
-              {en.requested && <Badge />}
-              {emp?.name ?? '?'}
-              {en.is12h ? <span style={{ color: 'var(--accent)', fontWeight: 800, marginRight: 2 }}>-12</span> : ''}
-            </span>
-          )
-        })}
-      </div>
-    </td>
-  )
 }
 
 export function WeekTable({ view, onSlot, onDayPair, initialSelectedId, showUnfilled = true }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId ?? null)
-  const weekGrid = buildWeekGrid(view)
-  const coveredSet = coveredByTwelve(view)
-  const empTotals = buildEmpTotals(view, view.employees)
-  const empById = new Map(view.employees.map((e) => [e.id, e]))
-  const roleById = new Map(view.roles.map((r) => [r.id, r]))
+
+  // Heavy derived data — recompute only when `view` actually changes. Without
+  // useMemo, every cell-click (which sets selectedId) would re-walk the grid.
+  const weekGrid = useMemo(() => buildWeekGrid(view), [view])
+  const coveredSet = useMemo(() => coveredByTwelve(view), [view])
+  const empTotals = useMemo(() => buildEmpTotals(view, view.employees), [view])
+  const empById = useMemo(() => new Map(view.employees.map((e) => [e.id, e])), [view.employees])
+  const roleById = useMemo(() => new Map(view.roles.map((r) => [r.id, r])), [view.roles])
+
   // Roles already arrive active + rank-desc from the view (senior first).
   const orderedRoleIds = view.roles.map((r) => r.id)
   const days = view.days
@@ -175,7 +98,7 @@ export function WeekTable({ view, onSlot, onDayPair, initialSelectedId, showUnfi
                       {role?.name ?? roleId}
                     </td>
                     {days.map((d) => (
-                      <Cell key={d.index}
+                      <WeekTableCell key={d.index}
                         entries={weekGrid[d.index]?.[shift]?.[roleId] ?? []}
                         empById={empById}
                         isFilled={(weekGrid[d.index]?.[shift]?.[roleId] ?? []).length >= (view.requirements[d.index]?.[shift]?.[roleId] ?? 0) && (view.requirements[d.index]?.[shift]?.[roleId] ?? 0) > 0}

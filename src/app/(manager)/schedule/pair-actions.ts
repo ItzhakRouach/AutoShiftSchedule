@@ -7,6 +7,7 @@ import { getActiveWorkplace } from '@/lib/workplace/current'
 import { validateManualAssignment } from '@/lib/schedule/validate-edit'
 import { planTwelvePair, type DayRoleSlot } from '@/lib/schedule/twelve-pair-core'
 import { buildPairSnapshot, type DaySnapshotRow } from '@/lib/schedule/pair-snapshot'
+import { getWorkplaceShiftTypes } from '@/lib/schedule/shift-types-cache'
 import type { ShiftId } from '@/lib/domain/constants'
 
 export interface PairResult {
@@ -42,10 +43,7 @@ export async function applyTwelvePair(
   if (morningEmployeeId === nightEmployeeId)
     return { ok: false, error: 'יש לבחור עובד שונה לבוקר וללילה.' }
 
-  const { data: sts } = await supabase.from('shift_types').select('id, key').eq('workplace_id', workplace.id)
-  const idByKey: Record<string, string> = {}
-  const keyById: Record<string, ShiftId> = {}
-  for (const st of sts ?? []) { idByKey[st.key as string] = st.id as string; keyById[st.id as string] = st.key as ShiftId }
+  const { idByKey, keyById } = await getWorkplaceShiftTypes(supabase, workplace.id)
   const dayId = idByKey['m12_day'], nightId = idByKey['m12_night'], noonId = idByKey['noon']
   if (!dayId || !nightId || !noonId) return { ok: false, error: GENERIC }
 

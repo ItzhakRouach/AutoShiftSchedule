@@ -1,5 +1,7 @@
-// Adapter unit: computePriorDeficit reads the most-recent PUBLISHED prior period
-// and computes max(0, minShifts − shiftsThen) per employee; 0 when none exists.
+// Adapter unit: computePriorDeficit reads assignments for a pre-resolved prior
+// period and computes max(0, minShifts − shiftsThen) per employee; {} when no
+// prior period was passed. (The prior-period lookup itself lives in
+// findPriorPublishedPeriod and is tested separately.)
 import { describe, it, expect } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { computePriorDeficit } from './build-input'
@@ -7,23 +9,14 @@ import { computePriorDeficit } from './build-input'
 type AsgRow = { employee_id: string; day_of_week: number }
 
 /**
- * Minimal chainable Supabase stub. The period query resolves via maybeSingle()
- * to `prior`; the assignments query (terminated by .eq) resolves to `asg`.
+ * Minimal chainable Supabase stub. The assignments query
+ * (.from('assignments').select().eq()) resolves to `asg`.
  */
-function fakeDb(prior: { id: string } | null, asg: AsgRow[]): SupabaseClient {
-  const periodChain = {
-    select: () => periodChain,
-    eq: () => periodChain,
-    lt: () => periodChain,
-    order: () => periodChain,
-    limit: () => periodChain,
-    maybeSingle: async () => ({ data: prior }),
-  }
-  // assignments: .select().eq() must itself be awaitable.
+function fakeDb(asg: AsgRow[]): SupabaseClient {
   const asgEq = { then: (r: (v: { data: AsgRow[] }) => unknown) => r({ data: asg }) }
   const asgChain = { select: () => ({ eq: () => asgEq }) }
   return {
-    from: (table: string) => (table === 'assignments' ? asgChain : periodChain),
+    from: () => asgChain,
   } as unknown as SupabaseClient
 }
 
@@ -32,6 +25,8 @@ const EMPS = [
   { id: 'e2', min_shifts_per_week: 3 },
   { id: 'e3', min_shifts_per_week: 2 },
 ]
+
+const PRIOR = { id: 'p0', week_start_date: '2026-05-31' }
 
 describe('computePriorDeficit', () => {
   it('computes max(0, min − shiftsThen) from prior published assignments', async () => {
@@ -44,7 +39,7 @@ describe('computePriorDeficit', () => {
       { employee_id: 'e2', day_of_week: 2 },
       { employee_id: 'e2', day_of_week: 4 },
     ]
-    const d = await computePriorDeficit(fakeDb({ id: 'p0' }, asg), 'wp', '2026-06-07', EMPS)
+    const d = await computePriorDeficit(fakeDb(asg), PRIOR, EMPS)
     expect(d).toEqual({ e1: 3, e2: 0, e3: 2 })
   })
 
@@ -53,14 +48,14 @@ describe('computePriorDeficit', () => {
       { employee_id: 'e1', day_of_week: 0 },
       { employee_id: 'e1', day_of_week: 0 }, // duplicate — must not double-count
     ]
-    const d = await computePriorDeficit(fakeDb({ id: 'p0' }, asg), 'wp', '2026-06-07', [
+    const d = await computePriorDeficit(fakeDb(asg), PRIOR, [
       { id: 'e1', min_shifts_per_week: 3 },
     ])
     expect(d).toEqual({ e1: 2 })
   })
 
-  it('returns {} when there is no prior published period', async () => {
-    const d = await computePriorDeficit(fakeDb(null, []), 'wp', '2026-06-07', EMPS)
+  it('returns {} when no prior period is supplied', async () => {
+    const d = await computePriorDeficit(fakeDb([]), null, EMPS)
     expect(d).toEqual({})
   })
 })

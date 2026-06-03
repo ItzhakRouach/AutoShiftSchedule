@@ -2,10 +2,10 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import type { ShiftId } from '@/lib/domain/constants'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveWorkplace } from '@/lib/workplace/current'
 import { validateManualAssignment } from '@/lib/schedule/validate-edit'
+import { resolveShiftKey } from '@/lib/schedule/shift-types-cache'
 
 export interface EditResult {
   ok: boolean
@@ -16,21 +16,6 @@ export interface EditResult {
 const GENERIC_ERROR = 'אירעה שגיאה. נסו שוב.'
 const TWELVE_H_WARNING =
   'משמרת 12 שעות תופסת שני חלונות 8 שעות ומשפיעה על המנוחה והכיסוי'
-
-/** Resolve a shift_type_id → its key, scoped to the period's workplace. */
-async function resolveShiftKey(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  workplaceId: string,
-  shiftTypeId: string,
-): Promise<ShiftId | null> {
-  const { data } = await supabase
-    .from('shift_types')
-    .select('key')
-    .eq('id', shiftTypeId)
-    .eq('workplace_id', workplaceId)
-    .maybeSingle()
-  return (data?.key as ShiftId) ?? null
-}
 
 async function authedWorkplace() {
   const supabase = await createClient()

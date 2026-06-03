@@ -8,6 +8,7 @@ import {
   type MapInput,
 } from './map-rows'
 import { computePriorWeekTail } from './prior-tail'
+import { findPriorPublishedPeriod, type PriorPeriodRow } from './prior-period'
 
 export interface PeriodInfo {
   id: string
@@ -32,30 +33,22 @@ interface EmpMinRow {
 }
 
 /**
- * Cross-week minimum fairness. Finds the most-recent PUBLISHED period for this
- * workplace whose week_start_date is strictly BEFORE the current period's, then
- * for each employee computes priorDeficit = max(0, minShifts − shiftsThen),
- * where shiftsThen = distinct assigned days in that period (one shift/day, per
- * the assignments unique(period,employee,day) constraint — a 12h counts once).
- * Returns {} (all-zero) when there is no prior published period.
+ * Cross-week minimum fairness. For each employee computes priorDeficit =
+ * max(0, minShifts − shiftsThen), where shiftsThen = distinct assigned days in
+ * the supplied prior published period (one shift/day, per the assignments
+ * unique(period,employee,day) constraint — a 12h counts once). Returns {}
+ * (all-zero) when `prior` is null.
+ *
+ * The caller resolves the prior period once via `findPriorPublishedPeriod` and
+ * passes it to BOTH this and `computePriorWeekTail` to avoid two identical
+ * lookups per buildEngineInput call.
  */
 export async function computePriorDeficit(
   supabase: SupabaseClient,
-  workplaceId: string,
-  currentWeekStart: string,
+  prior: PriorPeriodRow | null,
   employees: EmpMinRow[],
 ): Promise<Record<string, number>> {
-  const { data: prior } = await supabase
-    .from('schedule_periods')
-    .select('id')
-    .eq('workplace_id', workplaceId)
-    .eq('status', 'published')
-    .lt('week_start_date', currentWeekStart)
-    .order('week_start_date', { ascending: false })
-    .limit(1)
-    .maybeSingle()
   if (!prior) return {}
-
   const { data: rows } = await supabase
     .from('assignments')
     .select('employee_id, day_of_week')
@@ -163,17 +156,14 @@ export async function buildEngineInput(
 
   const holidayDates = new Set<string>((holidayRows ?? []).map((h: { date: string }) => h.date))
 
-  const priorDeficit = await computePriorDeficit(
-    supabase,
-    wp,
-    period.week_start_date as string,
-    employees ?? [],
-  )
-  const priorWeekTail = await computePriorWeekTail(
-    supabase,
-    wp,
-    period.week_start_date as string,
-  )
+  // Resolve the prior published period ONCE and reuse it for both deficit
+  // (fairness carry-over) and tail (rest carry-over) — saves a duplicate
+  // schedule_periods lookup. The two computations are then run in parallel.
+  const prior = await findPriorPublishedPeriod(supabase, wp, period.week_start_date as string)
+  const [priorDeficit, priorWeekTail] = await Promise.all([
+    computePriorDeficit(supabase, prior, employees ?? []),
+    computePriorWeekTail(supabase, wp, prior, period.week_start_date as string),
+  ])
 
   const rows: MapInput = {
     weekDates: weekDatesArr,

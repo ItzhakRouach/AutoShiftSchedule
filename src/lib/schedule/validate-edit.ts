@@ -2,6 +2,7 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { ShiftId } from '@/lib/domain/constants'
 import { buildEngineInput } from './build-input'
+import { getWorkplaceShiftTypes } from './shift-types-cache'
 import {
   validateAssignmentCore,
   type CommittedSlot,
@@ -45,13 +46,9 @@ export async function validateManualAssignment(
   const roleName = roleIdToName[roleId]
   if (!roleName) return { ok: false, severity: 'hard', reason: 'תפקיד לא תקין' }
 
-  // shift_type_id → ShiftId key (base + 12h variants).
-  const idToKey: Record<string, ShiftId> = {}
-  const { data: shiftTypes } = await supabase
-    .from('shift_types')
-    .select('id, key')
-    .eq('workplace_id', built.period.workplace_id)
-  for (const st of shiftTypes ?? []) idToKey[st.id as string] = st.key as ShiftId
+  // shift_type_id → ShiftId key (base + 12h variants). Shared per-request via
+  // React.cache so multiple validate calls within one server action dedupe.
+  const { keyById: idToKey } = await getWorkplaceShiftTypes(supabase, built.period.workplace_id)
 
   // The employee's other committed assignments this week (exclude today's slot —
   // upsert replaces the same-day row, so it must not count against rest/one-per-day).

@@ -1,4 +1,5 @@
 import type { PeriodKPIs, EmployeeStat, FairnessStat, CoverageColor } from './types'
+import { groupRequestsByEmployee, indexAssignments, reqIsHonored } from './aggregate-index'
 
 export interface AssignmentRow {
   employee_id: string
@@ -38,48 +39,28 @@ export function coverageColor(pct: number | null): CoverageColor {
 
 /**
  * For each employee, count how many of their assignments fell on a shift they
- * requested (non-off, preferred_shift_ids includes the assigned shift_type_id,
- * same day_of_week). An employee "passes" if that count ≥ 2.
- *
- * Edge case: employees who have fewer than 2 non-off requests are counted in
- * `total` only if they have ≥1 such request; their threshold is
- * min(2, theirRequestCount), so an employee with exactly 1 request passes if
- * that 1 request was honored.
+ * requested. An employee passes if count ≥ min(2, theirRequestCount).
+ * O(R + A): one O(A) index pass, then O(1) lookup per request.
  */
 export function computeTwoRequestsHonored(
   periodAssignments: AssignmentRow[],
   requests: RequestRow[],
   employees: EmployeeRow[],
 ): { count: number; total: number } {
+  const index = indexAssignments(periodAssignments)
+  const reqsByEmp = groupRequestsByEmployee(requests)
+
   let count = 0
   let total = 0
-
   for (const emp of employees) {
-    const empReqs = requests.filter(
-      (r) =>
-        r.employee_id === emp.id &&
-        !r.is_off &&
-        r.preferred_shift_ids &&
-        r.preferred_shift_ids.length > 0,
-    )
+    const empReqs = reqsByEmp.get(emp.id) ?? []
     if (empReqs.length === 0) continue
     total += 1
-
     let honored = 0
-    for (const req of empReqs) {
-      const matched = periodAssignments.some(
-        (a) =>
-          a.employee_id === emp.id &&
-          a.day_of_week === req.day_of_week &&
-          req.preferred_shift_ids!.includes(a.shift_type_id),
-      )
-      if (matched) honored++
-    }
-
+    for (const req of empReqs) if (reqIsHonored(index, emp.id, req)) honored++
     const threshold = Math.min(2, empReqs.length)
     if (honored >= threshold) count++
   }
-
   return { count, total }
 }
 
@@ -148,35 +129,43 @@ export function aggregateEmployees(
 
 const NIGHT_SHIFT_KEYS = new Set(['night', 'm12_night'])
 
+/**
+ * Per-employee fairness rollup: night count, weekend count, and request honor
+ * stats. O(A + R + E): single pass to bucket per-employee, then O(1) lookups
+ * per request via the shared assignment index.
+ */
 export function aggregateFairness(
   assignments: AssignmentRow[],
   requests: RequestRow[],
   employees: EmployeeRow[],
   shiftKeyById: Map<string, string>,
 ): FairnessStat[] {
+  const perEmp = new Map<string, { night: number; weekend: number; daysShifts: Set<string> }>()
+  for (const e of employees) {
+    perEmp.set(e.id, { night: 0, weekend: 0, daysShifts: new Set() })
+  }
+  for (const a of assignments) {
+    const agg = perEmp.get(a.employee_id)
+    if (!agg) continue
+    if (NIGHT_SHIFT_KEYS.has(shiftKeyById.get(a.shift_type_id) ?? '')) agg.night += 1
+    if (a.day_of_week === 5 || a.day_of_week === 6) agg.weekend += 1
+    agg.daysShifts.add(`${a.day_of_week}:${a.shift_type_id}`)
+  }
+
+  const reqsByEmp = groupRequestsByEmployee(requests)
   return employees.map((e) => {
-    const empAssignments = assignments.filter((a) => a.employee_id === e.id)
-    const nightShifts = empAssignments.filter((a) =>
-      NIGHT_SHIFT_KEYS.has(shiftKeyById.get(a.shift_type_id) ?? ''),
-    ).length
-    const weekendShifts = empAssignments.filter(
-      (a) => a.day_of_week === 5 || a.day_of_week === 6,
-    ).length
-
-    const empRequests = requests.filter((r) => r.employee_id === e.id && !r.is_off)
+    const agg = perEmp.get(e.id)!
+    const empReqs = reqsByEmp.get(e.id) ?? []
     let honoredCount = 0
-    let requestedCount = 0
-    for (const req of empRequests) {
-      if (!req.preferred_shift_ids || req.preferred_shift_ids.length === 0) continue
-      requestedCount += 1
-      const matched = empAssignments.some(
-        (a) =>
-          req.preferred_shift_ids!.includes(a.shift_type_id) &&
-          a.day_of_week === req.day_of_week,
-      )
-      if (matched) honoredCount += 1
+    for (const req of empReqs) {
+      if (req.preferred_shift_ids!.some((sid) => agg.daysShifts.has(`${req.day_of_week}:${sid}`))) {
+        honoredCount += 1
+      }
     }
-
-    return { id: e.id, name: e.name, nightShifts, weekendShifts, requestedCount, honoredCount }
+    return {
+      id: e.id, name: e.name,
+      nightShifts: agg.night, weekendShifts: agg.weekend,
+      requestedCount: empReqs.length, honoredCount,
+    }
   })
 }
