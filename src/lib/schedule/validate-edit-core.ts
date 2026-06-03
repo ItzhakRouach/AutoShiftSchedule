@@ -46,6 +46,9 @@ export interface ValidateCoreArgs {
   settings: Settings
   /** true when assigning a 12h variant (skips base-only availability check). */
   isTwelveHour?: boolean
+  /** prior-published-week END abs hours of THIS employee's shifts (current week
+   *  day 0 = abs hour 0). Optional; absent → no cross-week rest check. */
+  priorTail?: number[]
 }
 
 /**
@@ -105,6 +108,20 @@ export function validateAssignmentCore(args: ValidateCoreArgs): Verdict {
         severity: 'hard',
         reason: `מפר מנוחה של ${settings.minRestHours} שעות`,
       }
+  }
+  // Cross-week rest: prior published week's tail (end abs hours, current week
+  // day 0 = abs hour 0). Blocks e.g. Sat-night → Sun-morning when minRest ≥ 1.
+  const priorTail = args.priorTail
+  if (priorTail && priorTail.length > 0) {
+    const startAbs = mine[0]
+    for (const endAbs of priorTail) {
+      if (startAbs - endAbs < settings.minRestHours)
+        return {
+          ok: false,
+          severity: 'hard',
+          reason: `מפר מנוחה של ${settings.minRestHours} שעות מול השבוע הקודם`,
+        }
+    }
   }
 
   // Legal. Mark soft if it wasn't explicitly requested (a warning hint).

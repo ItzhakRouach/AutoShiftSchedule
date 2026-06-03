@@ -63,6 +63,9 @@ export interface MapInput {
   holidayDates?: Set<string>
   /** Cross-week fairness: employee_id → shortfall in most-recent published period. */
   priorDeficit?: Record<string, number>
+  /** Cross-week rest: employee_id → END abs hours of prior-week shifts
+   *  (current week day 0 = abs hour 0). See EngineInput.priorWeekTail. */
+  priorWeekTail?: Record<string, number[]>
 }
 
 const VALID_EMP: EmploymentType[] = ['full', 'part', 'student']
@@ -191,7 +194,10 @@ export function mapToEngineInput(rows: MapInput): MapResult {
   }
 
   return {
-    input: { employees, days, requests, requirements, settings, seed: rows.seed },
+    input: {
+      employees, days, requests, requirements, settings, seed: rows.seed,
+      priorWeekTail: rows.priorWeekTail,
+    },
     keyToShiftTypeId,
     nameToRoleId,
   }

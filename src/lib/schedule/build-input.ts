@@ -7,6 +7,7 @@ import {
   weekDatesFrom,
   type MapInput,
 } from './map-rows'
+import { computePriorWeekTail } from './prior-tail'
 
 export interface PeriodInfo {
   id: string
@@ -168,6 +169,11 @@ export async function buildEngineInput(
     period.week_start_date as string,
     employees ?? [],
   )
+  const priorWeekTail = await computePriorWeekTail(
+    supabase,
+    wp,
+    period.week_start_date as string,
+  )
 
   const rows: MapInput = {
     weekDates: weekDatesArr,
@@ -183,6 +189,7 @@ export async function buildEngineInput(
     seed: seedFromUuid(period.id),
     holidayDates,
     priorDeficit,
+    priorWeekTail,
   }
 
   const { input, keyToShiftTypeId, nameToRoleId } = mapToEngineInput(rows)

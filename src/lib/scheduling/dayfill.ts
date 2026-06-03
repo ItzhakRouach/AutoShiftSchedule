@@ -42,6 +42,7 @@ function ctxFor(
     request: reqOf(input, emp.id, meta.index),
     current: st.committed[emp.id],
     settings: input.settings,
+    priorTail: input.priorWeekTail?.[emp.id],
   }
 }
 

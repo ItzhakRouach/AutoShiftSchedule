@@ -60,6 +60,15 @@ export interface EngineInput {
   requirements: Requirements
   settings: Settings
   seed: number
+  /**
+   * Cross-week rest carry-over: per-employee list of END abs-hours of shifts
+   * worked in the immediately-preceding published period. Reference: current
+   * week day 0 starts at abs hour 0, so a prior Saturday night (23–07) ends at
+   * abs hour 7 — exactly 0h before Sunday morning (also abs 7) and so blocks
+   * Sunday morning when minRestHours ≥ 1. {} = no prior tail (no published
+   * adjacent week). Used ONLY by `restSatisfied` (does NOT inflate maxShifts).
+   */
+  priorWeekTail?: Record<string, number[]>
 }
 
 /** A concrete assignment of an employee to a day/shift/role. */

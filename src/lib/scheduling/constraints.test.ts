@@ -110,6 +110,36 @@ describe('shabbat & holiday blocks', () => {
   })
 })
 
+describe('cross-week rest (priorTail)', () => {
+  // current week day 0 = abs hour 0; prior Sat night ends at abs 7 (= Sun morning start)
+  const baseCtx = {
+    emp: emp('a'),
+    meta: meta(0),
+    shift: 'morning' as const,
+    roleId: GUARD,
+    request: { off: false, preferred: [] },
+    current: [] as Assignment[],
+    settings: settings(),
+  }
+  it('blocks Sun morning when prior Sat night ended at abs 7 (gap 0)', () => {
+    expect(restSatisfied({ ...baseCtx, priorTail: [7] })).toBe(false)
+  })
+  it('does not block Sun noon (start abs 15, gap 8 satisfies default 8h)', () => {
+    expect(restSatisfied({ ...baseCtx, shift: 'noon', priorTail: [7] })).toBe(true)
+  })
+  it('does not block Sun morning when prior shift ended >= 8h ago (abs -1)', () => {
+    // Prior Sat noon 15-23 → end abs (-1*24)+15+8 = -1. Sun morning starts at 7. Gap = 8.
+    expect(restSatisfied({ ...baseCtx, priorTail: [-1] })).toBe(true)
+  })
+  it('blocks Sun morning when prior Sat m12_15to3 ended at abs 3 (gap 4)', () => {
+    expect(restSatisfied({ ...baseCtx, priorTail: [3] })).toBe(false)
+  })
+  it('absent or empty priorTail is a no-op', () => {
+    expect(restSatisfied({ ...baseCtx })).toBe(true)
+    expect(restSatisfied({ ...baseCtx, priorTail: [] })).toBe(true)
+  })
+})
+
 describe('isAssignable integration', () => {
   const base = {
     meta: meta(0),

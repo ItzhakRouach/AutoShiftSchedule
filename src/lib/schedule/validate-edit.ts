@@ -80,5 +80,6 @@ export async function validateManualAssignment(
     others,
     settings: built.input.settings,
     isTwelveHour: !SHIFT_KEYS.has(shiftKey),
+    priorTail: built.input.priorWeekTail?.[employeeId],
   })
 }

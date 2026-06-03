@@ -56,5 +56,6 @@ export function validateAssignment(
     request: reqOf(input, emp.id, meta.index),
     current,
     settings: input.settings,
+    priorTail: input.priorWeekTail?.[emp.id],
   })
 }

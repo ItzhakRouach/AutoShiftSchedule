@@ -137,4 +137,23 @@ describe('validateAssignmentCore', () => {
     )
     expect(v.ok).toBe(true)
   })
+
+  // --- Cross-week rest (priorTail) ---
+
+  it('blocks Sun-morning manual edit when prior Sat night ended at abs 7', () => {
+    const sunMeta: DayMeta = { index: 0, isHolidayEve: false, isHoliday: false }
+    const v = validateAssignmentCore(
+      args({ meta: sunMeta, shiftKey: 'morning', priorTail: [7] }),
+    )
+    expect(v.ok).toBe(false)
+    if (!v.ok) expect(v.reason).toContain('שבוע הקודם')
+  })
+
+  it('allows Sun-noon edit even with a prior Sat night (8h gap meets default)', () => {
+    const sunMeta: DayMeta = { index: 0, isHolidayEve: false, isHoliday: false }
+    const v = validateAssignmentCore(
+      args({ meta: sunMeta, shiftKey: 'noon', priorTail: [7] }),
+    )
+    expect(v.ok).toBe(true)
+  })
 })
