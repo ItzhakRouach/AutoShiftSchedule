@@ -121,3 +121,31 @@ export async function applyTwelvePair(
   revalidatePath('/schedule')
   return { ok: true, warning: PAIR_WARNING }
 }
+
+/**
+ * Cancel a day's 12h pair for a role: delete the two 12h rows (m12_day / m12_night)
+ * for that day + role. The freed base cells become empty for the manager to refill.
+ */
+export async function cancelTwelvePair(
+  periodId: string,
+  dayIndex: number,
+  roleId: string,
+): Promise<PairResult> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+  const workplace = await getActiveWorkplace(supabase)
+  if (!workplace) return { ok: false, error: 'לא נמצא מקום עבודה.' }
+
+  const { error } = await supabase
+    .from('assignments')
+    .delete()
+    .eq('period_id', periodId)
+    .eq('day_of_week', dayIndex)
+    .eq('role_id', roleId)
+    .eq('source', 'fallback_12h')
+  if (error) return { ok: false, error: GENERIC }
+
+  revalidatePath('/schedule')
+  return { ok: true, warning: 'צמד 12 השעות בוטל. ניתן לשבץ מחדש את המשמרות הרגילות.' }
+}

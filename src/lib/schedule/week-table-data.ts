@@ -20,9 +20,10 @@ export type WeekGrid = Record<number, Record<string, Record<string, CellEntry[]>
 export type EmpTotals = Record<string, number>
 
 /**
- * Build the week grid, expanding 12h assignments into every base-shift they fill.
- * A 12h assignment appears in each covered base-shift cell, flagged `is12h: true`.
- * The `requested` flag is true when requestedSet contains the matching key.
+ * Build the week grid. A 12h assignment is shown in ONLY its anchor base-shift
+ * cell (the first shift it fills) flagged `is12h: true`; the other in-between
+ * shift(s) it covers are left EMPTY (see `coveredByTwelve`) so the table reads
+ * cleanly — e.g. a 07–19 day shift shows the worker in בוקר and leaves צהריים blank.
  */
 export function buildWeekGrid(view: ScheduleView): WeekGrid {
   const grid: WeekGrid = {}
@@ -44,23 +45,36 @@ export function buildWeekGrid(view: ScheduleView): WeekGrid {
     }
   }
 
-  // Expand 12h assignments into every base-shift they fill
+  // Place each 12h person in its ANCHOR cell only (fills[0]).
   for (const t of view.twelve) {
     const fills = TWELVE_HOUR_FILLS[t.variant as TwelveHourKey]
-    if (!fills) continue
-    // For 12h: check if any covered base shift was requested
+    if (!fills || fills.length === 0) continue
     const requested = fills.some((baseShift) => {
       const stId = view.shiftTypeIdByKey[baseShift] ?? ''
       return reqSet.has(`${t.employeeId}:${t.day}:${stId}`)
     })
-    for (const baseShift of fills) {
-      const d = (grid[t.day] ??= {})
-      const s = (d[baseShift] ??= {})
-      ;(s[t.roleId] ??= []).push({ employeeId: t.employeeId, is12h: true, requested })
-    }
+    const anchor = fills[0]
+    const d = (grid[t.day] ??= {})
+    const s = (d[anchor] ??= {})
+    ;(s[t.roleId] ??= []).push({ employeeId: t.employeeId, is12h: true, requested })
   }
 
   return grid
+}
+
+/**
+ * Cells covered by a 12h shift from an adjacent anchor — the "in-between" shifts
+ * (fills[1..]) a 12h assignment spans. Keys: `${day}:${shiftKey}:${roleId}`.
+ * The table renders these EMPTY but NOT as gaps (they're staffed by the 12h).
+ */
+export function coveredByTwelve(view: ScheduleView): Set<string> {
+  const covered = new Set<string>()
+  for (const t of view.twelve) {
+    const fills = TWELVE_HOUR_FILLS[t.variant as TwelveHourKey]
+    if (!fills || fills.length <= 1) continue
+    for (const baseShift of fills.slice(1)) covered.add(`${t.day}:${baseShift}:${t.roleId}`)
+  }
+  return covered
 }
 
 /**

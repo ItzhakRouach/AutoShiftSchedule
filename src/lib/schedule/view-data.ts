@@ -31,6 +31,13 @@ export interface ViewRequest {
   preferredShiftIds: string[]
 }
 
+/** A manager-assigned day note (רענון / free text) marking an employee off-shift. */
+export interface DayNote {
+  employeeId: string
+  day: number
+  label: string
+}
+
 export interface ScheduleView {
   periodId: string
   status: string
@@ -56,6 +63,8 @@ export interface ScheduleView {
    * base shift's type id).
    */
   requestedSet: Set<string>
+  /** Manager-assigned day notes (רענון / free text) for this period. */
+  dayNotes?: DayNote[]
 }
 
 const DAY_SHORTS = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳']
@@ -102,6 +111,7 @@ export async function getScheduleView(
     { data: reqRaw },
     { data: allShiftTypes },
     { data: requestsRaw },
+    { data: dayNotesRaw },
   ] = await Promise.all([
     supabase.from('roles').select('id, name, color, rank').eq('workplace_id', workplaceId).eq('is_active', true).order('rank', { ascending: false }),
     supabase.from('employees').select('id, name, color').eq('workplace_id', workplaceId).order('name'),
@@ -117,6 +127,10 @@ export async function getScheduleView(
     supabase
       .from('requests')
       .select('employee_id, day_of_week, is_off, preferred_shift_ids')
+      .eq('period_id', periodId),
+    supabase
+      .from('day_notes')
+      .select('employee_id, day_of_week, label')
       .eq('period_id', periodId),
   ])
 
@@ -197,5 +211,10 @@ export async function getScheduleView(
     feasibility,
     requests,
     requestedSet,
+    dayNotes: (dayNotesRaw ?? []).map((n) => ({
+      employeeId: n.employee_id,
+      day: n.day_of_week,
+      label: n.label,
+    })),
   }
 }

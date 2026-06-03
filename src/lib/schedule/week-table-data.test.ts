@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildWeekGrid, buildEmpTotals } from './week-table-data'
+import { buildWeekGrid, buildEmpTotals, coveredByTwelve } from './week-table-data'
 import type { ScheduleView } from './view-data'
 
 function makeView(overrides: Partial<ScheduleView> = {}): ScheduleView {
@@ -58,19 +58,19 @@ describe('buildWeekGrid — base assignments', () => {
 })
 
 describe('buildWeekGrid — 12h expansion', () => {
-  it('expands m12_day into morning and noon cells with is12h:true', () => {
-    // m12_day fills ['morning', 'noon'] per TWELVE_HOUR_FILLS
+  it('places m12_day in its anchor (morning) only; noon is covered, not filled', () => {
+    // m12_day fills ['morning', 'noon'] → anchor = morning; noon stays empty (covered).
     const view = makeView({
       grid: {},
       twelve: [{ day: 0, variant: 'm12_day', roleId: 'r-guard', employeeId: 'e1' }],
     })
     const grid = buildWeekGrid(view)
-    const morn = grid[0]?.morning?.['r-guard'] ?? []
-    const noon = grid[0]?.noon?.['r-guard'] ?? []
-    expect(morn).toEqual([{ employeeId: 'e1', is12h: true, requested: false }])
-    expect(noon).toEqual([{ employeeId: 'e1', is12h: true, requested: false }])
-    // night should be empty
+    expect(grid[0]?.morning?.['r-guard'] ?? []).toEqual([{ employeeId: 'e1', is12h: true, requested: false }])
+    // noon is left EMPTY in the grid…
+    expect(grid[0]?.noon?.['r-guard'] ?? []).toHaveLength(0)
     expect(grid[0]?.night?.['r-guard'] ?? []).toHaveLength(0)
+    // …but flagged covered (so the table won't mark it "unfilled").
+    expect(coveredByTwelve(view).has('0:noon:r-guard')).toBe(true)
   })
 
   it('expands m12_night into night only', () => {

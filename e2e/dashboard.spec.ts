@@ -71,8 +71,8 @@ test('dashboard shows new KPIs after schedule is published', async ({ page }) =>
   // Below-min clarifying subtitle
   await expect(page.getByText('עובדים שקיבלו פחות ממינימום המשמרות שהוגדר להם')).toBeVisible()
 
-  // New ≥2 requests KPI
-  await expect(page.getByText('עובדים עם ≥2 בקשות שכובדו')).toBeVisible()
+  // Requests-honored KPI (professional wording, no ≥ symbols)
+  await expect(page.getByText('כיבוד בקשות עובדים')).toBeVisible()
 
   // Secondary stats — active employees still present
   await expect(page.getByText('עובדים פעילים')).toBeVisible()
@@ -80,10 +80,6 @@ test('dashboard shows new KPIs after schedule is published', async ({ page }) =>
   // Removed metrics must NOT appear
   await expect(page.getByText(/סה״כ שעות ה/)).not.toBeVisible()
   await expect(page.getByText(/פילוח לפי תפקיד/)).not.toBeVisible()
-  // Old standalone "%-honored" label must be gone (the new KPI legitimately
-  // contains this substring: "עובדים עם ≥2 בקשות שכובדו", so match exactly).
-  await expect(page.getByText('בקשות שכובדו', { exact: true })).not.toBeVisible()
-  await expect(page.getByText(/עובדים עם ≥2 בקשות שכובדו/)).toBeVisible()
 
   // Scope toggle still works
   await page.getByRole('button', { name: 'חודש' }).click()

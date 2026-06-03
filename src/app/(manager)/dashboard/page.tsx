@@ -90,8 +90,8 @@ export default async function DashboardPage({
             <Card pad={14}>
               <Stat icon="checkCircle"
                 value={twoValue}
-                label="עובדים עם ≥2 בקשות שכובדו"
-                sub={twoTotal > 0 ? 'קיבלו ≥2 מהמשמרות שביקשו' : 'אין בקשות'}
+                label="כיבוד בקשות עובדים"
+                sub={twoTotal > 0 ? 'עובדים שקיבלו לפחות שתיים מהמשמרות שביקשו' : 'אין בקשות'}
                 color={twoColor} />
             </Card>
           </div>

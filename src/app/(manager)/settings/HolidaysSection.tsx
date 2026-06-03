@@ -53,6 +53,7 @@ export function HolidaysSection({ holidays, currentYear }: Props) {
         padding: 24,
         boxShadow: 'var(--shadow)',
         marginTop: 24,
+        marginBottom: 20,
       }}
     >
       <h2 style={{ fontSize: 17, fontWeight: 700, margin: '0 0 6px', color: 'var(--text)' }}>

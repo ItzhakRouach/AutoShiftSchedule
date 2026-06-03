@@ -14,6 +14,8 @@ import { WeekTable } from './WeekTable'
 import { RequestsOverview } from './RequestsOverview'
 import { SwapEditor, type SlotCtx } from './SwapEditor'
 import { TwelvePairEditor } from './TwelvePairEditor'
+import { DayNoteEditor } from './DayNoteEditor'
+import { DayNotesSummary } from './DayNotesSummary'
 import { TwelveHourList, Generating } from './parts'
 import { RegenerateConfirm } from './RegenerateConfirm'
 import { ShareButton } from './ShareButton'
@@ -38,6 +40,7 @@ export function ScheduleClient({ view, editMeta }: Props) {
   const [published, setPublished] = useState(view.status === 'published')
   const [slot, setSlot] = useState<SlotCtx | null>(null)
   const [pairDay, setPairDay] = useState<number | null>(null)
+  const [showDayNotes, setShowDayNotes] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('schedule')
   const [running, startRun] = useTransition()
@@ -153,8 +156,17 @@ export function ScheduleClient({ view, editMeta }: Props) {
       {viewMode === 'schedule' && hasResult && (
         <>
           <WeekTable view={view} onSlot={editMeta ? setSlot : undefined} onDayPair={editMeta ? setPairDay : undefined} />
+          <DayNotesSummary view={view} />
           <div className="schedule-controls">
           <TwelveHourList suggestions={suggestions} roles={view.roles} />
+          {editMeta && (
+            <>
+              <div style={{ height: 14 }} />
+              <Btn variant="outline" size="md" icon="bell" style={{ width: '100%' }} onClick={() => setShowDayNotes(true)}>
+                רענון / הערת יום
+              </Btn>
+            </>
+          )}
           <div style={{ height: 14 }} />
           <Btn
             variant={published ? 'soft' : 'primary'}
@@ -177,11 +189,11 @@ export function ScheduleClient({ view, editMeta }: Props) {
       )}
 
       {editMeta && (
-        <SwapEditor slot={slot} onClose={() => setSlot(null)} view={view} meta={editMeta} />
-      )}
-
-      {editMeta && (
-        <TwelvePairEditor day={pairDay} onClose={() => setPairDay(null)} view={view} meta={editMeta} />
+        <>
+          <SwapEditor slot={slot} onClose={() => setSlot(null)} view={view} meta={editMeta} />
+          <TwelvePairEditor day={pairDay} onClose={() => setPairDay(null)} view={view} meta={editMeta} />
+          <DayNoteEditor open={showDayNotes} onClose={() => setShowDayNotes(false)} view={view} />
+        </>
       )}
     </div>
   )
