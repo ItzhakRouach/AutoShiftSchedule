@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Sheet } from '@/components/ui/Sheet'
-import { Avatar } from '@/components/ui/Avatar'
+import { PairCandidateList } from './PairCandidateList'
 import type { ShiftId } from '@/lib/domain/constants'
 import type { EditMeta } from '@/lib/schedule/edit-meta'
 import type { ScheduleView } from '@/lib/schedule/view-data'
@@ -32,13 +32,20 @@ function assigneesAt(view: ScheduleView, day: number, shift: 'morning' | 'night'
   return ids
 }
 
+/** True when this role already has a 12h assignment on the day (i.e. cancelable). */
+function hasExisting12h(view: ScheduleView, day: number, roleId: string): boolean {
+  return view.twelve.some((t) => t.day === day && t.roleId === roleId)
+}
+
 /**
- * Roles for which a 12h pair can be formed on this day: a role R is offered when
- * someone on בוקר AND someone on לילה can FILL R (held roles expanded by rank) —
- * so e.g. a night מוקדן who also holds אחמ״ש counts toward an אחמ״ש pair.
+ * Roles offered in the wizard for this day. A role R is shown when either a pair
+ * can be FORMED — someone on בוקר AND someone on לילה can FILL R (held roles
+ * expanded by rank, so a night מוקדן who also holds אחמ״ש counts toward an אחמ״ש
+ * pair) — OR R already has a 12h on this day, so it can be CANCELED.
  */
 function rolesForDay(view: ScheduleView, day: number, meta: EditMeta): { id: string; name: string }[] {
   return view.roles.filter((r) => {
+    if (hasExisting12h(view, day, r.id)) return true
     const m = assigneesAt(view, day, 'morning').some((id) => canFillRole(view, meta, id, r.id))
     const n = assigneesAt(view, day, 'night').some((id) => canFillRole(view, meta, id, r.id))
     return m && n
@@ -108,34 +115,10 @@ export function TwelvePairEditor({ day, onClose, view, meta }: Props) {
   }
 
   const roleName = view.roles.find((r) => r.id === roleId)?.name ?? ''
-  const list = (slot: ShiftId, chosen: string | null, set: (id: string) => void, tid: string) => {
-    const cands = pick(slot, chosen)
-    if (cands.length === 0) {
-      return (
-        <div data-testid={tid} style={{ fontSize: 12.5, color: 'var(--text-3)', padding: '8px 11px', borderRadius: 12, background: 'var(--surface-2)' }}>
-          אין עובד מתאים המשובץ במשמרת זו ביום שנבחר.
-        </div>
-      )
-    }
-    return (
-    <div data-testid={tid} style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: '24vh', overflowY: 'auto' }}>
-      {cands.map((c) => (
-        <button key={c.id} disabled={c.disabled || busy} onClick={() => set(c.id)} style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '8px 11px',
-          borderRadius: 12, border: `1px solid ${c.sel ? 'var(--accent)' : 'var(--border)'}`,
-          background: c.sel ? 'var(--accent-soft)' : 'var(--surface)', cursor: c.disabled ? 'default' : 'pointer',
-          opacity: c.disabled ? 0.5 : 1, fontFamily: 'var(--font)',
-        }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            <Avatar name={c.name} color={empById.get(c.id)?.color ?? '#888'} size={26} />
-            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{c.name}</span>
-          </span>
-          <span style={{ fontSize: 12, fontWeight: 700, color: c.disabled ? '#EB6A4E' : 'var(--accent)' }}>{c.label}</span>
-        </button>
-      ))}
-    </div>
-    )
-  }
+  const colorById = (id: string) => empById.get(id)?.color ?? '#888'
+  const list = (slot: ShiftId, chosen: string | null, set: (id: string) => void, tid: string) => (
+    <PairCandidateList cands={pick(slot, chosen)} busy={busy} onPick={set} testId={tid} colorById={colorById} />
+  )
 
   return (
     <Sheet open onClose={onClose} title={`צמד 12 שעות · ${view.days[day]?.short ?? ''}`}>
@@ -150,17 +133,39 @@ export function TwelvePairEditor({ day, onClose, view, meta }: Props) {
         <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-2)', margin: '6px 0 8px' }}>בחרו תפקיד</div>
       )}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
-        {roles.map((r) => (
-          <button key={r.id} onClick={() => { setRoleId(r.id); setMorning(null); setNight(null); setMsg(null) }} style={{
-            padding: '6px 12px', borderRadius: 99, fontSize: 12.5, fontWeight: 600, fontFamily: 'var(--font)', cursor: 'pointer',
-            border: `1px solid ${roleId === r.id ? 'var(--accent)' : 'var(--border)'}`,
-            background: roleId === r.id ? 'var(--accent-soft)' : 'var(--surface)',
-            color: roleId === r.id ? 'var(--accent)' : 'var(--text)',
-          }}>{r.name}</button>
-        ))}
+        {roles.map((r) => {
+          const has12h = hasExisting12h(view, day!, r.id)
+          return (
+            <button key={r.id} onClick={() => { setRoleId(r.id); setMorning(null); setNight(null); setMsg(null) }} style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              padding: '6px 12px', borderRadius: 99, fontSize: 12.5, fontWeight: 600, fontFamily: 'var(--font)', cursor: 'pointer',
+              border: `1px solid ${roleId === r.id ? 'var(--accent)' : 'var(--border)'}`,
+              background: roleId === r.id ? 'var(--accent-soft)' : 'var(--surface)',
+              color: roleId === r.id ? 'var(--accent)' : 'var(--text)',
+            }}>
+              {r.name}
+              {has12h && <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--accent)', background: 'var(--accent-soft)', borderRadius: 8, padding: '1px 5px' }}>12ש׳</span>}
+            </button>
+          )
+        })}
       </div>
 
-      {roleId && (
+      {roleId && existing12h.length > 0 && (
+        <>
+          <div style={{ fontSize: 12.5, color: 'var(--text-2)', lineHeight: 1.6, margin: '4px 0 12px', padding: '10px 12px', borderRadius: 12, background: 'var(--surface-2)' }}>
+            ליום זה כבר משובץ צמד 12 שעות לתפקיד {roleName}
+            {existing12h.map((t) => empById.get(t.employeeId)?.name).filter(Boolean).length > 0 && (
+              <> ({existing12h.map((t) => empById.get(t.employeeId)?.name).filter(Boolean).join(', ')})</>
+            )}. ניתן לבטלו ולחזור למשמרות הרגילות.
+          </div>
+          <button data-testid="cancel-12h" disabled={busy} onClick={cancel} style={{
+            width: '100%', padding: '11px', borderRadius: 14, fontSize: 14, fontWeight: 800, fontFamily: 'var(--font)',
+            border: '1px solid var(--danger)', background: 'none', color: 'var(--danger)', cursor: busy ? 'default' : 'pointer',
+          }}>בטל צמד 12 שעות ליום זה</button>
+        </>
+      )}
+
+      {roleId && existing12h.length === 0 && (
         <>
           <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-2)', margin: '6px 0 8px' }}>עובד בוקר (12ש׳ יום · בוקר+צהריים)</div>
           {list('m12_day' as ShiftId, morning, setMorning, 'pair-morning')}
@@ -177,13 +182,6 @@ export function TwelvePairEditor({ day, onClose, view, meta }: Props) {
             background: !morning || !night || busy ? 'var(--border)' : 'var(--accent)',
             color: !morning || !night || busy ? 'var(--text-2)' : '#fff',
           }}>{busy ? 'מחיל…' : 'החל צמד 12 שעות'}</button>
-
-          {existing12h.length > 0 && (
-            <button data-testid="cancel-12h" disabled={busy} onClick={cancel} style={{
-              width: '100%', marginTop: 8, padding: '10px', borderRadius: 14, fontSize: 13.5, fontWeight: 700, fontFamily: 'var(--font)',
-              border: '1px solid var(--danger)', background: 'none', color: 'var(--danger)', cursor: busy ? 'default' : 'pointer',
-            }}>בטל צמד 12 שעות ליום זה</button>
-          )}
         </>
       )}
     </Sheet>
