@@ -56,31 +56,41 @@ reservation pre-pass via `dayfill.ts isTopPrecedenceFor`). Lower comparator outp
 3. **Requested-this-shift** — a requester ranks above a non-requester.
 4. **≥2-request floor** — fewer satisfied requests so far ranks higher, driving the guarantee of **≥2**
    requests per employee when possible (else **≥1**). (Per-employee request-satisfaction floor.)
+   - **Extras-by-tier (at/above-min ONLY)** — once both candidates have reached their minimum,
+     employment tier is **REVERSED**: **part (0) < student (1) < full (2)**. This steers remaining open
+     slots toward part-timers and students (up to THEIR `maxShifts`) before full-timers fill extras.
+     Activates only when both candidates are at/above min — below-min logic in step 2 is untouched.
+     Soft objective: never overrides `must_accept`, off-requests, `maxShifts`, or any hard constraint;
+     never reduces coverage.
 5. **Fairness & diversity** — a deterministic `fairnessScore` (see below) replaces the old raw
    shift-count tie-break. Lower = higher priority.
 6. **Lottery** — deterministic per-employee rank (seeded for reproducibility & testing) as the final
    tie-break. Losers of a contended slot go unfilled.
 
-Consequence: a **below-min** full-timer may pre-empt a part-time requester (step 2), but an **at-min**
-full-timer loses to a part-time requester (step 3 decides). Ideal **16h rest** for guards remains a soft
-preference (not a hard cap).
+Consequence: a **below-min** full-timer may pre-empt a part-time requester (step 2); an **at-min**
+full-timer loses to an **at-min** part-timer for extras (step 4.5); and among **at-min** full-timers
+competing for the same extra, whoever worked fewer extras in the prior published period wins (step 5
+`priorExtras`). Ideal **16h rest** for guards remains a soft preference.
 
 ### Fairness & diversity (soft, step 5) — coverage-preserving
 All four dimensions are SOFT: they rank **below** the hard constraints and the higher soft objectives
-(steps 1–4) and **above** the lottery (step 6). **Coverage never regresses** — these are tie-breaks and
+(steps 1–4.5) and **above** the lottery (step 6). **Coverage never regresses** — these are tie-breaks and
 swaps only; the engine still maximises filled slots exactly as before, and determinism is preserved (same
 seed + input → identical output; all fairness signals are computed, not random).
 
-**`fairnessScore(current)`** (`fairness.ts`) — the step-5 comparator key, lower wins. Pure function of an
-employee's committed assignments:
-`100·load + 8·unpopularLoad + 3·typeSpread`, where
-- **load** = total committed shifts → **even shift-count distribution** (dim 1). Dominant weight, so even
-  load is always the primary signal and is never overturned by the lower terms within a realistic week
-  (each employee's min/max still bounds load — no global cap is added).
-- **unpopularLoad** = count of the employee's shifts that are a **night** OR fall on **Fri (day 5) / Sat
-  (day 6)** → **night/weekend fairness** (dim 3): spreads the unpopular shifts.
-- **typeSpread** = `max − min` of the employee's morning/noon/night counts → a nudge toward **shift-type
-  variety** (dim 2).
+**`fairnessScore(current, priorExtras = 0)`** (`fairness.ts`) — the step-5 comparator key, lower wins.
+Pure function of an employee's committed assignments and their cross-week extras carry-over:
+
+- **priorExtras** (dominant, `W_PRIOR_EXTRAS=120`) — how many shifts ABOVE the employee's minimum they
+  worked in the most-recent **published** prior period. Higher = lower priority THIS week, so the person
+  who worked 6 last week with min 5 receives fewer extras this week. Computed by the adapter
+  (`build-input.ts computePriorExtras`) as `max(0, shiftsThen − min_shifts)`, mirroring `priorDeficit`.
+  **Soft**: never overrides hard constraints, never reduces coverage, never blocks anyone from reaching
+  their own minimum.
+- **load** = total committed shifts → **even shift-count distribution** (dim 1). Dominates the remaining
+  terms so even-distribution stays the primary within-week fairness signal.
+- **unpopularLoad** = nights + Fri/Sat already held → **night/weekend fairness** (dim 3).
+- **typeSpread** = `max − min` of morning/noon/night counts → shift-type-variety nudge (dim 2).
 
 **Diversity post-pass** (`diversity.ts`, run after the 8h general fill and before the 12h pass) finishes the
 two SLOT-SPECIFIC dimensions a per-day employee ordering cannot fully control:
@@ -105,8 +115,8 @@ cells' occupants) and **3-cycle rotations** (rotate occupants among three cells)
 The pass is **reorder-invariant**: it iterates a **canonical order** (employee id, then day, shift, role) —
 built in `moves.ts`/`diversity.ts` — so the result is identical regardless of `input.employees` array order.
 A strict-decrease rule plus a fixed pass cap (24) guarantee termination and reproducibility; same seed +
-data → identical grid. Because moves never change any employee's total shift count, steps 1–4 (reach-min,
-requested, the ≥2-request floor) and the even-load signal are all preserved. After the pass, satisfied-request
+data → identical grid. Because moves never change any employee's total shift count, steps 1–4.5 (reach-min,
+requested, the ≥2-request floor, extras-by-tier) and the even-load signal are all preserved. After the pass, satisfied-request
 counts are recomputed from the final committed state so `EmployeeStat.requestsSatisfied` stays accurate.
 The 3-cycle rotations escape the single-type **stranding** local optimum that swap-only could not.
 Modules: `diversity.ts` (cost + orchestration), `moves.ts` (swap/3-cycle primitives), `request-gate.ts`
