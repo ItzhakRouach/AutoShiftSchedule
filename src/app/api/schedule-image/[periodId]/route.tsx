@@ -25,6 +25,20 @@ export async function GET(
 
   if (!period) return new Response('Not found', { status: 404 })
 
+  // F-17: non-managers can only fetch images for PUBLISHED periods. Drafts and
+  // locked-but-not-published states reveal in-progress arrangements that
+  // shouldn't be visible to employees, even though RLS lets them SELECT the
+  // period row itself (employees can see their own workplace's periods to
+  // know "what week is this"). Owner check matches `owns_workplace` semantics.
+  if (period.status !== 'published') {
+    const { data: wpRow } = await supabase
+      .from('workplaces')
+      .select('owner_id')
+      .eq('id', period.workplace_id)
+      .maybeSingle()
+    if (wpRow?.owner_id !== user.id) return new Response('Not found', { status: 404 })
+  }
+
   // Load workplace name
   const { data: workplace } = await supabase
     .from('workplaces')

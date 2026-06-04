@@ -103,16 +103,15 @@ export async function joinWithInvite(
       return { error: 'שגיאה בהרשמה, נסה שוב' }
     }
 
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-
-    if (signInError || !signInData.user) {
-      return { error: 'האימייל כבר קיים. בדוק את הסיסמה ונסה שוב.' }
+    // F-11: do NOT auto-sign-in with the form-supplied password — knowledge
+    // of someone else's email + password would otherwise let an attacker
+    // complete the workplace join under the victim's account. Force them
+    // through /login first; once authenticated they can return to the invite
+    // link and the joinAsCurrentUser flow takes over.
+    return {
+      error:
+        'אימייל זה כבר רשום במערכת. התחבר/י תחילה דרך מסך ההתחברות וחזור/י לקישור ההזמנה כדי להצטרף למקום העבודה.',
     }
-
-    userId = signInData.user.id
   } else {
     if (!signUpData.session) {
       return { error: 'נשלח אימייל אימות. אנא אשרו את האימייל ואז התחברו.' }

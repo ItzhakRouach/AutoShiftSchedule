@@ -181,7 +181,7 @@ export function ScheduleClient({ view, editMeta }: Props) {
           {published && (
             <>
               <div style={{ height: 10 }} />
-              <ShareButton periodId={view.periodId} weekLabel={view.days[0]?.date ?? ''} />
+              <ShareButton periodId={view.periodId} weekLabel={view.days[0]?.date ?? ''} shareUrl={view.imageShareUrl ?? null} />
             </>
           )}
           </div>{/* schedule-controls */}

@@ -6,20 +6,18 @@ import { Btn } from '@/components/ui/Btn'
 interface Props {
   periodId: string
   weekLabel: string
+  /** Time-limited signed URL to the public PNG (resolved server-side from the
+   *  PRIVATE schedule-images bucket). Null when no image has been uploaded yet
+   *  or signing failed — the share-to-WhatsApp button hides in that case. */
+  shareUrl: string | null
 }
 
-export function ShareButton({ periodId, weekLabel }: Props) {
+export function ShareButton({ periodId, weekLabel, shareUrl }: Props) {
   const [loading, setLoading] = useState(false)
   const [hint, setHint] = useState<string | null>(null)
 
   const imageUrl = `/api/schedule-image/${periodId}`
-
-  // Public bucket URL (uploaded on publish) — shareable to anyone via WhatsApp.
-  const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').replace(/\/+$/, '')
-  const publicImageUrl = supabaseUrl
-    ? `${supabaseUrl}/storage/v1/object/public/schedule-images/${periodId}.png`
-    : null
-  const waText = encodeURIComponent(`סידור העבודה לשבוע ${weekLabel}:\n${publicImageUrl ?? ''}`)
+  const waText = encodeURIComponent(`סידור העבודה לשבוע ${weekLabel}:\n${shareUrl ?? ''}`)
   const waHref = `https://wa.me/?text=${waText}`
 
   async function handleShare() {
@@ -58,7 +56,7 @@ export function ShareButton({ periodId, weekLabel }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {publicImageUrl && (
+      {shareUrl && (
         <a
           href={waHref}
           target="_blank"

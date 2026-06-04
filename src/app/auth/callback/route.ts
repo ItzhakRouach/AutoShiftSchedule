@@ -17,8 +17,13 @@ export async function GET(request: NextRequest) {
   const tokenHash = searchParams.get('token_hash')
   const type = searchParams.get('type') as EmailOtpType | null
 
+  // F-05: reject anything that isn't an internal-relative path. Specifically
+  // also reject `//evil.com/x` (protocol-relative URL) — browsers resolve
+  // `${origin}//evil.com/x` to `https://evil.com/x` and we'd open-redirect.
   let next = searchParams.get('next') ?? '/reset-password'
-  if (!next.startsWith('/')) next = '/reset-password'
+  if (!next.startsWith('/') || next.startsWith('//') || next.startsWith('/\\')) {
+    next = '/reset-password'
+  }
 
   const supabase = await createClient()
   let ok = false

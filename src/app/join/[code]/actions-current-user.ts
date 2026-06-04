@@ -76,12 +76,24 @@ export async function joinAsCurrentUser(
 
   const workplaceId = invite.workplace_id
 
-  const { data: existing } = await admin
+  // F-03: check if the user is already an employee ANYWHERE. The unique
+  // partial index `employees_user_unique` would reject the insert below with
+  // a 23505, but we want a clear Hebrew error instead of a generic failure.
+  const { data: existingAnywhere } = await admin
     .from('employees')
-    .select('id')
-    .eq('workplace_id', workplaceId)
+    .select('id, workplace_id')
     .eq('user_id', currentUser.id)
     .maybeSingle()
+
+  if (existingAnywhere && existingAnywhere.workplace_id !== workplaceId) {
+    return {
+      error:
+        'חשבון זה משויך כבר למקום עבודה אחר. ניתן להיות עובד במקום אחד בלבד — צרו חשבון נפרד אם ברצונכם להצטרף למקום נוסף.',
+    }
+  }
+
+  const existing = existingAnywhere && existingAnywhere.workplace_id === workplaceId
+    ? existingAnywhere : null
 
   if (!existing) {
     const { data: existingEmployees } = await admin

@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveWorkplace } from '@/lib/workplace/current'
 import { normalizeIsraeliPhone } from '@/lib/whatsapp/phone'
-import { sendTextMessage } from '@/lib/whatsapp/greenapi'
+import { isEvolutionConfigured, sendTextMessage } from '@/lib/whatsapp/evolution'
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 const CODE_LENGTH = 8
@@ -128,15 +128,8 @@ export async function sendInviteToPhone(
   const phone = normalizeIsraeliPhone(rawPhone)
   if (!phone) return { ok: false, error: 'מספר טלפון לא תקין' }
 
-  const { data: settings } = await supabase
-    .from('workplace_settings')
-    .select('greenapi_instance, greenapi_token')
-    .eq('workplace_id', workplace.id)
-    .maybeSingle()
-  const instance = settings?.greenapi_instance as string | null
-  const token = settings?.greenapi_token as string | null
-  if (!instance || !token) {
-    return { ok: true, warning: 'GreenAPI לא מוגדר — שתפו את ההזמנה ידנית' }
+  if (!isEvolutionConfigured()) {
+    return { ok: true, warning: 'Evolution API לא מוגדר — שתפו את ההזמנה ידנית' }
   }
 
   const invite = await ensureActiveInviteCode(supabase, workplace.id, user.id)
@@ -147,7 +140,7 @@ export async function sendInviteToPhone(
   const message =
     `${greeting} הוזמנת לאפליקציית סידור עבודה — לחץ כאן להצטרפות: ${joinUrl}`
 
-  const res = await sendTextMessage(instance, token, phone, message)
+  const res = await sendTextMessage(phone, message)
   if (!res.ok) return { ok: true, warning: `הזמנת WhatsApp לא נשלחה: ${res.error}` }
   return { ok: true }
 }

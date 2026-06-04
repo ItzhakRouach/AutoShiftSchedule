@@ -7,6 +7,8 @@ import { weekDatesFrom } from './map-rows'
 import { shiftMetaFromRow, type ShiftDisplay } from '@/lib/domain/meta'
 import { buildNightBeforeByDay, toSerializable, type NightBeforeMap } from './night-before'
 import { buildDayInfos, splitAssignments } from './view-data-grid'
+import { getSignedScheduleImageUrl } from '@/lib/publish/image'
+import { createAdminClient } from '@/lib/supabase/admin'
 import type { FeasibilityResult, ShiftKey } from '@/lib/scheduling/types'
 
 export interface ViewEmployee { id: string; name: string; color: string }
@@ -76,6 +78,9 @@ export interface ScheduleView {
   dayNotes?: DayNote[]
   /** Employee-submitted vacation ranges visible to the manager (RLS-scoped). */
   vacations?: ViewVacation[]
+  /** Time-limited signed URL to the period's published schedule PNG. Present
+   *  only when status === 'published' AND an image was uploaded. 7-day TTL. */
+  imageShareUrl?: string | null
   /**
    * Per day D (0..6), the list of employee IDs whose previous shift extended
    * past midnight of D — i.e. they were physically working overnight when D
@@ -203,6 +208,16 @@ export async function getScheduleView(
     buildNightBeforeByDay({ byDay, priorWeekTail: built.input.priorWeekTail ?? {} }),
   )
 
+  // Fetch the signed share URL only when the period is published — saves a
+  // round-trip on draft/collecting/locked views and avoids surfacing share UI
+  // before the schedule is finalized. Uses the service-role admin client
+  // because the storage policy is workplace-scoped; the upstream
+  // getActiveWorkplace check already proved the caller has access.
+  let imageShareUrl: string | null = null
+  if (built.period.status === 'published') {
+    imageShareUrl = await getSignedScheduleImageUrl(createAdminClient(), workplaceId, periodId)
+  }
+
   return {
     periodId,
     status: built.period.status,
@@ -230,6 +245,7 @@ export async function getScheduleView(
       dateFrom: v.date_from,
       dateTo: v.date_to,
     })),
+    imageShareUrl,
     nightBeforeByDay,
   }
 }
