@@ -151,6 +151,7 @@ export function mapToEngineInput(rows: MapInput): MapResult {
     mustAccept: e.must_accept ?? false,
     availability: availByEmp[e.id] ?? null,
     priorDeficit: rows.priorDeficit?.[e.id] ?? 0,
+    priorExtras: rows.priorExtras?.[e.id] ?? 0,
   }))
 
   const requests: RequestMap = {}
