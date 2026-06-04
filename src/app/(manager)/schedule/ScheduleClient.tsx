@@ -19,6 +19,7 @@ import { DayNotesSummary } from './DayNotesSummary'
 import { TwelveHourList, Generating } from './parts'
 import { RegenerateConfirm } from './RegenerateConfirm'
 import { ShareButton } from './ShareButton'
+import { UnpublishButton } from './UnpublishButton'
 
 interface Props {
   view: ScheduleView
@@ -182,6 +183,7 @@ export function ScheduleClient({ view, editMeta }: Props) {
             <>
               <div style={{ height: 10 }} />
               <ShareButton periodId={view.periodId} weekLabel={view.days[0]?.date ?? ''} shareUrl={view.imageShareUrl ?? null} />
+              <UnpublishButton periodId={view.periodId} onDone={() => setPublished(false)} />
             </>
           )}
           </div>{/* schedule-controls */}

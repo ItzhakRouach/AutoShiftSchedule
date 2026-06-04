@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getActiveWorkplace } from '@/lib/workplace/current'
 import { buildAndUploadScheduleImage } from '@/lib/publish/image'
+import { unpublishPeriod } from '@/lib/publish/unpublish'
 import { buildEngineInput } from '@/lib/schedule/build-input'
 import { generateSchedule } from '@/lib/scheduling'
 import type { Coverage, FeasibilityResult, TwelveHourSuggestion } from '@/lib/scheduling/types'
@@ -188,4 +189,25 @@ export async function hasManualAssignments(periodId: string): Promise<boolean> {
     .in('source', MANUAL_SOURCES)
     .limit(1)
   return (data ?? []).length > 0
+}
+
+export async function unpublishSchedule(periodId: string): Promise<RunResult> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const workplace = await getActiveWorkplace(supabase)
+  if (!workplace) return { ok: false, error: 'לא נמצא מקום עבודה.' }
+
+  try {
+    const admin = createAdminClient()
+    await unpublishPeriod(supabase, admin, workplace.id, periodId)
+  } catch {
+    // unpublishPeriod itself never throws; this guards createAdminClient.
+    return { ok: false, error: GENERIC_ERROR }
+  }
+
+  revalidatePath('/schedule')
+  revalidatePath('/me/schedule')
+  return { ok: true }
 }
