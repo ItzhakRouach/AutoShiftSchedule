@@ -76,7 +76,7 @@ export default async function MeSchedulePage() {
       {view ? (
         <>
           <div style={{ height: 14 }} />
-          <WeekTable view={view} initialSelectedId={employee.id} showUnfilled={false} />
+          <WeekTable view={view} />
         </>
       ) : (
         <div className="schedule-controls">
