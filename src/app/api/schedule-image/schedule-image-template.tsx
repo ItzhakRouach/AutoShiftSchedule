@@ -1,5 +1,6 @@
 import type { ImageGrid } from '@/lib/schedule/image-data'
 import { BASE_SHIFTS, SHIFT_NAMES } from '@/lib/schedule/image-data'
+import { toVisualHebrew as h } from '@/lib/schedule/bidi'
 
 const DAY_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
 
@@ -52,8 +53,8 @@ export function ScheduleImageTemplate({ workplaceName, weekLabel, dayDates, grid
         padding: '0 28px', justifyContent: 'space-between',
       }}>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span style={{ fontSize: 26, fontWeight: 700, color: '#fff' }}>{workplaceName}</span>
-          <span style={{ fontSize: 15, color: 'rgba(255,255,255,0.82)', marginTop: 2 }}>סידור שבועי · {weekLabel}</span>
+          <span style={{ fontSize: 26, fontWeight: 700, color: '#fff' }}>{h(workplaceName)}</span>
+          <span style={{ fontSize: 15, color: 'rgba(255,255,255,0.82)', marginTop: 2 }}>{h(`סידור שבועי · ${weekLabel}`)}</span>
         </div>
         <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>AutoShift</div>
       </div>
@@ -72,7 +73,7 @@ export function ScheduleImageTemplate({ workplaceName, weekLabel, dayDates, grid
               borderRight: '1px solid #D5D8E8',
             }}
           >
-            <span style={{ fontSize: 15, fontWeight: 700, color: '#1E2140' }}>{DAY_NAMES[d]}</span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: '#1E2140' }}>{h(DAY_NAMES[d])}</span>
             <span style={{ fontSize: 12, color: '#6B7299', marginTop: 2 }}>{dayDates[d]}</span>
           </div>
         ))}
@@ -98,7 +99,7 @@ export function ScheduleImageTemplate({ workplaceName, weekLabel, dayDates, grid
                 alignItems: 'center', justifyContent: 'center',
                 borderLeft: `3px solid ${SHIFT_COLORS[sk]}`,
               }}>
-                <span style={{ fontSize: 14, fontWeight: 700, color: SHIFT_COLORS[sk] }}>{SHIFT_NAMES[sk]}</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: SHIFT_COLORS[sk] }}>{h(SHIFT_NAMES[sk])}</span>
               </div>
               {/* Day cells */}
               {dayIndices.map((d) => {
@@ -125,7 +126,7 @@ export function ScheduleImageTemplate({ workplaceName, weekLabel, dayDates, grid
                         marginBottom: 3, lineHeight: 1.3,
                         display: 'flex',
                       }}>
-                        {n}
+                        {h(n)}
                       </div>
                     ))}
                     {unfilled && (
@@ -134,7 +135,7 @@ export function ScheduleImageTemplate({ workplaceName, weekLabel, dayDates, grid
                         fontWeight: 600, opacity: 0.7, marginTop: 1,
                         display: 'flex',
                       }}>
-                        {names.length === 0 ? '⚠ חסר' : '⚠'}
+                        {names.length === 0 ? h('⚠ חסר') : '⚠'}
                       </div>
                     )}
                   </div>

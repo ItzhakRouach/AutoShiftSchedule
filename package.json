@@ -15,6 +15,7 @@
     "@hebcal/core": "^6.5.2",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.2",
+    "bidi-js": "^1.0.3",
     "luxon": "^3.7.2",
     "next": "16.2.6",
     "react": "19.2.4",

@@ -8,6 +8,7 @@ import { RoleSelector } from './RoleSelector'
 import { EmployeeSettingsToggles } from './EmployeeSettingsToggles'
 import { EmploymentTypeSelector } from './EmploymentTypeSelector'
 import { AvailabilityGrid, type ShiftTypeOption } from './AvailabilityGrid'
+import { SendInviteToggle } from './SendInviteToggle'
 import type { EmploymentType } from '@/lib/validation/employee'
 import type { AvailabilityItem } from '@/lib/validation/employee'
 
@@ -82,6 +83,11 @@ export function EmployeeEditor({ roles, shiftTypes, employee, onSuccess }: Emplo
   const [availability, setAvailability] = useState<AvailabilityItem[] | null>(employee?.availability ?? null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  // Whatsapp invite opt-in: default ON for the create form. The server-side
+  // action gates on phone present + GreenAPI configured, so leaving this on
+  // when there's no phone is a harmless no-op. The toggle is only RENDERED
+  // when a phone is filled (see below), so the manager controls it explicitly.
+  const [sendInvite, setSendInvite] = useState(!isEdit)
 
   const boundAction = isEdit ? updateEmployee.bind(null, employee!.id) : createEmployee
   const [state, formAction, isPending] = useActionState<EmployeeActionState, FormData>(boundAction, initialState)
@@ -117,6 +123,7 @@ export function EmployeeEditor({ roles, shiftTypes, employee, onSuccess }: Emplo
   return (
     <form action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       {state.error && <div style={errBoxStyle}>{state.error}</div>}
+      {state.warning && <div style={{ ...errBoxStyle, background: 'rgba(245,158,11,0.12)', color: '#9A6500', border: '1px solid rgba(245,158,11,0.35)' }}>{state.warning}</div>}
 
       <EmploymentTypeSelector value={employmentType} onChange={handleEmploymentTypeChange} />
 
@@ -147,9 +154,14 @@ export function EmployeeEditor({ roles, shiftTypes, employee, onSuccess }: Emplo
         onChange={setAvailability}
       />
 
+      {!isEdit && phone.trim().length >= 9 && (
+        <SendInviteToggle checked={sendInvite} onChange={setSendInvite} />
+      )}
+
       {/* Hidden fields for form submission */}
       <input type="hidden" name="customAvailability" value={String(customAvailability)} />
       <input type="hidden" name="availability" value={JSON.stringify(availability ?? [])} />
+      <input type="hidden" name="sendInvite" value={String(sendInvite)} />
 
       <Btn type="submit" variant="primary" size="lg" icon="check" style={{ width: '100%' }} disabled={isPending}>
         {isPending ? 'שומר…' : isEdit ? 'שמירת שינויים' : 'הוספת עובד'}

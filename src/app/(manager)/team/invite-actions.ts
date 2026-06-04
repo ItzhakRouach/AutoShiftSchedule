@@ -1,9 +1,12 @@
 'use server'
 
+import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveWorkplace } from '@/lib/workplace/current'
+import { normalizeIsraeliPhone } from '@/lib/whatsapp/phone'
+import { sendTextMessage } from '@/lib/whatsapp/greenapi'
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 const CODE_LENGTH = 8
@@ -63,6 +66,113 @@ export async function createInvite(): Promise<InviteActionResult> {
   }
 
   return { error: 'לא הצלחנו ליצור קוד ייחודי, נסה שוב' }
+}
+
+/** Build the public join URL for a code, using the request host (or
+ *  NEXT_PUBLIC_BASE_URL when set). Server-only — called from server actions. */
+async function resolveJoinUrl(code: string): Promise<string> {
+  const headerList = await headers()
+  const host = headerList.get('host') ?? 'localhost:3000'
+  const proto = host.startsWith('localhost') ? 'http' : 'https'
+  const base = process.env.NEXT_PUBLIC_BASE_URL ?? `${proto}://${host}`
+  return `${base}/join/${code}`
+}
+
+/** Get-or-create an active invite for a workplace. Reuses the most-recent
+ *  non-expired code when one exists, else creates a fresh one via createInvite's
+ *  internal path. Server-only. */
+async function ensureActiveInviteCode(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  workplaceId: string,
+  userId: string,
+): Promise<{ code: string } | { error: string }> {
+  const existing = await getLatestInvite(workplaceId)
+  if (existing) return { code: existing.code }
+  // No active code — create one. Reuses the unique-collision retry logic.
+  const expiresAt = new Date(Date.now() + EXPIRE_DAYS * 24 * 60 * 60 * 1000).toISOString()
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const code = generateCode()
+    const { data, error } = await supabase
+      .from('invites')
+      .insert({ workplace_id: workplaceId, code, created_by: userId, expires_at: expiresAt })
+      .select('code').single()
+    if (!error && data) return { code: data.code }
+    const isUnique = error?.code === '23505' || error?.message?.includes('unique')
+    if (!isUnique) return { error: 'שגיאה ביצירת הזמנה' }
+  }
+  return { error: 'לא הצלחנו ליצור קוד ייחודי' }
+}
+
+export interface SendInviteResult {
+  ok: boolean
+  warning?: string
+  error?: string
+}
+
+/**
+ * Send the workplace's active join invite to a single phone number via GreenAPI.
+ * Resolves (or creates) the invite code, normalizes the phone to E.164, and
+ * fires a Hebrew message. Returns ok:true even when GreenAPI is not configured
+ * (just sets a warning) so callers can keep going — this is a soft notify.
+ */
+export async function sendInviteToPhone(
+  rawPhone: string,
+  employeeName?: string,
+): Promise<SendInviteResult> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { ok: false, error: 'אין הרשאה' }
+  const workplace = await getActiveWorkplace(supabase)
+  if (!workplace) return { ok: false, error: 'לא נמצא מקום עבודה' }
+
+  const phone = normalizeIsraeliPhone(rawPhone)
+  if (!phone) return { ok: false, error: 'מספר טלפון לא תקין' }
+
+  const { data: settings } = await supabase
+    .from('workplace_settings')
+    .select('greenapi_instance, greenapi_token')
+    .eq('workplace_id', workplace.id)
+    .maybeSingle()
+  const instance = settings?.greenapi_instance as string | null
+  const token = settings?.greenapi_token as string | null
+  if (!instance || !token) {
+    return { ok: true, warning: 'GreenAPI לא מוגדר — שתפו את ההזמנה ידנית' }
+  }
+
+  const invite = await ensureActiveInviteCode(supabase, workplace.id, user.id)
+  if ('error' in invite) return { ok: false, error: invite.error }
+  const joinUrl = await resolveJoinUrl(invite.code)
+
+  const greeting = employeeName ? `שלום ${employeeName}!` : 'שלום!'
+  const message =
+    `${greeting} הוזמנת לאפליקציית סידור עבודה — לחץ כאן להצטרפות: ${joinUrl}`
+
+  const res = await sendTextMessage(instance, token, phone, message)
+  if (!res.ok) return { ok: true, warning: `הזמנת WhatsApp לא נשלחה: ${res.error}` }
+  return { ok: true }
+}
+
+/**
+ * Re-send the workplace's active invite to a specific PENDING employee's phone.
+ * Powers the "שלח הזמנה" button on pending employee cards. Same semantics as
+ * sendInviteToPhone but starts from an employee id.
+ */
+export async function resendInviteToEmployee(employeeId: string): Promise<SendInviteResult> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { ok: false, error: 'אין הרשאה' }
+  const workplace = await getActiveWorkplace(supabase)
+  if (!workplace) return { ok: false, error: 'לא נמצא מקום עבודה' }
+
+  const { data: emp } = await supabase
+    .from('employees')
+    .select('name, phone')
+    .eq('id', employeeId)
+    .eq('workplace_id', workplace.id)
+    .maybeSingle()
+  if (!emp) return { ok: false, error: 'העובד לא נמצא' }
+  if (!emp.phone) return { ok: false, error: 'לעובד אין מספר טלפון' }
+  return sendInviteToPhone(emp.phone as string, emp.name as string | undefined)
 }
 
 export async function getLatestInvite(workplaceId: string): Promise<{ code: string; expiresAt: string } | null> {

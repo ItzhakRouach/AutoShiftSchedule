@@ -9,6 +9,7 @@ import { Icon } from '@/components/ui/Icon'
 import { Sheet } from '@/components/ui/Sheet'
 import { EmployeeEditor, type EmployeeData, type RoleOption } from './EmployeeEditor'
 import type { ShiftTypeOption } from './AvailabilityGrid'
+import { PendingInviteButton } from './PendingInviteButton'
 
 interface TeamClientProps {
   employees: EmployeeData[]
@@ -168,12 +169,15 @@ export function TeamClient({ employees, roles, shiftTypes }: TeamClientProps) {
                       {emp.name}
                     </span>
                     {emp.status === 'pending' && (
-                      <span
-                        title="העובד נוצר במערכת אך טרם הצטרף לאפליקציה. שתפו את קישור ההזמנה (כפתור 'הזמנה')."
-                        style={{ fontSize: 11, fontWeight: 700, color: '#E0902A', background: 'rgba(224,144,42,0.14)', padding: '2px 8px', borderRadius: 'var(--r-pill)', flexShrink: 0, cursor: 'help' }}
-                      >
-                        טרם הצטרף
-                      </span>
+                      <>
+                        <span
+                          title="העובד נוצר במערכת אך טרם הצטרף לאפליקציה."
+                          style={{ fontSize: 11, fontWeight: 700, color: '#E0902A', background: 'rgba(224,144,42,0.14)', padding: '2px 8px', borderRadius: 'var(--r-pill)', flexShrink: 0, cursor: 'help' }}
+                        >
+                          טרם הצטרף
+                        </span>
+                        <PendingInviteButton employeeId={emp.id} hasPhone={!!emp.phone} />
+                      </>
                     )}
                   </div>
                   <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>

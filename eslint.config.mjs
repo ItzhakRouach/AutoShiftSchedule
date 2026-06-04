@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Design reference files — not part of the app build
     "DesignTemplate/**",
+    // Local Claude tooling (worktrees, caches) — never part of the app build
+    ".claude/**",
   ]),
 ]);
 
