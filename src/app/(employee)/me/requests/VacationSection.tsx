@@ -3,6 +3,7 @@
 import React, { useState, useTransition } from 'react'
 import { Card } from '@/components/ui/Card'
 import { Btn } from '@/components/ui/Btn'
+import { formatHebDate, hebrewDayName } from '@/lib/dates/week'
 import type { VacationRow } from '@/lib/requests/context'
 import { addVacation, removeVacation } from './actions'
 
@@ -81,8 +82,16 @@ export function VacationSection({ employeeId, vacations, isReadOnly }: VacationS
                 padding: '12px 14px',
               }}
             >
-              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
-                {v.date_from} – {v.date_to}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
+                  יום {hebrewDayName(v.date_from)} {formatHebDate(v.date_from)}
+                  {v.date_from !== v.date_to && (
+                    <> — יום {hebrewDayName(v.date_to)} {formatHebDate(v.date_to)}</>
+                  )}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
+                  {v.date_from === v.date_to ? v.date_from : `${v.date_from} – ${v.date_to}`}
+                </div>
               </div>
               {!isReadOnly && (
                 <button

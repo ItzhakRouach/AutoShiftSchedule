@@ -28,3 +28,19 @@ export function formatHebDate(iso: string): string {
   const [, mm, dd] = iso.split('-')
   return `${Number(dd)}.${Number(mm)}`
 }
+
+const HEB_DAYS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
+
+/** Hebrew weekday name (e.g. "ראשון") for a YYYY-MM-DD date. Local-time. */
+export function hebrewDayName(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  return HEB_DAYS[new Date(y, m - 1, d).getDay()]
+}
+
+/** True if `iso` falls within ANY of the given inclusive vacation ranges. */
+export function isInVacationRange(
+  iso: string,
+  ranges: Array<{ date_from: string; date_to: string }>,
+): boolean {
+  return ranges.some((r) => iso >= r.date_from && iso <= r.date_to)
+}

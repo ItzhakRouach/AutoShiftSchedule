@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getEmployeeRequestsContext } from '@/lib/requests/context'
-import { formatHebDate } from '@/lib/dates/week'
+import { formatHebDate, isInVacationRange } from '@/lib/dates/week'
 import { RequestsHeader } from './RequestsHeader'
 import { DayList } from './DayList'
 import { VacationSection } from './VacationSection'
@@ -29,11 +29,14 @@ export default async function RequestsPage() {
       dayOfWeek: i,
       dateLabel: formatHebDate(iso),
       request: requestsByDay[i] ?? null,
+      inVacation: isInVacationRange(iso, vacations),
     }
   })
 
+  // A vacation-covered day counts as "filled" even without a request row, since
+  // the engine already treats vacation as a hard off-day server-side.
   const filled = days.filter(
-    (d) => d.request?.is_off || (d.request?.preferred_shift_ids?.length ?? 0) > 0,
+    (d) => d.inVacation || d.request?.is_off || (d.request?.preferred_shift_ids?.length ?? 0) > 0,
   ).length
 
   return (

@@ -14,6 +14,9 @@ interface DayCard {
   dayOfWeek: number
   dateLabel: string
   request: RequestRow | null
+  /** True when this date falls in one of the employee's active vacation ranges
+   *  — the engine already treats it as a hard off-day; UI just reflects that. */
+  inVacation: boolean
 }
 
 interface DayListProps {
@@ -64,12 +67,13 @@ export function DayList({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
         {days.map((day) => {
           const r = day.request
+          const locked = isReadOnly || day.inVacation
           return (
             <Card
               key={day.dayOfWeek}
               pad={0}
-              interactive={!isReadOnly}
-              onClick={isReadOnly ? undefined : () => setEditDay(day.dayOfWeek)}
+              interactive={!locked}
+              onClick={locked ? undefined : () => setEditDay(day.dayOfWeek)}
               style={{ overflow: 'hidden' }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 13, padding: '13px 14px' }}>
@@ -93,7 +97,25 @@ export function DayList({
                     alignItems: 'center',
                   }}
                 >
-                  {r?.is_off ? (
+                  {day.inVacation ? (
+                    <span
+                      data-testid="vacation-locked-chip"
+                      title="יום זה מסומן כחופשה — לא ניתן לערוך מכאן"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        fontSize: 13.5,
+                        fontWeight: 700,
+                        color: '#5B61D6',
+                        background: 'rgba(91,97,214,0.12)',
+                        padding: '6px 12px',
+                        borderRadius: 99,
+                      }}
+                    >
+                      🌴 חופשה
+                    </span>
+                  ) : r?.is_off ? (
                     <span
                       style={{
                         display: 'inline-flex',
@@ -142,7 +164,7 @@ export function DayList({
                   )}
                 </div>
 
-                {!isReadOnly && (
+                {!locked && (
                   <Icon name="chevronLeft" size={18} color="var(--text-3)" />
                 )}
               </div>

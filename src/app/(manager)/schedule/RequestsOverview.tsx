@@ -1,7 +1,8 @@
 'use client'
 
 import { SHIFT_META } from '@/lib/domain/constants'
-import type { ScheduleView, ViewEmployee, ViewRequest } from '@/lib/schedule/view-data'
+import { isInVacationRange } from '@/lib/dates/week'
+import type { ScheduleView, ViewEmployee, ViewRequest, ViewVacation } from '@/lib/schedule/view-data'
 
 interface Props {
   view: ScheduleView
@@ -50,7 +51,7 @@ function ShiftChip({ shiftTypeId, shiftTypeIdByKey }: { shiftTypeId: string; shi
   )
 }
 
-function DayCell({ req, shiftTypeIdByKey }: { req: ViewRequest | undefined; shiftTypeIdByKey: Record<string, string> }) {
+function DayCell({ req, shiftTypeIdByKey, onVacation }: { req: ViewRequest | undefined; shiftTypeIdByKey: Record<string, string>; onVacation: boolean }) {
   const cellStyle: React.CSSProperties = {
     padding: '8px 10px',
     borderLeft: '1px solid var(--border)',
@@ -58,6 +59,17 @@ function DayCell({ req, shiftTypeIdByKey }: { req: ViewRequest | undefined; shif
     textAlign: 'center',
     verticalAlign: 'middle',
     minWidth: 80,
+  }
+  if (onVacation) {
+    return (
+      <td
+        data-testid="vacation-cell"
+        title="העובד בחופשה ביום זה"
+        style={{ ...cellStyle, background: 'rgba(91,97,214,0.12)' }}
+      >
+        <span style={{ fontSize: 12, fontWeight: 800, color: '#5B61D6' }}>🌴 חופשה</span>
+      </td>
+    )
   }
   if (!req) {
     return <td style={cellStyle}><span style={{ color: 'var(--text-3)', fontSize: 12 }}>—</span></td>
@@ -83,10 +95,29 @@ function DayCell({ req, shiftTypeIdByKey }: { req: ViewRequest | undefined; shif
   )
 }
 
+function buildVacationsByEmployee(vacations: ViewVacation[]): Map<string, ViewVacation[]> {
+  const m = new Map<string, ViewVacation[]>()
+  for (const v of vacations) {
+    let list = m.get(v.employeeId)
+    if (!list) { list = []; m.set(v.employeeId, list) }
+    list.push(v)
+  }
+  return m
+}
+
+/** ISO date for current-week day index 0..6 (Sunday..Saturday). */
+function isoForDayIndex(weekStart: string, dayIndex: number): string {
+  const [y, m, d] = weekStart.split('-').map(Number)
+  const date = new Date(y, m - 1, d)
+  date.setDate(date.getDate() + dayIndex)
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
 export function RequestsOverview({ view }: Props) {
   const reqMap = buildRequestMap(view.requests)
   const submitted = submittedCount(view.employees, reqMap)
   const total = view.employees.length
+  const vacsByEmp = buildVacationsByEmployee(view.vacations ?? [])
   // Off-day visibility: how many off-requests across the team this week, and
   // how many distinct employees filed at least one. Helps the manager spot a
   // week where mass-off requests will strain coverage.
@@ -98,6 +129,9 @@ export function RequestsOverview({ view }: Props) {
     }
     return { total, employees: empsWithOff.size }
   })()
+  // Pre-compute ISO date per day index so vacation lookups don't re-parse the
+  // week start on every cell.
+  const isoByDayIndex = view.days.map((d) => isoForDayIndex(view.weekStart, d.index))
 
   const stickyName: React.CSSProperties = {
     position: 'sticky',
@@ -176,16 +210,27 @@ export function RequestsOverview({ view }: Props) {
           <tbody>
             {view.employees.map((emp, ei) => {
               const byDay = reqMap.get(emp.id)
+              const empVacs = vacsByEmp.get(emp.id) ?? []
+              const empHasAnyVac = empVacs.length > 0
               return (
                 <tr key={emp.id} style={{ background: ei % 2 === 0 ? 'var(--surface)' : 'var(--bg)' }}>
                   <td style={{ ...stickyName, background: ei % 2 === 0 ? 'var(--surface-2)' : 'var(--surface-2)' }}>
                     <span style={{ color: emp.color, fontWeight: 700 }}>{emp.name}</span>
+                    {empHasAnyVac && (
+                      <span
+                        title="לעובד יש חופשה בשבוע זה או חופשה פעילה"
+                        style={{ marginInlineStart: 6, fontSize: 11, fontWeight: 800, color: '#5B61D6', background: 'rgba(91,97,214,0.12)', padding: '1px 6px', borderRadius: 99 }}
+                      >
+                        🌴
+                      </span>
+                    )}
                   </td>
                   {view.days.map((d) => (
                     <DayCell
                       key={d.index}
                       req={byDay?.get(d.index)}
                       shiftTypeIdByKey={view.shiftTypeIdByKey}
+                      onVacation={isInVacationRange(isoByDayIndex[d.index], empVacs.map((v) => ({ date_from: v.dateFrom, date_to: v.dateTo })))}
                     />
                   ))}
                 </tr>

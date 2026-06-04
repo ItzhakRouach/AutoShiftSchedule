@@ -40,6 +40,13 @@ export interface DayNote {
   label: string
 }
 
+/** One vacation row surfaced to the manager view — inclusive date range. */
+export interface ViewVacation {
+  employeeId: string
+  dateFrom: string
+  dateTo: string
+}
+
 export interface ScheduleView {
   periodId: string
   status: string
@@ -67,6 +74,8 @@ export interface ScheduleView {
   requestedSet: Set<string>
   /** Manager-assigned day notes (רענון / free text) for this period. */
   dayNotes?: DayNote[]
+  /** Employee-submitted vacation ranges visible to the manager (RLS-scoped). */
+  vacations?: ViewVacation[]
   /**
    * Per day D (0..6), the list of employee IDs whose previous shift extended
    * past midnight of D — i.e. they were physically working overnight when D
@@ -120,6 +129,7 @@ export async function getScheduleView(
     { data: allShiftTypes },
     { data: requestsRaw },
     { data: dayNotesRaw },
+    { data: vacationsRaw },
   ] = await Promise.all([
     supabase.from('roles').select('id, name, color, rank').eq('workplace_id', workplaceId).eq('is_active', true).order('rank', { ascending: false }),
     supabase.from('employees').select('id, name, color').eq('workplace_id', workplaceId).order('name'),
@@ -140,6 +150,11 @@ export async function getScheduleView(
       .from('day_notes')
       .select('employee_id, day_of_week, label')
       .eq('period_id', periodId),
+    // RLS (vacations_manager_select / owns_employee) scopes this to employees
+    // owned by the manager — no explicit workplace filter needed.
+    supabase
+      .from('employee_vacations')
+      .select('employee_id, date_from, date_to'),
   ])
 
   // All shift-type keys (base + 12h) so manual 12h assignments can be surfaced.
@@ -209,6 +224,11 @@ export async function getScheduleView(
       employeeId: n.employee_id,
       day: n.day_of_week,
       label: n.label,
+    })),
+    vacations: (vacationsRaw ?? []).map((v) => ({
+      employeeId: v.employee_id,
+      dateFrom: v.date_from,
+      dateTo: v.date_to,
     })),
     nightBeforeByDay,
   }
