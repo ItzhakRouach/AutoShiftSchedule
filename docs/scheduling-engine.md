@@ -40,15 +40,21 @@ reservation pre-pass via `dayfill.ts isTopPrecedenceFor`). Lower comparator outp
 
 1. **`must_accept` requested** — a must-accept employee's requested shift wins outright (their off-day
    request is already a hard constraint).
-2. **Reach-minimum, carry-over- then tier-ordered.** An employee **below** their `min_shifts` ranks above
-   one who has **reached** it. Among below-min employees only, two sub-keys break the tie, in order:
+2. **Reach-minimum, carry-over- / tightness- / tier-ordered.** An employee **below** their `min_shifts`
+   ranks above one who has **reached** it. Among below-min employees only, THREE sub-keys break the tie, in order:
    **(2a) cross-week `priorDeficit`** — whoever was MORE short of their minimum in the most-recent
    **published** prior week ranks first (carry-over fairness, so the same people aren't repeatedly
-   short-changed); then **(2b) employment tier** — **full (0) < part (1) < student (2)**, full-time first.
-   **This is the ONLY place employment tier matters, and only until min is reached.** Once an employee is
-   at/above min, neither sub-key separates them. `priorDeficit = max(0, min_shifts − shiftsAssignedInPrior
-   PublishedPeriod)`, computed by the adapter (`build-input.ts computePriorDeficit`) and `0` when there is no
-   prior published period. It is a **soft** objective: below all hard constraints (off-requests stay hard, so
+   short-changed); then **(2b) tight-availability first** — an employee whose legal-slot set is
+   **restricted** (explicit `availability` map OR `observes_shabbat` OR `observes_holidays`) ranks ahead
+   of an unrestricted employee. This is the load-bearing fix for the "part-timer gets squeezed below min
+   while a full-timer collects extras" pathology: when a Shabbat-observing part-timer and an unrestricted
+   full-timer both need a weekday slot they can BOTH take, the part-timer wins because the unrestricted
+   full-timer still has weekend slots to reach min, while the part-timer doesn't. Then **(2c) employment
+   tier** — **full (0) < part (1) < student (2)** — among equally-tight equally-deficit below-min
+   candidates. **Tier matters ONLY until min is reached.** Once an employee is at/above min, none of these
+   sub-keys separate them. `priorDeficit = max(0, min_shifts − shiftsAssignedInPriorPublishedPeriod)`,
+   computed by the adapter (`build-input.ts computePriorDeficit`) and `0` when there is no prior published
+   period. The whole step is a **soft** objective: below all hard constraints (off-requests stay hard, so
    "reach their minimum unless they requested off" is automatic), it never reduces coverage and never
    overrides `must_accept`. A coverage-preserving reservation pre-pass (`fill.ts carryOverRound`) reserves
    open slots toward min for carry-over employees BEFORE general fill, but only via legal, top-precedence
@@ -56,25 +62,23 @@ reservation pre-pass via `dayfill.ts isTopPrecedenceFor`). Lower comparator outp
 3. **Requested-this-shift** — a requester ranks above a non-requester.
 4. **≥2-request floor** — fewer satisfied requests so far ranks higher, driving the guarantee of **≥2**
    requests per employee when possible (else **≥1**). (Per-employee request-satisfaction floor.)
-   - **Extras-by-tier (at/above-min ONLY)** — once both candidates have reached their minimum,
-     employment tier is **REVERSED**: **part (0) < student (1) < full (2)**. This steers remaining open
-     slots toward part-timers and students (up to THEIR `maxShifts`) before full-timers fill extras.
-     Activates only when both candidates are at/above min — below-min logic in step 2 is untouched.
-     Soft objective: never overrides `must_accept`, off-requests, `maxShifts`, or any hard constraint;
-     never reduces coverage.
-5. **Fairness & diversity** — a deterministic `fairnessScore` (see below) replaces the old raw
-   shift-count tie-break. Lower = higher priority.
+5. **Fairness & diversity** — a deterministic `fairnessScore` (see below) decides extras across ALL
+   employees with no tier preference. Lower = higher priority. Cross-week extras fairness lives here via
+   `priorExtras` (dominant term): whoever worked above their minimum last published week receives fewer
+   extras this week.
 6. **Lottery** — deterministic per-employee rank (seeded for reproducibility & testing) as the final
    tie-break. Losers of a contended slot go unfilled.
 
-Consequence: a **below-min** full-timer may pre-empt a part-time requester (step 2); an **at-min**
-full-timer loses to an **at-min** part-timer for extras (step 4.5); and among **at-min** full-timers
-competing for the same extra, whoever worked fewer extras in the prior published period wins (step 5
-`priorExtras`). Ideal **16h rest** for guards remains a soft preference.
+Consequence: a **below-min** full-timer may pre-empt a part-time requester (step 2 outer); but a
+**below-min** Shabbat-observing or availability-restricted employee pre-empts an **below-min** unrestricted
+full-timer (step 2b), ensuring restricted employees reach min before unrestricted ones collect extras.
+Above min, extras distribute fairly across all employees via `fairnessScore` with the prior-week extras
+carry-over (whoever worked 6 last week receives fewer this week). Ideal **16h rest** for guards remains a
+soft preference.
 
 ### Fairness & diversity (soft, step 5) — coverage-preserving
 All four dimensions are SOFT: they rank **below** the hard constraints and the higher soft objectives
-(steps 1–4.5) and **above** the lottery (step 6). **Coverage never regresses** — these are tie-breaks and
+(steps 1–4) and **above** the lottery (step 6). **Coverage never regresses** — these are tie-breaks and
 swaps only; the engine still maximises filled slots exactly as before, and determinism is preserved (same
 seed + input → identical output; all fairness signals are computed, not random).
 
@@ -115,8 +119,8 @@ cells' occupants) and **3-cycle rotations** (rotate occupants among three cells)
 The pass is **reorder-invariant**: it iterates a **canonical order** (employee id, then day, shift, role) —
 built in `moves.ts`/`diversity.ts` — so the result is identical regardless of `input.employees` array order.
 A strict-decrease rule plus a fixed pass cap (24) guarantee termination and reproducibility; same seed +
-data → identical grid. Because moves never change any employee's total shift count, steps 1–4.5 (reach-min,
-requested, the ≥2-request floor, extras-by-tier) and the even-load signal are all preserved. After the pass, satisfied-request
+data → identical grid. Because moves never change any employee's total shift count, steps 1–4 (reach-min,
+requested, the ≥2-request floor) and the even-load signal are all preserved. After the pass, satisfied-request
 counts are recomputed from the final committed state so `EmployeeStat.requestsSatisfied` stays accurate.
 The 3-cycle rotations escape the single-type **stranding** local optimum that swap-only could not.
 Modules: `diversity.ts` (cost + orchestration), `moves.ts` (swap/3-cycle primitives), `request-gate.ts`

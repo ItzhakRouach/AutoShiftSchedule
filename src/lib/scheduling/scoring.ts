@@ -9,13 +9,13 @@ export const EMPLOYMENT_RANK: Record<EmploymentType, number> = {
   student: 2,
 }
 
-/** Reversed employment-type priority for extras (at/above-min only): part wins,
- *  then student, then full. Higher full-time floor pushes them to take extras
- *  LAST — i.e. only after part-time and student have headroom-to-max consumed. */
-export const EXTRAS_TIER_RANK: Record<EmploymentType, number> = {
-  part: 0,
-  student: 1,
-  full: 2,
+/** True when the employee's legal-slot set this week is restricted by an
+ *  explicit availability map OR by Shabbat/holiday observance. Tight-availability
+ *  employees have fewer slots they CAN take, so within below-min they need to
+ *  reserve their slots BEFORE unrestricted employees consume those same slots
+ *  — otherwise they get squeezed out and miss their minimum. */
+export function hasTightAvailability(emp: Employee): boolean {
+  return emp.availability !== null || emp.observesShabbat || emp.observesHolidays
 }
 
 export interface CandidateState {
@@ -35,24 +35,29 @@ export interface CandidateState {
  * Canonical candidate precedence. Lower comparator output = HIGHER priority.
  * The order, highest first, is EXACTLY:
  *   1. mustAccept-requested.
- *   2. Reach-minimum, carry-over- then tier-ordered: below-min ranks above
- *      at-min; among below-min, (2a) higher priorDeficit first, then (2b)
- *      employment tier full(0) < part(1) < student(2). Tier matters ONLY
- *      until min is met.
+ *   2. Reach-minimum: below-min ranks above at-min. Among below-min, sub-keys:
+ *        (2a) higher priorDeficit first — cross-week minimum fairness;
+ *        (2b) tight-availability first — employees restricted by Shabbat/holiday
+ *             observance or an explicit availability map need their min reserved
+ *             before unrestricted employees consume the few legal slots they
+ *             share; otherwise restricted employees end up squeezed below their
+ *             minimum while unrestricted employees collect extras;
+ *        (2c) employment tier full(0) < part(1) < student(2).
+ *      None of these sub-keys are consulted once an employee has reached min.
  *   3. Requested-this-shift.
  *   4. >=2-request floor.
- *   4.5. Extras-by-tier (at/above-min ONLY): employment tier REVERSED —
- *        part(0) < student(1) < full(2). Steers extras toward part/student
- *        before full-timers; activates only when both candidates are at/above
- *        their minimum.
- *   5. Fairness (fairnessScore): priorExtras dominant + even load + night /
- *      weekend + shift-type-variety nudge.
+ *   5. Fairness (fairnessScore): priorExtras dominant (cross-week extras
+ *      fairness: who worked above-min last week receives fewer extras this
+ *      week) + even load + night/weekend + shift-type-variety nudge. Applies
+ *      to extras for ALL employees with no tier preference.
  *   6. Lottery rank.
  *
  * Consequence: a below-min full-timer beats a part-time requester (step 2);
- * an at-min full-timer loses to an at-min part-timer for extras (step 4.5),
- * and among at-min full-timers competing for extras, whoever had FEWER extras
- * in the prior published period wins (step 5 priorExtras).
+ * but a below-min Shabbat-observing or availability-restricted employee beats
+ * a below-min unrestricted full-timer (step 2b) so the restricted employee
+ * reaches min before the unrestricted one collects extras. Above min, extras
+ * are distributed fairly across ALL employees via fairnessScore — no tier
+ * preference between full/part/student for extras.
  */
 export function compareCandidates(a: CandidateState, b: CandidateState): number {
   // 1. mustAccept requested wins outright.
@@ -63,8 +68,11 @@ export function compareCandidates(a: CandidateState, b: CandidateState): number 
   // 2. reach-minimum. below-min ranks above at-min (bucket). Among below-min ONLY,
   // sub-order by: (2a) higher carry-over priorDeficit first — cross-week fairness,
   // so employees short-changed last week are filled toward their minimum first;
-  // then (2b) employment tier (full > part > student). Neither sub-key is
-  // consulted once an employee has reached their minimum (bucket collapses).
+  // (2b) tight-availability first — restricted employees grab their constrained
+  // slots before unrestricted employees take them; (2c) employment tier
+  // (full > part > student) among equally-tight equally-deficit below-min
+  // candidates. None of these sub-keys are consulted once an employee has
+  // reached their minimum (bucket collapses).
   const aBelow = isBelowMin(a)
   const bBelow = isBelowMin(b)
   if (aBelow !== bBelow) return aBelow ? -1 : 1
@@ -72,10 +80,14 @@ export function compareCandidates(a: CandidateState, b: CandidateState): number 
     // 2a. carry-over deficit: more-deficit employee first (descending → negate).
     const dd = priorDeficitOf(b) - priorDeficitOf(a)
     if (dd !== 0) return dd
-    // 2b. employment tier among equally-deficit below-min employees.
-    const at = EMPLOYMENT_RANK[a.emp.employmentType]
-    const bt = EMPLOYMENT_RANK[b.emp.employmentType]
+    // 2b. tight-availability first (0 = tight wins, 1 = unrestricted).
+    const at = hasTightAvailability(a.emp) ? 0 : 1
+    const bt = hasTightAvailability(b.emp) ? 0 : 1
     if (at !== bt) return at - bt
+    // 2c. employment tier among equally-tight equally-deficit below-min employees.
+    const ar = EMPLOYMENT_RANK[a.emp.employmentType]
+    const br = EMPLOYMENT_RANK[b.emp.employmentType]
+    if (ar !== br) return ar - br
   }
 
   // 3. requested over not-requested.
@@ -91,20 +103,11 @@ export function compareCandidates(a: CandidateState, b: CandidateState): number 
     if (af !== bf) return af - bf
   }
 
-  // 4.5. extras-by-tier (at/above-min only). When both candidates have already
-  // reached their minimum (step 2 collapsed them into the same bucket), reverse
-  // the employment tier so part-time/student receive remaining open slots
-  // BEFORE full-timers fill extras. This activates only when there are open
-  // slots to fill — once part/student hit their own maxShifts they drop out of
-  // the candidate pool naturally. Untouched: below-min logic in step 2.
-  if (!aBelow && !bBelow) {
-    const ax = EXTRAS_TIER_RANK[a.emp.employmentType]
-    const bx = EXTRAS_TIER_RANK[b.emp.employmentType]
-    if (ax !== bx) return ax - bx
-  }
-
   // 5. fairness: deterministic fairnessScore (priorExtras dominant + even load
   // + night/weekend fairness + shift-type-variety nudge). Lower = higher priority.
+  // Applies to extras for ALL employees — no tier preference between
+  // full/part/student. Cross-week extras fairness lives in priorExtras: whoever
+  // worked above-min last published week receives fewer extras this week.
   const aFair = fairnessScore(a.current, priorExtrasOf(a))
   const bFair = fairnessScore(b.current, priorExtrasOf(b))
   if (aFair !== bFair) return aFair - bFair
