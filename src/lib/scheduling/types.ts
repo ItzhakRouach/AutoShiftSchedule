@@ -26,6 +26,16 @@ export interface Employee {
    * scoring.reachMinRank). Never overrides hard constraints or coverage.
    */
   priorDeficit?: number
+  /**
+   * Cross-week extras carry-over: how many shifts ABOVE this employee's minimum
+   * they worked in the most-recent PUBLISHED prior period (max(0, shiftsThen −
+   * minShifts)). 0 (default) when there is no prior published period. Used as a
+   * SOFT signal in `fairnessScore` to spread "extra" shifts across full-timers
+   * across weeks (the person who already worked 6 last week with min 5 should
+   * be picked LESS often for extras this week). Never overrides hard
+   * constraints, never reduces coverage, never overrides `must_accept`.
+   */
+  priorExtras?: number
 }
 
 /** Per-day metadata. Friday = index 5, Saturday = index 6 (implicit by index). */

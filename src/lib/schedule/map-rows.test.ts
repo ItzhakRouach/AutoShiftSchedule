@@ -172,6 +172,26 @@ describe('mapToEngineInput', () => {
     expect(input.days[0].isHolidayEve).toBe(false)
     expect(input.employees[0].observesHolidays).toBe(true)
   })
+
+  it('maps priorExtras per employee from rows.priorExtras; defaults to 0', () => {
+    const { input } = mapToEngineInput(
+      baseRows({
+        employees: [
+          { id: 'a', employment_type: 'full', min_shifts_per_week: 2, max_shifts_per_week: 5, observes_shabbat: false, observes_holidays: false, must_accept: false },
+          { id: 'b', employment_type: 'full', min_shifts_per_week: 2, max_shifts_per_week: 5, observes_shabbat: false, observes_holidays: false, must_accept: false },
+        ],
+        employeeRoles: [
+          { employee_id: 'a', role_id: 'r1' },
+          { employee_id: 'b', role_id: 'r1' },
+        ],
+        priorExtras: { a: 2 },
+      }),
+    )
+    const empA = input.employees.find((e) => e.id === 'a')
+    const empB = input.employees.find((e) => e.id === 'b')
+    expect(empA?.priorExtras).toBe(2)
+    expect(empB?.priorExtras).toBe(0)
+  })
 })
 
 describe('seedFromUuid', () => {

@@ -9,6 +9,15 @@ export const EMPLOYMENT_RANK: Record<EmploymentType, number> = {
   student: 2,
 }
 
+/** Reversed employment-type priority for extras (at/above-min only): part wins,
+ *  then student, then full. Higher full-time floor pushes them to take extras
+ *  LAST — i.e. only after part-time and student have headroom-to-max consumed. */
+export const EXTRAS_TIER_RANK: Record<EmploymentType, number> = {
+  part: 0,
+  student: 1,
+  full: 2,
+}
+
 export interface CandidateState {
   emp: Employee
   /** did this employee request this shift today? */
@@ -23,21 +32,27 @@ export interface CandidateState {
 }
 
 /**
- * Canonical candidate precedence (FIX A — final product decision). Lower
- * comparator output = HIGHER priority. The order, highest first, is EXACTLY:
- *   1. mustAccept-requested      (their off is already hard; their request wins).
- *   2. Reach-minimum, tier-ordered: an employee BELOW their minShifts ranks above
- *      one who has reached it; among below-min employees ONLY, employment tier
- *      full(0) < part(1) < student(2). This is the ONLY place tier matters — and
- *      only until min is met. Once at/above min, tier grants no priority.
- *   3. Requested-this-shift      (requester before non-requester).
- *   4. >=2-request floor         (fewer satisfied requests first — see floorRank).
- *   5. Fairness (deterministic fairnessScore): even shift-count distribution
- *      (dominant), night/weekend fairness, and a shift-type-variety nudge.
- *   6. Lottery rank (FIX 1)      (final deterministic tie-break).
+ * Canonical candidate precedence. Lower comparator output = HIGHER priority.
+ * The order, highest first, is EXACTLY:
+ *   1. mustAccept-requested.
+ *   2. Reach-minimum, carry-over- then tier-ordered: below-min ranks above
+ *      at-min; among below-min, (2a) higher priorDeficit first, then (2b)
+ *      employment tier full(0) < part(1) < student(2). Tier matters ONLY
+ *      until min is met.
+ *   3. Requested-this-shift.
+ *   4. >=2-request floor.
+ *   4.5. Extras-by-tier (at/above-min ONLY): employment tier REVERSED —
+ *        part(0) < student(1) < full(2). Steers extras toward part/student
+ *        before full-timers; activates only when both candidates are at/above
+ *        their minimum.
+ *   5. Fairness (fairnessScore): priorExtras dominant + even load + night /
+ *      weekend + shift-type-variety nudge.
+ *   6. Lottery rank.
  *
- * Consequence: a below-min full-timer beats a part-time requester (step 2), but
- * an at-min full-timer loses to a part-time requester (step 3 decides).
+ * Consequence: a below-min full-timer beats a part-time requester (step 2);
+ * an at-min full-timer loses to an at-min part-timer for extras (step 4.5),
+ * and among at-min full-timers competing for extras, whoever had FEWER extras
+ * in the prior published period wins (step 5 priorExtras).
  */
 export function compareCandidates(a: CandidateState, b: CandidateState): number {
   // 1. mustAccept requested wins outright.
@@ -76,11 +91,23 @@ export function compareCandidates(a: CandidateState, b: CandidateState): number 
     if (af !== bf) return af - bf
   }
 
-  // 5. fairness: deterministic fairnessScore (even load dominant + night/weekend
-  // fairness + shift-type-variety nudge). Lower score = higher priority.
-  const af = fairnessScore(a.current)
-  const bf = fairnessScore(b.current)
-  if (af !== bf) return af - bf
+  // 4.5. extras-by-tier (at/above-min only). When both candidates have already
+  // reached their minimum (step 2 collapsed them into the same bucket), reverse
+  // the employment tier so part-time/student receive remaining open slots
+  // BEFORE full-timers fill extras. This activates only when there are open
+  // slots to fill — once part/student hit their own maxShifts they drop out of
+  // the candidate pool naturally. Untouched: below-min logic in step 2.
+  if (!aBelow && !bBelow) {
+    const ax = EXTRAS_TIER_RANK[a.emp.employmentType]
+    const bx = EXTRAS_TIER_RANK[b.emp.employmentType]
+    if (ax !== bx) return ax - bx
+  }
+
+  // 5. fairness: deterministic fairnessScore (priorExtras dominant + even load
+  // + night/weekend fairness + shift-type-variety nudge). Lower = higher priority.
+  const aFair = fairnessScore(a.current, priorExtrasOf(a))
+  const bFair = fairnessScore(b.current, priorExtrasOf(b))
+  if (aFair !== bFair) return aFair - bFair
 
   // 6. deterministic lottery tie-break.
   return a.lotteryRank - b.lotteryRank
@@ -94,6 +121,11 @@ export function isBelowMin(c: CandidateState): boolean {
 /** Carry-over shortfall from the most-recent published period (>=0, default 0). */
 export function priorDeficitOf(c: CandidateState): number {
   return Math.max(0, c.emp.priorDeficit ?? 0)
+}
+
+/** Carry-over above-min count from the most-recent published period (>=0, default 0). */
+export function priorExtrasOf(c: CandidateState): number {
+  return Math.max(0, c.emp.priorExtras ?? 0)
 }
 
 /**

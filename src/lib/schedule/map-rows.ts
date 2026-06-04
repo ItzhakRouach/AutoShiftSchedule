@@ -63,6 +63,8 @@ export interface MapInput {
   holidayDates?: Set<string>
   /** Cross-week fairness: employee_id → shortfall in most-recent published period. */
   priorDeficit?: Record<string, number>
+  /** Cross-week extras fairness: employee_id → surplus shifts in most-recent published period. */
+  priorExtras?: Record<string, number>
   /** Cross-week rest: employee_id → END abs hours of prior-week shifts
    *  (current week day 0 = abs hour 0). See EngineInput.priorWeekTail. */
   priorWeekTail?: Record<string, number[]>
@@ -149,6 +151,7 @@ export function mapToEngineInput(rows: MapInput): MapResult {
     mustAccept: e.must_accept ?? false,
     availability: availByEmp[e.id] ?? null,
     priorDeficit: rows.priorDeficit?.[e.id] ?? 0,
+    priorExtras: rows.priorExtras?.[e.id] ?? 0,
   }))
 
   const requests: RequestMap = {}
