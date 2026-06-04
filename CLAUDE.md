@@ -33,7 +33,7 @@ src/proxy.ts        # Next 16 middleware (Supabase session refresh)
 src/lib/domain/     # constants.ts (ROLES, ROLE_META, SHIFT_META, SHIFT_ORDER, FALLBACK_12H_ORDER)
 src/lib/scheduling/ # engine, constraints, shabbat-holiday, fallback (Phase 4) — pure TS, unit-tested
 src/lib/supabase/   # client.ts (browser), server.ts (RSC/actions), middleware.ts (session helper)
-src/lib/whatsapp/   # inviteLink (wa.me) + evolution (Evolution API client) + phone normalizer
+src/lib/whatsapp/   # phone normalizer (Israeli E.164). Sharing is wa.me-link only — no third-party API.
 src/lib/holidays/   # Israeli holiday calendar via @hebcal/core            [later phase]
 src/styles/theme.css# design tokens (light/dark/warm CSS variables)
 supabase/migrations/# forward-only SQL migrations (0001…) + RLS policies
@@ -57,7 +57,7 @@ DesignTemplate/     # REFERENCE prototype — read for design/logic, do NOT ship
 2. **TDD for logic** (engine, validation, stats): write the failing test first.
 3. **QA gate every phase:** dispatch `auditor`/`probe`/`guard`, fix all findings before moving on. The user
    requires near-100% confidence / no bugs.
-4. **Free-tier only** until distribution: no paid APIs (WhatsApp = free link/code + self-hosted Evolution API).
+4. **Free-tier only** until distribution: no paid APIs. WhatsApp delivery is **wa.me share links only** — the manager taps a pre-filled link and sends from their own WhatsApp; no app-side gateway, zero per-message cost.
 5. **Don't touch `DesignTemplate/`** — it's the reference, not the product.
 6. **Every page/component file ≤200 lines.** Split proactively into focused sub-components, hooks, and helpers — one clear responsibility each. Code quality, control, and flow come first.
 
@@ -75,4 +75,4 @@ DesignTemplate/     # REFERENCE prototype — read for design/logic, do NOT ship
 - Data model + RLS + DB run: `docs/architecture.md`
 - Engine rules: `docs/scheduling-engine.md`
 - Tokens & components: `docs/design-system.md`
-- Invites + publish + Evolution API (group image + per-worker text; env: EVOLUTION_API_URL/KEY/INSTANCE): `docs/whatsapp.md`
+- Invites + publish via wa.me share links (no API): `docs/whatsapp.md`

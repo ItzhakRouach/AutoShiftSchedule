@@ -6,7 +6,6 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveWorkplace } from '@/lib/workplace/current'
 import { normalizeIsraeliPhone } from '@/lib/whatsapp/phone'
-import { isEvolutionConfigured, sendTextMessage } from '@/lib/whatsapp/evolution'
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 const CODE_LENGTH = 8
@@ -103,22 +102,22 @@ async function ensureActiveInviteCode(
   return { error: 'לא הצלחנו ליצור קוד ייחודי' }
 }
 
-export interface SendInviteResult {
-  ok: boolean
-  warning?: string
-  error?: string
-}
+export type InviteShareLink =
+  | { ok: true; waUrl: string; joinUrl: string }
+  | { ok: false; error: string }
 
 /**
- * Send the workplace's active join invite to a single phone number via GreenAPI.
- * Resolves (or creates) the invite code, normalizes the phone to E.164, and
- * fires a Hebrew message. Returns ok:true even when GreenAPI is not configured
- * (just sets a warning) so callers can keep going — this is a soft notify.
+ * Build a pre-filled `wa.me` link the manager can tap to open WhatsApp with
+ * an invite message already addressed to the employee's phone. No background
+ * "send" — the user explicitly confirms the share via WhatsApp's own UI, so
+ * there are zero per-message costs and no third-party API in the loop.
+ *
+ * Resolves (or creates) the workplace's active invite code as a side-effect.
  */
-export async function sendInviteToPhone(
+export async function getInviteShareLinkForPhone(
   rawPhone: string,
   employeeName?: string,
-): Promise<SendInviteResult> {
+): Promise<InviteShareLink> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { ok: false, error: 'אין הרשאה' }
@@ -128,29 +127,21 @@ export async function sendInviteToPhone(
   const phone = normalizeIsraeliPhone(rawPhone)
   if (!phone) return { ok: false, error: 'מספר טלפון לא תקין' }
 
-  if (!isEvolutionConfigured()) {
-    return { ok: true, warning: 'Evolution API לא מוגדר — שתפו את ההזמנה ידנית' }
-  }
-
   const invite = await ensureActiveInviteCode(supabase, workplace.id, user.id)
   if ('error' in invite) return { ok: false, error: invite.error }
   const joinUrl = await resolveJoinUrl(invite.code)
 
   const greeting = employeeName ? `שלום ${employeeName}!` : 'שלום!'
-  const message =
-    `${greeting} הוזמנת לאפליקציית סידור עבודה — לחץ כאן להצטרפות: ${joinUrl}`
-
-  const res = await sendTextMessage(phone, message)
-  if (!res.ok) return { ok: true, warning: `הזמנת WhatsApp לא נשלחה: ${res.error}` }
-  return { ok: true }
+  const text = `${greeting} הוזמנת לאפליקציית סידור עבודה — לחץ כאן להצטרפות: ${joinUrl}`
+  const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`
+  return { ok: true, waUrl, joinUrl }
 }
 
 /**
- * Re-send the workplace's active invite to a specific PENDING employee's phone.
- * Powers the "שלח הזמנה" button on pending employee cards. Same semantics as
- * sendInviteToPhone but starts from an employee id.
+ * Same as getInviteShareLinkForPhone but starts from an employee id. Powers
+ * the "שלח הזמנה" button on pending employee cards.
  */
-export async function resendInviteToEmployee(employeeId: string): Promise<SendInviteResult> {
+export async function getInviteShareLinkForEmployee(employeeId: string): Promise<InviteShareLink> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { ok: false, error: 'אין הרשאה' }
@@ -165,7 +156,7 @@ export async function resendInviteToEmployee(employeeId: string): Promise<SendIn
     .maybeSingle()
   if (!emp) return { ok: false, error: 'העובד לא נמצא' }
   if (!emp.phone) return { ok: false, error: 'לעובד אין מספר טלפון' }
-  return sendInviteToPhone(emp.phone as string, emp.name as string | undefined)
+  return getInviteShareLinkForPhone(emp.phone as string, emp.name as string | undefined)
 }
 
 export async function getLatestInvite(workplaceId: string): Promise<{ code: string; expiresAt: string } | null> {

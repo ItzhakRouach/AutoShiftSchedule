@@ -11,14 +11,11 @@ import { syncEmployeeRoles } from '@/lib/employees/roles'
 import { syncEmployeeAvailability } from '@/lib/employees/availability'
 import { pickUniqueColor } from '@/lib/employees/colors'
 import { normalizeIsraeliPhone } from '@/lib/whatsapp/phone'
-import { sendInviteToPhone } from './invite-actions'
 
 export type EmployeeActionState = {
   ok?: boolean
   error?: string
   fieldErrors?: Record<string, string>
-  /** Soft warning surfaced after a successful save (e.g. WhatsApp send failed). */
-  warning?: string
 }
 
 // ── createEmployee ────────────────────────────────────────────────────────────
@@ -82,17 +79,8 @@ export async function createEmployee(
   const availError = await syncEmployeeAvailability(supabase, emp.id, availability ?? null)
   if (availError) return { error: availError }
 
-  // Optional WhatsApp invite — only fires when the form opted in AND a phone
-  // exists. Failures never roll back the employee save (soft warning instead).
-  let warning: string | undefined
-  if (parsed.data.sendInvite && phone) {
-    const invite = await sendInviteToPhone(phone, name)
-    if (invite.warning) warning = invite.warning
-    if (!invite.ok) warning = invite.error
-  }
-
   revalidatePath('/team')
-  return warning ? { ok: true, warning } : { ok: true }
+  return { ok: true }
 }
 
 // ── updateEmployee ────────────────────────────────────────────────────────────

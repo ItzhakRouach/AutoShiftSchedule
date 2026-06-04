@@ -42,12 +42,10 @@ export function parseFormData(formData: FormData) {
     }
   }
 
-  const sendInvite = formData.get('sendInvite') === 'true'
-
   return {
     name, phone, minShifts, maxShifts, employmentType,
     observesShabbat, observesHolidays, mustAccept, roleIds, availability,
-    customAvailability, sendInvite,
+    customAvailability,
   }
 }
 
