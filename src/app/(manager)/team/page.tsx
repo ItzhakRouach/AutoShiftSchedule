@@ -40,13 +40,15 @@ export default async function TeamPage() {
     rank: r.rank ?? 1,
   }))
 
-  // Fetch base (non-fallback) shift types for this workplace
+  // Fetch base (non-fallback) shift types for this workplace, ordered by
+  // start hour so the custom-availability matrix reads בוקר → צהריים → לילה
+  // (07 → 15 → 23) instead of the unpredictable Hebrew-name alphabetic order.
   const { data: shiftTypesRaw } = await supabase
     .from('shift_types')
     .select('id, name')
     .eq('workplace_id', workplace.id)
     .eq('is_fallback', false)
-    .order('name')
+    .order('start_hour')
 
   const shiftTypes: ShiftTypeOption[] = (shiftTypesRaw ?? []).map((st) => ({
     id: st.id,

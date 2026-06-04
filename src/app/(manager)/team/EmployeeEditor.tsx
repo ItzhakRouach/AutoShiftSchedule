@@ -43,9 +43,11 @@ interface EmployeeEditorProps {
 
 const initialState: EmployeeActionState = {}
 
-/** Suggest min/max defaults when employment type changes */
+/** Suggest min/max defaults when employment type changes. Full-time gets
+ *  min=5 / max=6 (the typical Israeli security-team shift load); student gets
+ *  a tighter 0..3 cap; part-time stays unbounded above zero. */
 function defaultsForType(type: EmploymentType): { min: number; max: number | null } {
-  if (type === 'full') return { min: 5, max: null }
+  if (type === 'full') return { min: 5, max: 6 }
   if (type === 'student') return { min: 0, max: 3 }
   return { min: 0, max: null }
 }
@@ -63,9 +65,14 @@ export function EmployeeEditor({ roles, shiftTypes, employee, onSuccess }: Emplo
 
   const [name, setName] = useState(employee?.name ?? '')
   const [phone, setPhone] = useState(employee?.phone ?? '')
-  const [minShifts, setMinShifts] = useState(employee?.minShifts ?? 2)
-  const [maxShifts, setMaxShifts] = useState<number | null>(employee?.maxShifts ?? null)
-  const [employmentType, setEmploymentType] = useState<EmploymentType>(employee?.employmentType ?? 'full')
+  // New-employee defaults come from defaultsForType so a fresh form opens with
+  // the employment-type's recommended bounds (full → 5/6) instead of an
+  // arbitrary 2/null. Existing employees keep their saved values.
+  const initialType: EmploymentType = employee?.employmentType ?? 'full'
+  const initialDefaults = defaultsForType(initialType)
+  const [minShifts, setMinShifts] = useState(employee?.minShifts ?? initialDefaults.min)
+  const [maxShifts, setMaxShifts] = useState<number | null>(employee?.maxShifts ?? initialDefaults.max)
+  const [employmentType, setEmploymentType] = useState<EmploymentType>(initialType)
   // Single toggle: Shabbat observance implies holiday observance (shabbat || holidays → both true)
   const [observesShabbat, setObservesShabbat] = useState(
     (employee?.observesShabbat ?? false) || (employee?.observesHolidays ?? false),

@@ -168,8 +168,11 @@ export function TeamClient({ employees, roles, shiftTypes }: TeamClientProps) {
                       {emp.name}
                     </span>
                     {emp.status === 'pending' && (
-                      <span style={{ fontSize: 11, fontWeight: 700, color: '#E0902A', background: 'rgba(224,144,42,0.14)', padding: '2px 8px', borderRadius: 'var(--r-pill)', flexShrink: 0 }}>
-                        ממתין
+                      <span
+                        title="העובד נוצר במערכת אך טרם הצטרף לאפליקציה. שתפו את קישור ההזמנה (כפתור 'הזמנה')."
+                        style={{ fontSize: 11, fontWeight: 700, color: '#E0902A', background: 'rgba(224,144,42,0.14)', padding: '2px 8px', borderRadius: 'var(--r-pill)', flexShrink: 0, cursor: 'help' }}
+                      >
+                        טרם הצטרף
                       </span>
                     )}
                   </div>
