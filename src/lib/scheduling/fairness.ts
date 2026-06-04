@@ -53,14 +53,22 @@ export const W_LOAD = 100
 export const W_UNPOPULAR = 8
 export const W_SPREAD = 3
 
+// priorExtras dominates: one extra last week outweighs one extra THIS week,
+// so a full-timer who already pulled an above-min shift in the prior published
+// period steps aside for a full-timer who didn't. Set just above W_LOAD so a
+// 1-extra carry-over flips a tie between two otherwise-identical candidates.
+export const W_PRIOR_EXTRAS = 120
+
 /**
  * Deterministic fairness score for an employee given their committed shifts.
- * LOWER = higher priority to receive the next shift. Combines even-distribution
- * (load), night/weekend fairness (unpopularLoad) and shift-type variety nudge
- * (typeSpread). Pure function of `current` — no randomness; lottery stays last.
+ * LOWER = higher priority to receive the next shift. Combines prior-week extras
+ * (priorExtras, dominant), even-distribution (load), night/weekend fairness
+ * (unpopularLoad) and shift-type variety nudge (typeSpread). Pure function of
+ * `current` and `priorExtras` — no randomness; lottery stays last.
  */
-export function fairnessScore(current: Assignment[]): number {
+export function fairnessScore(current: Assignment[], priorExtras: number = 0): number {
   return (
+    W_PRIOR_EXTRAS * Math.max(0, priorExtras) +
     W_LOAD * current.length +
     W_UNPOPULAR * unpopularLoad(current) +
     W_SPREAD * typeSpread(current)
