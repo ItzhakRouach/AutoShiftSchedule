@@ -72,6 +72,41 @@ export async function computePriorDeficit(
 }
 
 /**
+ * Cross-week extras fairness. For each employee computes priorExtras =
+ * max(0, shiftsThen − minShifts), where shiftsThen = distinct assigned days
+ * in the supplied prior published period (one shift/day, per the assignments
+ * unique(period,employee,day) constraint — a 12h counts once). Returns {}
+ * (all-zero) when `prior` is null. Mirrors `computePriorDeficit` and reads
+ * the same rows; both should be issued in parallel against the same `prior`
+ * to avoid duplicate round-trips.
+ */
+export async function computePriorExtras(
+  supabase: SupabaseClient,
+  prior: PriorPeriodRow | null,
+  employees: EmpMinRow[],
+): Promise<Record<string, number>> {
+  if (!prior) return {}
+  const { data: rows } = await supabase
+    .from('assignments')
+    .select('employee_id, day_of_week')
+    .eq('period_id', prior.id)
+  const seen = new Set<string>()
+  const counts: Record<string, number> = {}
+  for (const r of (rows ?? []) as { employee_id: string; day_of_week: number }[]) {
+    const k = `${r.employee_id}:${r.day_of_week}`
+    if (seen.has(k)) continue
+    seen.add(k)
+    counts[r.employee_id] = (counts[r.employee_id] ?? 0) + 1
+  }
+  const extras: Record<string, number> = {}
+  for (const e of employees) {
+    const min = e.min_shifts_per_week ?? 0
+    extras[e.id] = Math.max(0, (counts[e.id] ?? 0) - min)
+  }
+  return extras
+}
+
+/**
  * Loads everything the scheduling engine needs for `periodId` from the DB and
  * maps it to the engine's EngineInput. Returns null if the period is missing
  * (e.g. RLS denied). Pure mapping is delegated to mapToEngineInput.
@@ -160,8 +195,9 @@ export async function buildEngineInput(
   // (fairness carry-over) and tail (rest carry-over) — saves a duplicate
   // schedule_periods lookup. The two computations are then run in parallel.
   const prior = await findPriorPublishedPeriod(supabase, wp, period.week_start_date as string)
-  const [priorDeficit, priorWeekTail] = await Promise.all([
+  const [priorDeficit, priorExtras, priorWeekTail] = await Promise.all([
     computePriorDeficit(supabase, prior, employees ?? []),
+    computePriorExtras(supabase, prior, employees ?? []),
     computePriorWeekTail(supabase, wp, prior, period.week_start_date as string),
   ])
 
@@ -179,6 +215,7 @@ export async function buildEngineInput(
     seed: seedFromUuid(period.id),
     holidayDates,
     priorDeficit,
+    priorExtras,
     priorWeekTail,
   }
 
