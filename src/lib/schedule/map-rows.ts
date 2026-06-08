@@ -24,7 +24,7 @@ export interface EmployeeRow {
   observes_holidays: boolean | null
   must_accept: boolean | null
 }
-export interface EmployeeRoleRow { employee_id: string; role_id: string }
+export interface EmployeeRoleRow { employee_id: string; role_id: string; is_senior?: boolean }
 export interface AvailabilityRow { employee_id: string; day_of_week: number; shift_type_id: string }
 export interface RequestRow {
   employee_id: string
@@ -118,6 +118,16 @@ export function mapToEngineInput(rows: MapInput): MapResult {
     rolesByEmp[empId] = expandRolesByRank(heldIds, rows.roles).map((id) => roleIdToName[id]).filter(Boolean)
   }
 
+  // Senior role NAMES per employee (the engine keys roles by name). Seniority is
+  // per the specific role marked — not rank-expanded — so it only biases that
+  // exact role's distribution.
+  const seniorRolesByEmp: Record<string, string[]> = {}
+  for (const r of rows.employeeRoles) {
+    if (r.is_senior && roleIdToName[r.role_id]) {
+      ;(seniorRolesByEmp[r.employee_id] ??= []).push(roleIdToName[r.role_id])
+    }
+  }
+
   // Group availability by employee → day → shift keys
   const availByEmp: Record<string, Record<number, ShiftKey[]>> = {}
   for (const a of rows.availability) {
@@ -142,6 +152,7 @@ export function mapToEngineInput(rows: MapInput): MapResult {
   const employees: Employee[] = rows.employees.map((e) => ({
     id: e.id,
     roleIds: rolesByEmp[e.id] ?? [],
+    seniorRoleIds: seniorRolesByEmp[e.id] ?? [],
     employmentType: normEmploymentType(e.employment_type),
     minShifts: e.min_shifts_per_week ?? 0,
     maxShifts: e.max_shifts_per_week ?? null,

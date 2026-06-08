@@ -2,6 +2,7 @@
 
 import React, { useActionState, useState } from 'react'
 import type { JoinState } from './actions'
+import { Spinner } from '@/components/ui/Spinner'
 
 interface CurrentUserJoinFormProps {
   action: (prevState: JoinState, formData: FormData) => Promise<JoinState>
@@ -181,6 +182,10 @@ export function CurrentUserJoinForm({ action, workplaceName }: CurrentUserJoinFo
         disabled={isPending}
         style={{
           marginTop: 8,
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 8,
           padding: '14px 20px',
           borderRadius: 'var(--r-pill)',
           border: '1px solid transparent',
@@ -194,6 +199,7 @@ export function CurrentUserJoinForm({ action, workplaceName }: CurrentUserJoinFo
           boxShadow: '0 4px 14px var(--accent-soft)',
         }}
       >
+        {isPending && <Spinner size={16} />}
         {isPending ? 'מצטרף...' : 'הצטרפות עם החשבון שלי'}
       </button>
     </form>

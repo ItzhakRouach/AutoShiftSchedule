@@ -37,8 +37,9 @@ export async function createEmployee(
 
   const {
     name, phone, minShifts, maxShifts, employmentType,
-    observesShabbat, observesHolidays, mustAccept, roleIds, availability,
+    observesShabbat, observesHolidays, mustAccept, roleIds, seniorRoleIds, availability,
   } = parsed.data
+  const seniorSet = new Set(seniorRoleIds.filter((rid) => roleIds.includes(rid)))
 
   const { data: existingEmps } = await supabase
     .from('employees')
@@ -69,7 +70,7 @@ export async function createEmployee(
 
   const { error: rolesError } = await supabase
     .from('employee_roles')
-    .insert(roleIds.map((roleId) => ({ employee_id: emp.id, role_id: roleId })))
+    .insert(roleIds.map((roleId) => ({ employee_id: emp.id, role_id: roleId, is_senior: seniorSet.has(roleId) })))
 
   if (rolesError) {
     await supabase.from('employees').delete().eq('id', emp.id)
@@ -112,7 +113,7 @@ export async function updateEmployee(
 
   const {
     name, phone, minShifts, maxShifts, employmentType,
-    observesShabbat, observesHolidays, mustAccept, roleIds, availability,
+    observesShabbat, observesHolidays, mustAccept, roleIds, seniorRoleIds, availability,
   } = parsed.data
 
   const { error: updateError } = await supabase
@@ -131,7 +132,7 @@ export async function updateEmployee(
 
   if (updateError) return { error: 'שגיאה בשמירת העובד' }
 
-  const syncError = await syncEmployeeRoles(supabase, id, roleIds)
+  const syncError = await syncEmployeeRoles(supabase, id, roleIds, seniorRoleIds)
   if (syncError) return { error: syncError }
 
   const availError = await syncEmployeeAvailability(supabase, id, availability ?? null)

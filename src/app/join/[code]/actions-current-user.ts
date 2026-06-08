@@ -4,9 +4,8 @@ import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { pickUniqueColor } from '@/lib/employees/colors'
 import { normalizeIsraeliPhone } from '@/lib/whatsapp/phone'
-import { getEmploymentDefaults } from './employment-defaults'
+import { claimOrCreateEmployee } from './claim-employee'
 import type { JoinState } from './actions'
 
 const CurrentUserJoinSchema = z.object({
@@ -92,38 +91,17 @@ export async function joinAsCurrentUser(
     }
   }
 
-  const existing = existingAnywhere && existingAnywhere.workplace_id === workplaceId
-    ? existingAnywhere : null
-
-  if (!existing) {
-    const { data: existingEmployees } = await admin
-      .from('employees')
-      .select('color')
-      .eq('workplace_id', workplaceId)
-    const existingColors = (existingEmployees ?? [])
-      .map((e: { color: string }) => e.color)
-      .filter(Boolean)
-    const color = pickUniqueColor(existingColors)
-    const shiftDefaults = getEmploymentDefaults(employmentType)
-
-    const { error: empError } = await admin.from('employees').insert({
-      workplace_id: workplaceId,
-      user_id: currentUser.id,
-      name,
-      phone,
-      status: 'active',
-      color,
-      employment_type: employmentType,
-      min_shifts_per_week: shiftDefaults.min_shifts_per_week,
-      max_shifts_per_week: shiftDefaults.max_shifts_per_week,
-      observes_shabbat: observesShabbat,
-      observes_holidays: observesShabbat,
-    })
-
-    if (empError) {
-      return { error: 'שגיאה בהצטרפות למקום העבודה' }
-    }
-  }
+  // Claim the manager-created pending row (matched by phone) instead of
+  // inserting a duplicate. See claim-employee.ts for the why.
+  const claimError = await claimOrCreateEmployee(admin, {
+    workplaceId,
+    userId: currentUser.id,
+    name,
+    phone,
+    employmentType,
+    observesShabbat,
+  })
+  if (claimError) return { error: claimError }
 
   redirect('/me')
 }

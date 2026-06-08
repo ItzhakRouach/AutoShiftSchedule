@@ -16,6 +16,7 @@
 // when every hard constraint stays satisfied and coverage is identical.
 import type { Assignment, ShiftKey } from './types'
 import { BASE_SHIFTS } from './types'
+import { gapHours, shiftStartAbs } from './rest'
 
 /** Friday = index 5, Saturday = index 6 are the unpopular weekend days. */
 export const WEEKEND_DAYS = new Set<number>([5, 6])
@@ -73,4 +74,40 @@ export function fairnessScore(current: Assignment[], priorExtras: number = 0): n
     W_UNPOPULAR * unpopularLoad(current) +
     W_SPREAD * typeSpread(current)
   )
+}
+
+/**
+ * Rest-quality penalty for one employee: Σ over their consecutive-in-time shifts
+ * of max(0, idealRestHours − gap). Zero when every turnaround is ≥ ideal (16h by
+ * default). A night→next-day-noon pair (8h gap) scores `ideal−8`; a night→noon→
+ * night-style rotation accrues a penalty per tight gap, so the 8-8-8 pattern is
+ * penalised proportionally. Pure; gaps come from absolute-hour `gapHours`.
+ */
+export function restPenalty(current: Assignment[], idealRestHours: number): number {
+  if (current.length < 2) return 0
+  const sorted = current
+    .slice()
+    .sort((a, b) => shiftStartAbs(a.day, a.shift) - shiftStartAbs(b.day, b.shift))
+  let penalty = 0
+  for (let i = 1; i < sorted.length; i++) {
+    const g = gapHours(sorted[i - 1].day, sorted[i - 1].shift, sorted[i].day, sorted[i].shift)
+    if (g >= 0 && g < idealRestHours) penalty += idealRestHours - g
+  }
+  return penalty
+}
+
+/** How many of an employee's committed shifts are nights. */
+export function nightCount(current: Assignment[]): number {
+  let n = 0
+  for (const a of current) if (a.shift === 'night') n++
+  return n
+}
+
+/**
+ * Nights worked beyond `threshold` (the soft cap). 0 when at/under the cap or
+ * when the cap is non-finite (an exempt employee — night-only availability).
+ */
+export function nightOverage(current: Assignment[], threshold: number): number {
+  if (!Number.isFinite(threshold)) return 0
+  return Math.max(0, nightCount(current) - threshold)
 }

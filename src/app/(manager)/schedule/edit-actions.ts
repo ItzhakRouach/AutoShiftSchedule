@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveWorkplace } from '@/lib/workplace/current'
 import { validateManualAssignment } from '@/lib/schedule/validate-edit'
+import { slotAtCapacity } from '@/lib/schedule/validate-edit-core'
 import { resolveShiftKey } from '@/lib/schedule/shift-types-cache'
 
 export interface EditResult {
@@ -16,6 +17,43 @@ export interface EditResult {
 const GENERIC_ERROR = 'אירעה שגיאה. נסו שוב.'
 const TWELVE_H_WARNING =
   'משמרת 12 שעות תופסת שני חלונות 8 שעות ומשפיעה על המנוחה והכיסוי'
+
+const AT_CAPACITY = 'המשמרת מאוישת במלואה לתפקיד זה'
+
+/** Returns a Hebrew error when the role box is already at its required
+ *  headcount, else null. Excludes `employeeId` from the count so swaps and
+ *  idempotent re-assignment of the same person are allowed. */
+async function slotCapacityError(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  workplaceId: string,
+  periodId: string,
+  dayIndex: number,
+  shiftTypeId: string,
+  roleId: string,
+  employeeId: string,
+): Promise<string | null> {
+  const { data: req } = await supabase
+    .from('shift_requirements')
+    .select('count')
+    .eq('workplace_id', workplaceId)
+    .eq('day_of_week', dayIndex)
+    .eq('shift_type_id', shiftTypeId)
+    .eq('role_id', roleId)
+    .maybeSingle()
+  const requiredCount = (req?.count as number | undefined) ?? 0
+
+  const { data: occupants } = await supabase
+    .from('assignments')
+    .select('employee_id')
+    .eq('period_id', periodId)
+    .eq('day_of_week', dayIndex)
+    .eq('shift_type_id', shiftTypeId)
+    .eq('role_id', roleId)
+    .neq('employee_id', employeeId)
+  const currentCount = occupants?.length ?? 0
+
+  return slotAtCapacity(currentCount, requiredCount) ? AT_CAPACITY : null
+}
 
 async function authedWorkplace() {
   const supabase = await createClient()
@@ -51,6 +89,14 @@ export async function assignSlot(
     roleId,
   })
   if (!verdict.ok) return { ok: false, error: verdict.reason }
+
+  // Capacity: never exceed the role box's required headcount. Count current
+  // occupants of this exact slot EXCLUDING this employee (so re-assigning the
+  // same person, or swapping within the slot, is never blocked).
+  const capError = await slotCapacityError(
+    supabase, workplace.id, periodId, dayIndex, shiftTypeId, roleId, employeeId,
+  )
+  if (capError) return { ok: false, error: capError }
 
   const { error } = await supabase
     .from('assignments')

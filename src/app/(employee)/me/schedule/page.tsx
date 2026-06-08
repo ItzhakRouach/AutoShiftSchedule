@@ -1,7 +1,9 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getPublishedScheduleView } from '@/lib/schedule/published-view'
+import { countMyRoles } from '@/lib/stats/my-role-counts'
 import { WeekTable } from '@/app/(manager)/schedule/WeekTable'
+import { MyRoleCounts } from './MyRoleCounts'
 import { Card } from '@/components/ui/Card'
 
 export default async function MeSchedulePage() {
@@ -19,6 +21,7 @@ export default async function MeSchedulePage() {
   const view = await getPublishedScheduleView(supabase, employee.workplace_id)
   const weekLabel = view ? `${view.days[0]?.date} – ${view.days[6]?.date}` : ''
   const myNotes = (view?.dayNotes ?? []).filter((n) => n.employeeId === employee.id)
+  const myRoleCounts = view ? countMyRoles(view, employee.id) : { roles: [], total: 0 }
 
   // Layout mirrors the manager's `/schedule` page exactly so the WeekTable
   // renders at the same width on every breakpoint: outer `.schedule-main`
@@ -71,6 +74,8 @@ export default async function MeSchedulePage() {
             ))}
           </div>
         )}
+
+        {view && <MyRoleCounts roles={myRoleCounts.roles} total={myRoleCounts.total} />}
       </div>
 
       {view ? (

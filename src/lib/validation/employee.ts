@@ -47,6 +47,12 @@ export const employeeSchema = z.object({
     .array(z.string().uuid({ message: 'מזהה תפקיד לא תקין' }))
     .min(1, { message: 'יש לבחור לפחות תפקיד אחד' }),
 
+  // Subset of roleIds the employee is SENIOR (priority) for. Optional.
+  seniorRoleIds: z
+    .array(z.string().uuid({ message: 'מזהה תפקיד לא תקין' }))
+    .optional()
+    .default([]),
+
   // availability: null/empty = unrestricted; otherwise a list of (day, shift) pairs
   availability: z.array(availabilityItemSchema).optional().nullable(),
 })

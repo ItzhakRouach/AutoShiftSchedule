@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { signUp, type AuthState } from '../actions'
 import { Field } from '../_components/Field'
 import { Icon } from '@/components/ui/Icon'
+import { Spinner } from '@/components/ui/Spinner'
 
 const initialState: AuthState = {}
 
@@ -84,6 +85,10 @@ export default function SignUpPage() {
             disabled={pending}
             style={{
               marginTop: 4,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
               background: 'var(--accent)',
               color: 'var(--accent-ink)',
               border: 'none',
@@ -98,6 +103,7 @@ export default function SignUpPage() {
               boxShadow: '0 4px 14px rgba(52,87,240,0.3)',
             }}
           >
+            {pending && <Spinner size={16} />}
             {pending ? 'נרשם…' : 'הרשמה'}
           </button>
         </form>

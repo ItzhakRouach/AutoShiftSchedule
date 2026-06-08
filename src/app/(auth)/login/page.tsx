@@ -7,6 +7,7 @@ import { Suspense } from 'react'
 import { signIn, type AuthState } from '../actions'
 import { Field } from '../_components/Field'
 import { Icon } from '@/components/ui/Icon'
+import { Spinner } from '@/components/ui/Spinner'
 
 const initialState: AuthState = {}
 
@@ -132,6 +133,10 @@ function LoginForm() {
             disabled={pending}
             style={{
               marginTop: 4,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
               background: isManager ? 'var(--accent)' : '#13A98E',
               color: '#fff',
               border: 'none',
@@ -148,6 +153,7 @@ function LoginForm() {
                 : '0 4px 14px rgba(19,169,142,0.3)',
             }}
           >
+            {pending && <Spinner size={16} />}
             {pending ? 'מתחבר…' : 'התחברות'}
           </button>
         </form>

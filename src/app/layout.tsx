@@ -9,10 +9,28 @@ const assistant = Assistant({
   subsets: ["hebrew", "latin"],
 });
 
+const baseUrl =
+  process.env.NEXT_PUBLIC_BASE_URL ??
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    : "http://localhost:3000");
+
 export const metadata: Metadata = {
-  title: "מִשְׁמֶרֶת",
-  description: "שיבוץ משמרות אוטומטי לצוותים",
+  metadataBase: new URL(baseUrl),
+  title: "מִשְׁמֶרֶת — שיבוץ משמרות אוטומטי",
+  description: "שיבוץ משמרות אוטומטי לצוותים לפי בקשות, תפקידים וזמני מנוחה",
   manifest: "/manifest.webmanifest",
+  applicationName: "מִשְׁמֶרֶת",
+  // og:image is supplied automatically by src/app/opengraph-image.tsx so shared
+  // invite links render the app's own branded preview card (not a generic
+  // deployment-host preview).
+  openGraph: {
+    title: "מִשְׁמֶרֶת — שיבוץ משמרות אוטומטי",
+    description: "שיבוץ משמרות אוטומטי לצוותים לפי בקשות, תפקידים וזמני מנוחה",
+    siteName: "מִשְׁמֶרֶת",
+    locale: "he_IL",
+    type: "website",
+  },
 };
 
 export const viewport: Viewport = {

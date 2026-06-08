@@ -9,7 +9,7 @@
 // fully staffs any day that is feasible in isolation given prior commitments.
 import type { Assignment, DayMeta, Employee, EngineInput, ShiftKey, TwelveHourAssignment } from './types'
 import { isAssignable, type CheckContext } from './constraints'
-import { compareCandidates, type CandidateState } from './scoring'
+import { compareCandidates, isSeniorForRole, type CandidateState } from './scoring'
 import { maxMatch, type MatchSlot } from './matching'
 import { BASE_SHIFTS } from './types'
 
@@ -69,6 +69,7 @@ function candState(
   meta: DayMeta,
   st: FillState,
   openShifts: Set<ShiftKey>,
+  openRoleIds: string[],
 ): CandidateState {
   const req = reqOf(input, emp.id, meta.index)
   const requested = req.preferred.some((s) => openShifts.has(s))
@@ -79,6 +80,7 @@ function candState(
     current: st.committed[emp.id],
     requestsSatisfied: st.satisfied[emp.id],
     lotteryRank: st.lotteryRank[emp.id],
+    seniorForRole: openRoleIds.some((r) => isSeniorForRole(emp, r)),
   }
 }
 
@@ -90,12 +92,13 @@ export function orderedEmployees(
   slots: MatchSlot[],
 ): Employee[] {
   const openShifts = new Set<ShiftKey>(slots.map((s) => s.shift))
+  const openRoleIds = Array.from(new Set(slots.map((s) => s.roleId)))
   return input.employees
     .slice()
     .sort((a, b) =>
       compareCandidates(
-        candState(input, a, meta, st, openShifts),
-        candState(input, b, meta, st, openShifts),
+        candState(input, a, meta, st, openShifts, openRoleIds),
+        candState(input, b, meta, st, openShifts, openRoleIds),
       ),
     )
 }
@@ -116,6 +119,7 @@ function slotCandState(
     current: st.committed[e.id],
     requestsSatisfied: st.satisfied[e.id],
     lotteryRank: st.lotteryRank[e.id],
+    seniorForRole: isSeniorForRole(e, slot.roleId),
   }
 }
 

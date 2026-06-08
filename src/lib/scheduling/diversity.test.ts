@@ -5,8 +5,9 @@
 //   4. Coverage / determinism are preserved.
 import { describe, it, expect } from 'vitest'
 import { runFill, countFilled } from './fill'
-import { runDiversityPass } from './diversity'
+import { runDiversityPass, buildNightThresholds } from './diversity'
 import { satisfiedCount, typeSpread, diversityCost } from './index'
+import { restPenalty, nightOverage } from './fairness'
 import type { DayMeta } from './types'
 import {
   GUARD,
@@ -151,24 +152,56 @@ describe('diversity breaks single-type stranding', () => {
     return input({ employees, requirements: reqs, requests: buildRequests(employees), seed })
   }
 
-  it('swaps + 3-cycles strictly beat swaps alone on a stranding-prone week', () => {
-    let improvedSomewhere = false
+  // The pass is a deterministic local search. With rest-quality + night-cap now
+  // the dominant objective (avoiding 8-8-8 is the primary goal), the old "more
+  // move types ⇒ strictly lower type/co-worker cost" property no longer holds
+  // universally — a 3-cycle can land on a different local optimum. What MUST
+  // still hold: the pass never WORSENS its objective vs the pre-pass baseline,
+  // and coverage is byte-for-byte preserved for any move set.
+  it('never worsens the objective vs baseline and preserves coverage', () => {
     for (const [n, seed] of [[6, 1], [6, 10], [7, 3]] as const) {
       const inp = multiCoverWeek(n, seed)
       const metas: Record<number, DayMeta> = {}
       for (const d of inp.days) metas[d.index] = d
-      const swapOnly = runFill(inp, false, true)
-      runDiversityPass(inp, swapOnly, metas, 2)
-      const full = runFill(inp, false, true)
-      runDiversityPass(inp, full, metas, 3)
-      const cs = diversityCost(inp.employees, swapOnly.committed)
-      const cf = diversityCost(inp.employees, full.committed)
-      expect(cf).toBeLessThanOrEqual(cs)
-      // coverage identical regardless of move set
-      expect(countFilled(full)).toBe(countFilled(swapOnly))
-      if (cf < cs) improvedSomewhere = true
+      const opts = {
+        idealRestHours: inp.settings.idealRestHours,
+        nightThreshold: buildNightThresholds(inp),
+      }
+      for (const maxCycle of [2, 3] as const) {
+        const baseline = runFill(inp, false, true)
+        const baseCost = diversityCost(inp.employees, baseline.committed, opts)
+        const baseFilled = countFilled(baseline)
+        runDiversityPass(inp, baseline, metas, maxCycle)
+        expect(diversityCost(inp.employees, baseline.committed, opts)).toBeLessThanOrEqual(baseCost)
+        expect(countFilled(baseline)).toBe(baseFilled)
+      }
     }
-    expect(improvedSomewhere).toBe(true)
+  })
+})
+
+// ──────────────────── 3b. rest-quality + night-cap (Phase 6) ─────────────────
+describe('diversity improves rest quality and night-cap load', () => {
+  const sumRest = (inp: EngineInput, st: { committed: Record<string, Assignment[]> }) =>
+    idsOf(inp).reduce((s, id) => s + restPenalty(st.committed[id] ?? [], inp.settings.idealRestHours), 0)
+  const sumNightOver = (inp: EngineInput, st: { committed: Record<string, Assignment[]> }) =>
+    idsOf(inp).reduce((s, id) => s + nightOverage(st.committed[id] ?? [], 3), 0)
+
+  it('total rest penalty never increases vs the no-pass baseline', () => {
+    for (const [n, seed] of [[5, 11], [6, 1], [7, 3], [8, 21]] as const) {
+      const inp = guardWeek(n, seed)
+      const base = runFill(inp, false, true)
+      const div = runFill(inp)
+      expect(sumRest(inp, div)).toBeLessThanOrEqual(sumRest(inp, base))
+    }
+  })
+
+  it('total over-3-night load never increases vs the no-pass baseline', () => {
+    for (const [n, seed] of [[5, 11], [6, 1], [7, 3], [8, 21]] as const) {
+      const inp = guardWeek(n, seed)
+      const base = runFill(inp, false, true)
+      const div = runFill(inp)
+      expect(sumNightOver(inp, div)).toBeLessThanOrEqual(sumNightOver(inp, base))
+    }
   })
 })
 

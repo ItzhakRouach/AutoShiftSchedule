@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveWorkplace } from '@/lib/workplace/current'
+import { fetchSeniorRoleIds } from '@/lib/employees/roles'
 import { getLatestInvite } from './invite-actions'
 import { TeamClient } from './TeamClient'
 import { InvitePanel } from './InvitePanel'
@@ -71,6 +72,9 @@ export default async function TeamPage() {
         .in('employee_id', employeeIds)
     : { data: [] }
 
+  // Senior role IDs per employee (resilient to a pre-migration DB).
+  const seniorByEmployee = await fetchSeniorRoleIds(supabase, employeeIds)
+
   // Group availability by employee_id
   const availByEmployee: Record<string, AvailabilityItem[]> = {}
   for (const row of availRaw ?? []) {
@@ -102,6 +106,7 @@ export default async function TeamPage() {
       mustAccept: e.must_accept ?? false,
       status: e.status,
       roleIds: (e.employee_roles ?? []).map((er: { role_id: string }) => er.role_id),
+      seniorRoleIds: seniorByEmployee[e.id] ?? [],
       // null means no rows existed = unrestricted; [] means explicitly empty (shouldn't occur)
       availability: empAvail && empAvail.length > 0 ? empAvail : null,
     }

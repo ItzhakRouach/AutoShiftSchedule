@@ -29,6 +29,16 @@ export interface CandidateState {
   requestsSatisfied: number
   /** deterministic lottery rank (0 = drawn first); lower wins */
   lotteryRank: number
+  /** is this employee a SENIOR holder for the role(s) in play for this match?
+   *  Senior holders are favored for their role's shifts over regular holders
+   *  (soft — ranks below requests, above general fairness). Defaults false, so
+   *  with no seniority configured this key never separates candidates. */
+  seniorForRole?: boolean
+}
+
+/** True when the employee is a senior holder for the given role name. */
+export function isSeniorForRole(emp: Employee, roleId: string): boolean {
+  return emp.seniorRoleIds?.includes(roleId) ?? false
 }
 
 /**
@@ -102,6 +112,14 @@ export function compareCandidates(a: CandidateState, b: CandidateState): number 
     const bf = floorRank(b.requestsSatisfied)
     if (af !== bf) return af - bf
   }
+
+  // 4.5 senior-for-role preference: among candidates still tied (same request
+  // status/floor), a SENIOR holder of the role in play is favored over a regular
+  // holder, so seniors tend to receive that role's shifts first while regulars
+  // split the rest. Inert (no separation) when no seniority is configured.
+  const as = a.seniorForRole ? 0 : 1
+  const bs = b.seniorForRole ? 0 : 1
+  if (as !== bs) return as - bs
 
   // 5. fairness: deterministic fairnessScore (priorExtras dominant + even load
   // + night/weekend fairness + shift-type-variety nudge). Lower = higher priority.

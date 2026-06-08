@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { validateAssignmentCore, type ValidateCoreArgs } from './validate-edit-core'
+import { validateAssignmentCore, slotAtCapacity, type ValidateCoreArgs } from './validate-edit-core'
 import type { Employee, DayMeta, Settings, DayRequest } from '@/lib/scheduling/types'
 
 const emp: Employee = {
@@ -155,5 +155,25 @@ describe('validateAssignmentCore', () => {
       args({ meta: sunMeta, shiftKey: 'noon', priorTail: [7] }),
     )
     expect(v.ok).toBe(true)
+  })
+})
+
+describe('slotAtCapacity', () => {
+  it('blocks adding a 2nd person to a 1-person role box', () => {
+    expect(slotAtCapacity(1, 1)).toBe(true)
+  })
+
+  it('allows adding when below the required headcount', () => {
+    expect(slotAtCapacity(0, 1)).toBe(false)
+    expect(slotAtCapacity(1, 2)).toBe(false)
+  })
+
+  it('treats over-filled and exactly-full slots as at capacity', () => {
+    expect(slotAtCapacity(2, 2)).toBe(true)
+    expect(slotAtCapacity(3, 2)).toBe(true)
+  })
+
+  it('admits no one to a slot with zero requirement', () => {
+    expect(slotAtCapacity(0, 0)).toBe(true)
   })
 })

@@ -7,6 +7,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { Btn } from '@/components/ui/Btn'
 import { SHIFT_META, FALLBACK_12H_ORDER, type ShiftId } from '@/lib/domain/constants'
 import { candidateStatus } from '@/lib/schedule/candidate-status'
+import { slotAtCapacity } from '@/lib/schedule/validate-edit-core'
 import type { EditMeta } from '@/lib/schedule/edit-meta'
 import type { ScheduleView } from '@/lib/schedule/view-data'
 import { assignSlot, unassignSlot, assignTwelveHour } from './edit-actions'
@@ -38,6 +39,11 @@ export function SwapEditor({ slot, onClose, view, meta }: Props) {
 
   if (!slot) return null
   const empById = new Map(view.employees.map((e) => [e.id, e]))
+
+  // Capacity: a role box may not exceed its required headcount. Disable adding
+  // base-shift candidates once full (removing/swapping stays available).
+  const requiredCount = view.requirements[slot.day]?.[slot.shiftKey]?.[slot.roleId] ?? 0
+  const atCapacity = slotAtCapacity(slot.assignedIds.length, requiredCount)
 
   function run(fn: () => Promise<{ ok: boolean; error?: string; warning?: string }>) {
     setMsg(null)
@@ -85,6 +91,11 @@ export function SwapEditor({ slot, onClose, view, meta }: Props) {
       )}
 
       <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-2)', margin: '6px 0 8px' }}>עובדים זמינים</div>
+      {atCapacity && (
+        <div style={{ padding: '9px 12px', borderRadius: 12, background: 'var(--accent-soft)', color: 'var(--text-2)', fontSize: 12.5, marginBottom: 8 }}>
+          המשמרת מאוישת במלואה לתפקיד זה. הסירו עובד כדי להחליף.
+        </div>
+      )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: '38vh', overflowY: 'auto' }}>
         {view.employees.map((e) => {
           const em = meta.employees[e.id]
@@ -98,23 +109,26 @@ export function SwapEditor({ slot, onClose, view, meta }: Props) {
             requestedPreferred: em.preferred[slot.day],
             dayMeta: slot.dayMeta,
           })
+          const blocked = cand.disabled || atCapacity
           return (
             <button
               key={e.id}
-              disabled={cand.disabled || busy}
+              disabled={blocked || busy}
               onClick={() => run(() => assignSlot(view.periodId, slot.day, slot.shiftTypeId, slot.roleId, e.id))}
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
                 padding: '8px 11px', borderRadius: 12, border: '1px solid var(--border)',
-                background: 'var(--surface)', cursor: cand.disabled ? 'default' : 'pointer',
-                opacity: cand.disabled ? 0.5 : 1, fontFamily: 'var(--font)',
+                background: 'var(--surface)', cursor: blocked ? 'default' : 'pointer',
+                opacity: blocked ? 0.5 : 1, fontFamily: 'var(--font)',
               }}
             >
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                 <Avatar name={e.name} color={e.color} size={26} />
                 <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{e.name}</span>
               </span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: cand.disabled ? '#EB6A4E' : 'var(--accent)' }}>{cand.label}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: blocked ? '#EB6A4E' : 'var(--accent)' }}>
+                {cand.disabled ? cand.label : atCapacity ? 'מלא' : cand.label}
+              </span>
             </button>
           )
         })}

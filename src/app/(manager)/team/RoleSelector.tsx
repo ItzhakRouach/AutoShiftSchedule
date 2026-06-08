@@ -7,7 +7,9 @@ import type { RoleOption } from './EmployeeEditor'
 interface RoleSelectorProps {
   roles: RoleOption[]
   selectedRoleIds: Set<string>
+  seniorRoleIds: Set<string>
   onToggle: (roleId: string) => void
+  onToggleSenior: (roleId: string) => void
   error?: string
 }
 
@@ -17,7 +19,7 @@ const fieldErrorStyle: React.CSSProperties = {
   marginTop: 4,
 }
 
-export function RoleSelector({ roles, selectedRoleIds, onToggle, error }: RoleSelectorProps) {
+export function RoleSelector({ roles, selectedRoleIds, seniorRoleIds, onToggle, onToggleSenior, error }: RoleSelectorProps) {
   // Role-rank hierarchy: a higher-ranked role auto-qualifies the employee for all
   // lower-ranked roles. Compute the max rank among EXPLICITLY selected roles; any
   // role at or below it that isn't explicitly selected is "auto-covered".
@@ -37,41 +39,61 @@ export function RoleSelector({ roles, selectedRoleIds, onToggle, error }: RoleSe
           const explicit = selectedRoleIds.has(role.id)
           const autoCovered = !explicit && role.rank < maxSelectedRank
           const on = explicit || autoCovered
+          const isSenior = seniorRoleIds.has(role.id)
           return (
-            <div
-              key={role.id}
-              onClick={() => { if (!autoCovered) onToggle(role.id) }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                padding: '12px 14px',
-                borderRadius: 'var(--r-md)',
-                cursor: autoCovered ? 'default' : 'pointer',
-                opacity: autoCovered ? 0.75 : 1,
-                border: `1.5px solid ${on ? role.color : 'var(--border)'}`,
-                background: on ? `${role.color}22` : 'var(--surface)',
-                transition: 'all .12s ease',
-              }}
-            >
-              <span
+            <div key={role.id} style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+              <div
+                onClick={() => { if (!autoCovered) onToggle(role.id) }}
                 style={{
-                  width: 10,
-                  height: 10,
-                  borderRadius: 99,
-                  background: role.color,
-                  flexShrink: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '12px 14px',
+                  borderRadius: 'var(--r-md)',
+                  cursor: autoCovered ? 'default' : 'pointer',
+                  opacity: autoCovered ? 0.75 : 1,
+                  border: `1.5px solid ${on ? role.color : 'var(--border)'}`,
+                  background: on ? `${role.color}22` : 'var(--surface)',
+                  transition: 'all .12s ease',
                 }}
-              />
-              <span style={{ flex: 1, fontSize: 15.5, fontWeight: 700, color: 'var(--text)' }}>
-                {role.name}
-                {autoCovered && (
-                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginInlineStart: 8 }}>
-                    נכלל אוטומטית
+              >
+                <span
+                  style={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: 99,
+                    background: role.color,
+                    flexShrink: 0,
+                  }}
+                />
+                <span style={{ flex: 1, fontSize: 15.5, fontWeight: 700, color: 'var(--text)' }}>
+                  {role.name}
+                  {autoCovered && (
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginInlineStart: 8 }}>
+                      נכלל אוטומטית
+                    </span>
+                  )}
+                </span>
+                <Toggle checked={on} disabled={autoCovered} onChange={() => onToggle(role.id)} />
+              </div>
+              {explicit && (
+                <div
+                  onClick={() => onToggleSenior(role.id)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '8px 14px 8px 24px',
+                    marginInlineStart: 22,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--text-2)' }}>
+                    בכיר בתפקיד (עדיפות בשיבוץ)
                   </span>
-                )}
-              </span>
-              <Toggle checked={on} disabled={autoCovered} onChange={() => onToggle(role.id)} />
+                  <Toggle checked={isSenior} onChange={() => onToggleSenior(role.id)} />
+                </div>
+              )}
             </div>
           )
         })}
@@ -86,6 +108,10 @@ export function RoleSelector({ roles, selectedRoleIds, onToggle, error }: RoleSe
           The adapter's rank-expansion is the source of truth for eligibility. */}
       {[...selectedRoleIds].map((rid) => (
         <input key={rid} type="hidden" name="roleIds" value={rid} />
+      ))}
+      {/* Senior flags — only for currently-selected roles. */}
+      {[...seniorRoleIds].filter((rid) => selectedRoleIds.has(rid)).map((rid) => (
+        <input key={`s-${rid}`} type="hidden" name="seniorRoleIds" value={rid} />
       ))}
     </div>
   )

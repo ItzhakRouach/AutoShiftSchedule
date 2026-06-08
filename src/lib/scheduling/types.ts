@@ -11,6 +11,14 @@ export type EmploymentType = 'full' | 'part' | 'student'
 export interface Employee {
   id: string
   roleIds: string[]
+  /**
+   * Subset of `roleIds` for which this employee is a SENIOR (priority) holder.
+   * Within a role, senior holders are favored for that role's shifts over regular
+   * holders (soft objective only — see scoring.compareCandidates and the role
+   * balance term in diversity.ts). Empty/undefined ⇒ regular for every role, so
+   * the role splits evenly across all holders. Never overrides hard constraints.
+   */
+  seniorRoleIds?: string[]
   employmentType: EmploymentType
   minShifts: number
   maxShifts: number | null

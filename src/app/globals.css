@@ -60,3 +60,23 @@ body {
 /* Top-nav menu rows: gentle hover; logout turns red. */
 .nav-item:hover { background: var(--surface-2); }
 .nav-logout:hover { color: var(--danger) !important; background: var(--danger-soft) !important; }
+
+/* Spinner: a rotating ring used in buttons and route loading states. */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+  display: inline-block;
+  border-radius: 50%;
+  border-style: solid;
+  border-color: currentColor;
+  border-inline-end-color: transparent;
+  animation: spin 0.6s linear infinite;
+  flex-shrink: 0;
+}
+
+/* Skeleton shimmer for route-level loading.tsx placeholders. */
+@keyframes skeleton-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+.skeleton {
+  background: var(--surface-2);
+  border-radius: var(--r-md);
+  animation: skeleton-pulse 1.2s ease-in-out infinite;
+}

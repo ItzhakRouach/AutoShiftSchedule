@@ -21,18 +21,74 @@
 // CO-WORKER definition: two employees "worked together" iff assigned to the SAME
 // day AND SAME shift. The repetition penalty is the number of EXTRA shared
 // shifts beyond the first for each pair (Σ over pairs of max(0, sharedCount−1)).
-import type { Assignment, DayMeta, Employee, EngineInput } from './types'
+import type { Assignment, DayMeta, Employee, EngineInput, ShiftKey } from './types'
 import type { FillState } from './dayfill'
-import { typeSpread, unpopularLoad } from './fairness'
+import { typeSpread, unpopularLoad, restPenalty, nightOverage } from './fairness'
 import { plain, moveLegal, applyMove, projectedCommitted, type SlotRef, type Move } from './moves'
 
 const MAX_PASSES = 24
 
+/** Default night soft-cap: no worker should pull more than 3 nights/week. */
+export const DEFAULT_NIGHT_CAP = 3
+
+// Objective tiers (higher = stronger), each ~1000× the next so they act
+// lexicographically at realistic team scale (per-tier magnitudes < ~1000):
+//   1. rest/night  — avoid 8-8-8 / 16h-first + ≤3 nights (top priority)
+//   2. role split  — even distribution of each role across its holders
+//   3. diversity    — type-variety + co-worker rotation (spread + repeat)
+//   4. unpopSpread  — night/weekend balance tiebreaker
+const W_REST_NIGHT = 1_000_000_000
+const W_ROLE_SPLIT = 1_000_000
+
+/** Per-role even-split penalty: Σ over roles (with ≥2 holders) of the spread
+ *  (max−min) of that role's shift counts across its holders. 0 ⇒ each role is
+ *  split as evenly as possible among the people who hold it. Holders with 0 of
+ *  the role count as 0. Single-role weeks are unaffected by swaps (role counts
+ *  can't change), so this only ever helps multi-role distribution. Pure. */
+export function roleSplitCost(
+  employees: Employee[],
+  committed: Record<string, Assignment[]>,
+): number {
+  const holders = new Map<string, string[]>()
+  for (const e of employees) {
+    for (const r of e.roleIds) {
+      const list = holders.get(r) ?? []
+      list.push(e.id)
+      holders.set(r, list)
+    }
+  }
+  let total = 0
+  for (const [role, ids] of holders) {
+    if (ids.length < 2) continue
+    const counts = ids.map((id) => (committed[id] ?? []).filter((a) => a.roleId === role).length)
+    total += Math.max(...counts) - Math.min(...counts)
+  }
+  return total
+}
+
+/**
+ * Soft optimisation knobs for the post-pass. When omitted (the legacy 2-arg
+ * call shape used by older tests), the rest/night terms contribute ZERO — the
+ * cost is byte-for-byte the original (spread+repeat)*1000 + unpopSpread. The
+ * production pass always supplies them (see runDiversityPass).
+ */
+export interface DiversityOpts {
+  /** Ideal rest hours (16). When set, tight turnarounds are penalised. */
+  idealRestHours?: number
+  /** Per-employee night soft-cap; missing entries fall back to DEFAULT_NIGHT_CAP.
+   *  Use Infinity to exempt (night-only workers / requested-beyond-cap). */
+  nightThreshold?: Record<string, number>
+  /** When true, add the per-role even-split term (roleSplitCost). */
+  balanceRoles?: boolean
+}
+
 /** Global monotony objective: Σ per-employee type-spread (dim 2) + co-worker
- *  repetition penalty (dim 4). Lower = more diverse. Pure. */
+ *  repetition penalty (dim 4), plus opt-in rest-quality + night-cap penalties
+ *  (top tier). Lower = better. Pure. */
 export function diversityCost(
   employees: Employee[],
   committed: Record<string, Assignment[]>,
+  opts: DiversityOpts = {},
 ): number {
   let spread = 0
   for (const e of employees) spread += typeSpread(committed[e.id] ?? [])
@@ -62,7 +118,64 @@ export function diversityCost(
   // Weighted below 1 so it only separates moves that tie on the primary terms.
   const loads = employees.map((e) => unpopularLoad(committed[e.id] ?? []))
   const unpopSpread = loads.length ? Math.max(...loads) - Math.min(...loads) : 0
-  return (spread + repeat) * 1000 + unpopSpread
+
+  // Opt-in top tier: rest quality (avoid 8-8-8 / prefer 16h) + night soft-cap.
+  let restNight = 0
+  if (opts.idealRestHours != null) {
+    for (const e of employees) restNight += restPenalty(committed[e.id] ?? [], opts.idealRestHours)
+  }
+  if (opts.nightThreshold != null) {
+    for (const e of employees) {
+      const cap = opts.nightThreshold[e.id] ?? DEFAULT_NIGHT_CAP
+      restNight += nightOverage(committed[e.id] ?? [], cap)
+    }
+  }
+
+  const roleSplit = opts.balanceRoles ? roleSplitCost(employees, committed) : 0
+
+  return (
+    restNight * W_REST_NIGHT +
+    roleSplit * W_ROLE_SPLIT +
+    (spread + repeat) * 1000 +
+    unpopSpread
+  )
+}
+
+/** True when an employee can ONLY ever work night shifts (availability map
+ *  present and every listed day allows night and nothing else). Such workers are
+ *  exempt from the night cap — they have no other option. */
+function nightOnlyAvailable(emp: Employee): boolean {
+  const avail = emp.availability
+  if (!avail) return false
+  const days = Object.keys(avail)
+  if (days.length === 0) return false
+  for (const d of days) {
+    const allowed = avail[Number(d)] ?? []
+    if (allowed.length === 0) continue
+    if (allowed.some((s) => s !== 'night')) return false
+  }
+  return true
+}
+
+/** Per-employee night soft-cap: Infinity (exempt) for night-only workers, else
+ *  max(DEFAULT_NIGHT_CAP, nights they explicitly requested) — a worker who asked
+ *  for 4 nights may have 4 without penalty. */
+export function buildNightThresholds(input: EngineInput): Record<string, number> {
+  const map: Record<string, number> = {}
+  for (const e of input.employees) {
+    if (nightOnlyAvailable(e)) {
+      map[e.id] = Infinity
+      continue
+    }
+    const reqs = input.requests[e.id] ?? {}
+    let requestedNights = 0
+    for (const day of Object.keys(reqs)) {
+      const pref = reqs[Number(day)]?.preferred ?? ([] as ShiftKey[])
+      if (pref.includes('night')) requestedNights++
+    }
+    map[e.id] = Math.max(DEFAULT_NIGHT_CAP, requestedNights)
+  }
+  return map
 }
 
 /** All plain-8h SlotRefs in CANONICAL order: employee id, then day, shift, role.
@@ -108,10 +221,11 @@ function scoreMove(
   st: FillState,
   move: Move,
   before: number,
+  opts: DiversityOpts,
 ): number | null {
   if (!moveShape(move.legs)) return null
   if (!moveLegal(input, metas, st, move)) return null
-  const after = diversityCost(input.employees, projectedCommitted(st, move))
+  const after = diversityCost(input.employees, projectedCommitted(st, move), opts)
   return after < before ? after : null
 }
 
@@ -124,10 +238,11 @@ function bestMove(
   refs: SlotRef[],
   before: number,
   maxCycle: number,
+  opts: DiversityOpts,
 ): Move | null {
   const acc: { move: Move; cost: number }[] = []
   const consider = (move: Move): void => {
-    const cost = scoreMove(input, metas, st, move, before)
+    const cost = scoreMove(input, metas, st, move, before, opts)
     if (cost === null) return
     const top = acc[0]
     if (!top || cost < top.cost) acc[0] = { move, cost }
@@ -164,10 +279,18 @@ export function runDiversityPass(
   metas: Record<number, DayMeta>,
   maxCycle = 3,
 ): void {
+  // Production opts: enable the rest-quality (16h-first / anti-8-8-8) and night
+  // soft-cap terms so coverage-preserving swaps also fix tight turnarounds and
+  // over-cap night loads wherever a legal swap allows.
+  const opts: DiversityOpts = {
+    idealRestHours: input.settings.idealRestHours,
+    nightThreshold: buildNightThresholds(input),
+    balanceRoles: true,
+  }
   for (let pass = 0; pass < MAX_PASSES; pass++) {
-    const before = diversityCost(input.employees, st.committed)
+    const before = diversityCost(input.employees, st.committed, opts)
     const refs = canonicalSlots(st)
-    const move = bestMove(input, metas, st, refs, before, maxCycle)
+    const move = bestMove(input, metas, st, refs, before, maxCycle, opts)
     if (!move) break
     applyMove(st, move)
   }

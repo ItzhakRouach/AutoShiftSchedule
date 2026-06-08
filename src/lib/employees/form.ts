@@ -30,6 +30,11 @@ export function parseFormData(formData: FormData) {
       ? (roleIdsRaw[0] as string).split(',').map((s) => s.trim()).filter(Boolean)
       : (roleIdsRaw as string[]).filter(Boolean)
 
+  // seniorRoleIds: roles this employee is marked SENIOR for (subset of roleIds).
+  const seniorRoleIds = (formData.getAll('seniorRoleIds') as string[])
+    .filter(Boolean)
+    .filter((id) => roleIds.includes(id))
+
   // availability: JSON-encoded array or null
   const customAvailability = formData.get('customAvailability') === 'true'
   let availability: AvailabilityItem[] | null = null
@@ -44,7 +49,7 @@ export function parseFormData(formData: FormData) {
 
   return {
     name, phone, minShifts, maxShifts, employmentType,
-    observesShabbat, observesHolidays, mustAccept, roleIds, availability,
+    observesShabbat, observesHolidays, mustAccept, roleIds, seniorRoleIds, availability,
     customAvailability,
   }
 }

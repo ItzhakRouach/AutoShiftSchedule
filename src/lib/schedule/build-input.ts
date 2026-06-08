@@ -17,6 +17,28 @@ export interface PeriodInfo {
   status: string
 }
 
+/**
+ * Fetch employee↔role links WITH per-role seniority. `is_senior` is an additive
+ * column (migration 20260608000002); if it isn't present yet (code deployed
+ * ahead of the migration, or an older DB), fall back to the seniority-free
+ * select so scheduling keeps working — everyone is treated as a regular holder.
+ */
+async function fetchEmployeeRoles(
+  supabase: SupabaseClient,
+  employeeIds: string[],
+): Promise<{ data: { employee_id: string; role_id: string; is_senior?: boolean }[] | null }> {
+  const withSenior = await supabase
+    .from('employee_roles')
+    .select('employee_id, role_id, is_senior')
+    .in('employee_id', employeeIds)
+  if (!withSenior.error) return { data: withSenior.data }
+  const base = await supabase
+    .from('employee_roles')
+    .select('employee_id, role_id')
+    .in('employee_id', employeeIds)
+  return { data: base.data }
+}
+
 export interface BuiltInput {
   input: EngineInput
   keyToShiftTypeId: Record<string, string>
@@ -170,7 +192,7 @@ export async function buildEngineInput(
   ] = await Promise.all([
     employeeIds.length > 0
       ? Promise.all([
-          supabase.from('employee_roles').select('employee_id, role_id').in('employee_id', employeeIds),
+          fetchEmployeeRoles(supabase, employeeIds),
           supabase
             .from('employee_availability')
             .select('employee_id, day_of_week, shift_type_id')

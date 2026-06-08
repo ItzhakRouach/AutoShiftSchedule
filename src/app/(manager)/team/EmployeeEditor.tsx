@@ -30,6 +30,7 @@ export interface EmployeeData {
   observesHolidays: boolean
   mustAccept: boolean
   roleIds: string[]
+  seniorRoleIds?: string[]
   status: string
   availability: AvailabilityItem[] | null
 }
@@ -79,6 +80,7 @@ export function EmployeeEditor({ roles, shiftTypes, employee, onSuccess }: Emplo
   )
   const [mustAccept, setMustAccept] = useState(employee?.mustAccept ?? false)
   const [selectedRoleIds, setSelectedRoleIds] = useState<Set<string>>(new Set(employee?.roleIds ?? []))
+  const [seniorRoleIds, setSeniorRoleIds] = useState<Set<string>>(new Set(employee?.seniorRoleIds ?? []))
   const [availability, setAvailability] = useState<AvailabilityItem[] | null>(employee?.availability ?? null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
@@ -90,6 +92,22 @@ export function EmployeeEditor({ roles, shiftTypes, employee, onSuccess }: Emplo
 
   function toggleRole(roleId: string) {
     setSelectedRoleIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(roleId)) next.delete(roleId)
+      else next.add(roleId)
+      return next
+    })
+    // Dropping a role also drops its senior flag.
+    setSeniorRoleIds((prev) => {
+      if (!prev.has(roleId)) return prev
+      const next = new Set(prev)
+      next.delete(roleId)
+      return next
+    })
+  }
+
+  function toggleSenior(roleId: string) {
+    setSeniorRoleIds((prev) => {
       const next = new Set(prev)
       if (next.has(roleId)) next.delete(roleId)
       else next.add(roleId)
@@ -132,7 +150,9 @@ export function EmployeeEditor({ roles, shiftTypes, employee, onSuccess }: Emplo
       <RoleSelector
         roles={roles}
         selectedRoleIds={selectedRoleIds}
+        seniorRoleIds={seniorRoleIds}
         onToggle={toggleRole}
+        onToggleSenior={toggleSenior}
         error={state.fieldErrors?.roleIds}
       />
 

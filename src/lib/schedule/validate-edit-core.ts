@@ -35,6 +35,17 @@ export interface CommittedSlot {
 // Re-export for consumers that imported shiftInterval from here directly.
 export { shiftInterval } from '@/lib/schedule/rest-util'
 
+/**
+ * True when a (day × shift × role) slot already holds its full required
+ * headcount, so no further employee may be added. Prevents over-filling a role
+ * box — e.g. placing 2 people where the requirement is 1. `currentCount` should
+ * EXCLUDE the employee being (re)assigned, so swapping a person within the same
+ * slot is never blocked. A slot with `requiredCount` 0 admits no one.
+ */
+export function slotAtCapacity(currentCount: number, requiredCount: number): boolean {
+  return currentCount >= requiredCount
+}
+
 export interface ValidateCoreArgs {
   emp: Employee
   meta: DayMeta
