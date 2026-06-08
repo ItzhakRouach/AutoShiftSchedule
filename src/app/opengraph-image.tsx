@@ -71,8 +71,11 @@ export default async function OpengraphImage() {
             <path d="M9 12l2 2 4-4" stroke="#fff" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </div>
-        <div style={{ fontSize: 96, fontWeight: 800, color: '#fff', letterSpacing: '-2px', direction: 'rtl' }}>
-          מִשְׁמֶרֶת
+        {/* Niqqud is dropped here on purpose: Satori renders Hebrew combining
+            marks as detached glyphs, so the pointed form looks broken. Plain
+            "משמרת" is the same brand word and renders cleanly in correct RTL. */}
+        <div style={{ fontSize: 100, fontWeight: 800, color: '#fff', letterSpacing: '-2px', direction: 'rtl' }}>
+          משמרת
         </div>
         <div style={{ fontSize: 40, fontWeight: 500, color: 'rgba(255,255,255,0.9)', direction: 'rtl' }}>
           שיבוץ משמרות אוטומטי לצוותים
