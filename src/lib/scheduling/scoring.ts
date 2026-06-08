@@ -69,11 +69,32 @@ export function isSeniorForRole(emp: Employee, roleId: string): boolean {
  * are distributed fairly across ALL employees via fairnessScore — no tier
  * preference between full/part/student for extras.
  */
-export function compareCandidates(a: CandidateState, b: CandidateState): number {
+export function compareCandidates(
+  a: CandidateState,
+  b: CandidateState,
+  requestFirst = false,
+): number {
   // 1. mustAccept requested wins outright.
   const am = a.mustAcceptRequested ? 0 : 1
   const bm = b.mustAcceptRequested ? 0 : 1
   if (am !== bm) return am - bm
+
+  // HYBRID request priority (used ONLY by the request-reservation pre-pass):
+  // a requested shift outranks reaching ANOTHER worker's minimum, so explicit
+  // requests are honored. The general fill keeps the default order (reach-min
+  // first), and the reservation only grabs a slot when no OTHER requester
+  // outranks — and the later reach-min/general fill still pursues minimums on
+  // the remaining slots, so a minimum only yields when a request truly contends.
+  if (requestFirst) {
+    const ar0 = a.requested ? 0 : 1
+    const br0 = b.requested ? 0 : 1
+    if (ar0 !== br0) return ar0 - br0
+    if (a.requested && b.requested) {
+      const af = floorRank(a.requestsSatisfied)
+      const bf = floorRank(b.requestsSatisfied)
+      if (af !== bf) return af - bf
+    }
+  }
 
   // 2. reach-minimum. below-min ranks above at-min (bucket). Among below-min ONLY,
   // sub-order by: (2a) higher carry-over priorDeficit first — cross-week fairness,

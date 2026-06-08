@@ -135,12 +135,13 @@ export function isTopPrecedenceFor(
   st: FillState,
   e: Employee,
   slot: MatchSlot,
+  requestFirst = false,
 ): boolean {
   const eCs = slotCandState(input, e, meta, st, slot)
   for (const o of input.employees) {
     if (o.id === e.id) continue
     if (!isAssignable(ctxFor(input, o, meta, slot.shift, slot.roleId, st))) continue
-    if (compareCandidates(eCs, slotCandState(input, o, meta, st, slot)) > 0) return false
+    if (compareCandidates(eCs, slotCandState(input, o, meta, st, slot), requestFirst) > 0) return false
   }
   return true
 }

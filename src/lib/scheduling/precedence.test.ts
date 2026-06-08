@@ -5,9 +5,11 @@ import { generateSchedule } from './engine'
 import { GUARD, buildRequests, emp, input, mergeReqs, reqFor } from './fixtures'
 
 describe('FIX A — full-time-first-until-min precedence', () => {
-  // (a) full-time BELOW min, did NOT request, vs part-time who DID request,
-  // 1 contended slot → full-time wins (tier still applies while below min).
-  it('below-min full-timer beats a part-time requester for a scarce slot', () => {
+  // (a) HYBRID policy: a part-time REQUESTER beats a below-min full-time
+  // NON-requester for the contended slot — an explicit request outranks giving
+  // another worker their minimum. (The full-timer pursues their minimum on the
+  // remaining slots; here there is only one, so the request wins it.)
+  it('a requester beats a below-min non-requester for a scarce slot', () => {
     const ft = emp('ft', { employmentType: 'full', minShifts: 2 })
     const pt = emp('pt', { employmentType: 'part', minShifts: 0 })
     const requests = buildRequests([ft, pt], (id, d) =>
@@ -16,7 +18,7 @@ describe('FIX A — full-time-first-until-min precedence', () => {
     const res = generateSchedule(
       input({ employees: [ft, pt], requirements: reqFor([0], 'morning', GUARD, 1), requests, seed: 1 }),
     )
-    expect(res.grid[0].morning[GUARD]).toEqual(['ft'])
+    expect(res.grid[0].morning[GUARD]).toEqual(['pt'])
   })
 
   // (b) full-time already AT/above min, did NOT request, vs part-time who DID

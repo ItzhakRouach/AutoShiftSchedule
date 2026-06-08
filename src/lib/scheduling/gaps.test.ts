@@ -76,7 +76,7 @@ describe('FIX 3: feasibility via max-matching', () => {
 
 // FIX A — canonical precedence: full-time first ONLY while below their minimum.
 describe('FIX A: candidate precedence', () => {
-  it('part-time REQUESTER loses a scarce slot to a BELOW-MIN full-time NON-requester', () => {
+  it('part-time REQUESTER beats a below-min full-time NON-requester (HYBRID: requests win)', () => {
     const partReq = emp('part', { employmentType: 'part' })
     const fullNon = emp('full', { employmentType: 'full', minShifts: 1 })
     const requests = buildRequests([partReq, fullNon], (id, d) =>
@@ -85,7 +85,8 @@ describe('FIX A: candidate precedence', () => {
     const res = generateSchedule(
       input({ employees: [partReq, fullNon], requirements: reqFor([0], 'morning', GUARD, 1), requests, seed: 1 }),
     )
-    expect(res.grid[0].morning[GUARD]).toEqual(['full'])
+    // An explicit request now outranks giving the full-timer their minimum.
+    expect(res.grid[0].morning[GUARD]).toEqual(['part'])
   })
 
   it('two full-timers tie → the requester beats the non-requester', () => {

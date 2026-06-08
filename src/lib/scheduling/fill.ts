@@ -33,17 +33,19 @@ function buildLotteryRanks(input: EngineInput): Record<string, number> {
 }
 
 /**
- * Reservation pre-pass (FIX 5): per-day matching rounds restricted to each
- * employee's REQUESTED slots, capped at a weekly budget. A requested slot is
- * reserved only if the employee is the top-precedence candidate for it, so the
- * canonical FIX-A ordering still governs contended slots.
+ * Request-honoring pre-pass (HYBRID policy). Reserves EVERY requested shift a
+ * worker can legally take (one per day; rest / max / role / off all enforced by
+ * isAssignable), using request-first precedence so an explicit request outranks
+ * giving ANOTHER worker their minimum. A slot is reserved only when no OTHER
+ * REQUESTER of that slot outranks this worker, so request-vs-request contention
+ * is still resolved fairly. Minimums are pursued afterward (carry-over + general
+ * fill) on the remaining slots, so a minimum only yields where a request truly
+ * needs the slot.
  */
-function reservationRound(
+function honorRequestsRound(
   input: EngineInput,
   st: FillState,
   metas: Record<number, DayMeta>,
-  budget: number,
-  onlyIfZero: boolean,
 ): void {
   for (const d of input.days) {
     const meta = metas[d.index]
@@ -51,13 +53,9 @@ function reservationRound(
       input,
       meta,
       st,
-      (e) => {
-        const have = st.satisfied[e.id]
-        if (onlyIfZero && have > 0) return 0
-        return have < budget ? 1 : 0
-      },
+      () => 1, // one shift/day; weekly accrual happens across days
       (e, slot) =>
-        requestsSlot(input, e, slot) && isTopPrecedenceFor(input, meta, st, e, slot),
+        requestsSlot(input, e, slot) && isTopPrecedenceFor(input, meta, st, e, slot, true),
     )
   }
 }
@@ -149,9 +147,9 @@ export function runFill(input: EngineInput, skipTwelve = false, skipDiversity = 
   // MUST-ACCEPT FIRST: honor every feasible requested shift of must-accept
   // employees before any other reservation, so their requests win all contention.
   mustAcceptRound(input, st, metas)
-  // FIX 5: reserve up to 2 requested slots each, then ensure >=1 for anyone at 0.
-  reservationRound(input, st, metas, 2, false)
-  reservationRound(input, st, metas, 1, true)
+  // HYBRID: honor every feasible requested shift (request-first precedence),
+  // resolving only request-vs-request contention; minimums are pursued next.
+  honorRequestsRound(input, st, metas)
   // CROSS-WEEK FAIRNESS: reserve toward minShifts for carry-over (under-served
   // last published week) employees, before general fill. Top-precedence-gated &
   // open-slot-only ⇒ coverage-preserving; off-requests remain hard.
