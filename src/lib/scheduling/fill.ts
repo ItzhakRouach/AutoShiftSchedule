@@ -7,7 +7,8 @@ import { lotteryRank } from './lottery'
 import { emptyGrid } from './grid'
 import { matchDay, isTopPrecedenceFor, type FillState } from './dayfill'
 import { runTwelveFill } from './twelve-fill'
-import { runDiversityPass } from './diversity'
+import { runDiversityPass, buildNightThresholds } from './diversity'
+import { runNightUnloadPass } from './night-unload'
 import { satisfiedCount as recountSatisfied } from './request-gate'
 
 function reqOf(input: EngineInput, empId: string, day: number) {
@@ -156,6 +157,13 @@ export function runFill(input: EngineInput, skipTwelve = false, skipDiversity = 
   carryOverRound(input, st, metas)
   // FIX 2: general max-matching fill of all remaining required slots.
   generalFill(input, st, metas)
+  // NIGHT CAP: same-day swaps pull anyone over their night cap (≤3, unless
+  // night/evening-only or they requested the nights) back down. Coverage- and
+  // request-preserving. Runs before diversity so the type/co-worker pass then
+  // re-optimises around the final night distribution.
+  if (!skipDiversity) {
+    runNightUnloadPass(input, st, metas, buildNightThresholds(input))
+  }
   // FAIRNESS dims 2 & 4: coverage-preserving diversity swaps (shift-type variety
   // + co-worker rotation). Swaps only — coverage & per-employee load unchanged.
   // `skipDiversity` (test-only) lets suites measure the pre-pass baseline.
