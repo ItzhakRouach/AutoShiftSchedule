@@ -13,10 +13,13 @@ export async function unpublishPeriod(
   admin: SupabaseClient,
   workplaceId: string,
   periodId: string,
+  /** Status to restore. Callers pass the deadline-appropriate value
+   *  ('collecting' before the deadline, 'locked' after). Defaults to 'locked'. */
+  nextStatus: 'collecting' | 'locked' = 'locked',
 ): Promise<{ didUnpublish: boolean }> {
   const { data: updated, error } = await supabase
     .from('schedule_periods')
-    .update({ status: 'locked' })
+    .update({ status: nextStatus })
     .eq('id', periodId)
     .eq('workplace_id', workplaceId)
     .eq('status', 'published')

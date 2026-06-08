@@ -7,6 +7,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getActiveWorkplace } from '@/lib/workplace/current'
 import { buildAndUploadScheduleImage } from '@/lib/publish/image'
 import { unpublishPeriod } from '@/lib/publish/unpublish'
+import { statusForDeadline } from '@/lib/publish/period-status'
 import { buildEngineInput } from '@/lib/schedule/build-input'
 import { generateSchedule } from '@/lib/scheduling'
 import type { Coverage, FeasibilityResult, TwelveHourSuggestion } from '@/lib/scheduling/types'
@@ -229,6 +230,17 @@ export async function clearSchedule(periodId: string): Promise<RunResult> {
     .eq('period_id', periodId)
   if (error) return { ok: false, error: GENERIC_ERROR }
 
+  // Reopen the worker request window if the deadline hasn't passed (a locked
+  // period left over from a prior publish/unpublish shouldn't stay closed when
+  // the manager wipes the schedule before the deadline).
+  const nextStatus = await statusForDeadline(supabase, workplace.id, periodId)
+  await supabase
+    .from('schedule_periods')
+    .update({ status: nextStatus })
+    .eq('id', periodId)
+    .eq('workplace_id', workplace.id)
+    .neq('status', 'published')
+
   revalidatePath('/schedule')
   revalidatePath('/me/schedule')
   return { ok: true }
@@ -244,7 +256,9 @@ export async function unpublishSchedule(periodId: string): Promise<RunResult> {
 
   try {
     const admin = createAdminClient()
-    await unpublishPeriod(supabase, admin, workplace.id, periodId)
+    // Restore requests if still before the deadline; otherwise lock.
+    const nextStatus = await statusForDeadline(supabase, workplace.id, periodId)
+    await unpublishPeriod(supabase, admin, workplace.id, periodId, nextStatus)
   } catch {
     // unpublishPeriod itself never throws; this guards createAdminClient.
     return { ok: false, error: GENERIC_ERROR }
