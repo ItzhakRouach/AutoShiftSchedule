@@ -9,6 +9,7 @@ import { CurrentUserJoinForm } from './CurrentUserJoinForm'
 
 interface JoinPageProps {
   params: Promise<{ code: string }>
+  searchParams: Promise<{ e?: string }>
 }
 
 const cardStyle = {
@@ -30,8 +31,9 @@ const pageStyle = {
   direction: 'rtl',
 } as const
 
-export default async function JoinPage({ params }: JoinPageProps) {
+export default async function JoinPage({ params, searchParams }: JoinPageProps) {
   const { code } = await params
+  const { e: pendingEmployeeId } = await searchParams
 
   const supabase = await createClient()
   const { user, role } = await resolveUserRole(supabase)
@@ -81,6 +83,23 @@ export default async function JoinPage({ params }: JoinPageProps) {
 
   const workplaceName = workplace?.name ?? ''
 
+  // Prefill name/phone from the pending employee the manager created for this
+  // invite (the wa.me link carries ?e=<id>). Only an UNCLAIMED pending row in
+  // THIS workplace is used, so the link can't leak another workplace's data.
+  let prefillName = ''
+  let prefillPhone = ''
+  if (pendingEmployeeId) {
+    const { data: pending } = await admin
+      .from('employees')
+      .select('name, phone, workplace_id, user_id')
+      .eq('id', pendingEmployeeId)
+      .maybeSingle()
+    if (pending && pending.workplace_id === invite.workplace_id && !pending.user_id) {
+      prefillName = pending.name ?? ''
+      prefillPhone = pending.phone ?? ''
+    }
+  }
+
   // Authenticated employee — check if already in THIS workplace
   if (role === 'employee' && user) {
     const { data: existing } = await admin
@@ -110,7 +129,7 @@ export default async function JoinPage({ params }: JoinPageProps) {
           <p style={{ margin: '0 0 24px', color: 'var(--text-2)', fontSize: 14 }}>
             הצטרף לצוות עם החשבון הקיים שלך
           </p>
-          <CurrentUserJoinForm action={boundAction} workplaceName={workplaceName} />
+          <CurrentUserJoinForm action={boundAction} workplaceName={workplaceName} initialName={prefillName} initialPhone={prefillPhone} />
         </div>
       </main>
     )
@@ -127,7 +146,7 @@ export default async function JoinPage({ params }: JoinPageProps) {
         <p style={{ margin: '0 0 24px', color: 'var(--text-2)', fontSize: 14 }}>
           צור חשבון כדי להצטרף לצוות
         </p>
-        <JoinForm action={boundAction} />
+        <JoinForm action={boundAction} initialName={prefillName} initialPhone={prefillPhone} />
       </div>
     </main>
   )

@@ -7,6 +7,8 @@ import { Spinner } from '@/components/ui/Spinner'
 interface CurrentUserJoinFormProps {
   action: (prevState: JoinState, formData: FormData) => Promise<JoinState>
   workplaceName: string
+  initialName?: string
+  initialPhone?: string
 }
 
 const labelStyle: React.CSSProperties = {
@@ -45,7 +47,7 @@ const EMPLOYMENT_OPTIONS = [
 
 type EmploymentValue = typeof EMPLOYMENT_OPTIONS[number]['value']
 
-export function CurrentUserJoinForm({ action, workplaceName }: CurrentUserJoinFormProps) {
+export function CurrentUserJoinForm({ action, workplaceName, initialName, initialPhone }: CurrentUserJoinFormProps) {
   const [state, formAction, isPending] = useActionState<JoinState, FormData>(action, {})
   const [observesShabbat, setObservesShabbat] = useState(false)
   const [employmentType, setEmploymentType] = useState<EmploymentValue>('full')
@@ -87,6 +89,7 @@ export function CurrentUserJoinForm({ action, workplaceName }: CurrentUserJoinFo
           name="name"
           type="text"
           autoComplete="name"
+          defaultValue={initialName}
           required
           style={inputStyle}
           dir="rtl"
@@ -103,6 +106,7 @@ export function CurrentUserJoinForm({ action, workplaceName }: CurrentUserJoinFo
           name="phone"
           type="tel"
           autoComplete="tel"
+          defaultValue={initialPhone}
           required
           placeholder="050-0000000"
           style={{ ...inputStyle, direction: 'ltr', textAlign: 'left' }}

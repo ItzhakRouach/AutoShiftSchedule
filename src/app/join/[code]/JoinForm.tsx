@@ -6,6 +6,9 @@ import { Spinner } from '@/components/ui/Spinner'
 
 interface JoinFormProps {
   action: (prevState: JoinState, formData: FormData) => Promise<JoinState>
+  /** Pre-filled from the pending employee the manager created for this invite. */
+  initialName?: string
+  initialPhone?: string
 }
 
 const labelStyle: React.CSSProperties = {
@@ -44,7 +47,7 @@ const EMPLOYMENT_OPTIONS = [
 
 type EmploymentValue = typeof EMPLOYMENT_OPTIONS[number]['value']
 
-export function JoinForm({ action }: JoinFormProps) {
+export function JoinForm({ action, initialName, initialPhone }: JoinFormProps) {
   const [state, formAction, isPending] = useActionState<JoinState, FormData>(action, {})
   const [observesShabbat, setObservesShabbat] = useState(false)
   const [employmentType, setEmploymentType] = useState<EmploymentValue>('full')
@@ -72,6 +75,7 @@ export function JoinForm({ action }: JoinFormProps) {
           name="name"
           type="text"
           autoComplete="name"
+          defaultValue={initialName}
           required
           style={inputStyle}
           dir="rtl"
@@ -118,6 +122,7 @@ export function JoinForm({ action }: JoinFormProps) {
           name="phone"
           type="tel"
           autoComplete="tel"
+          defaultValue={initialPhone}
           required
           placeholder="050-0000000"
           style={inputStyle}

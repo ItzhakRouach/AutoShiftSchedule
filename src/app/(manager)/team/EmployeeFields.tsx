@@ -93,7 +93,7 @@ export function EmployeeFields({
 
       {/* Phone */}
       <div>
-        <label htmlFor="emp-phone" style={labelStyle}>טלפון (אופציונלי)</label>
+        <label htmlFor="emp-phone" style={labelStyle}>טלפון <span style={{ color: '#D8423B' }}>*</span></label>
         <div style={{ position: 'relative' }}>
           <span style={{ position: 'absolute', insetInlineStart: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)' }}>
             <Icon name="phone" size={17} />

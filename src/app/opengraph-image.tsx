@@ -71,8 +71,10 @@ export default async function OpengraphImage() {
             <path d="M9 12l2 2 4-4" stroke="#fff" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </div>
-        <div style={{ fontSize: 96, fontWeight: 800, color: '#fff', letterSpacing: '-2px' }}>מִשְׁמֶרֶת</div>
-        <div style={{ fontSize: 40, fontWeight: 500, color: 'rgba(255,255,255,0.9)' }}>
+        <div style={{ fontSize: 96, fontWeight: 800, color: '#fff', letterSpacing: '-2px', direction: 'rtl' }}>
+          מִשְׁמֶרֶת
+        </div>
+        <div style={{ fontSize: 40, fontWeight: 500, color: 'rgba(255,255,255,0.9)', direction: 'rtl' }}>
           שיבוץ משמרות אוטומטי לצוותים
         </div>
       </div>

@@ -18,9 +18,8 @@ export const employeeSchema = z.object({
 
   phone: z
     .string()
-    .max(30, { message: 'מספר טלפון ארוך מדי' })
-    .optional()
-    .or(z.literal('')),
+    .min(1, { message: 'יש להזין מספר טלפון' })
+    .max(30, { message: 'מספר טלפון ארוך מדי' }),
 
   minShifts: z
     .number()

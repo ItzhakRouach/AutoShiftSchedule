@@ -11,6 +11,10 @@ import type { ShiftTypeOption } from './AvailabilityGrid'
 import type { AvailabilityItem } from '@/lib/validation/employee'
 import type { EmploymentType } from '@/lib/validation/employee'
 
+// Always render fresh so a newly-added/edited employee shows immediately after
+// the client calls router.refresh() (no stale cached team list).
+export const dynamic = 'force-dynamic'
+
 export default async function TeamPage() {
   const supabase = await createClient()
 

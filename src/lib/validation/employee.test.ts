@@ -46,16 +46,16 @@ describe('employeeSchema', () => {
     expect(result.success).toBe(false)
   })
 
-  it('accepts empty phone', () => {
+  it('rejects empty phone (phone is required)', () => {
     const result = employeeSchema.safeParse({ ...validInput, phone: '' })
-    expect(result.success).toBe(true)
+    expect(result.success).toBe(false)
   })
 
-  it('accepts missing phone (undefined)', () => {
+  it('rejects missing phone (undefined)', () => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { phone: _omit, ...rest } = validInput
     const result = employeeSchema.safeParse(rest)
-    expect(result.success).toBe(true)
+    expect(result.success).toBe(false)
   })
 
   it('rejects minShifts below 0', () => {

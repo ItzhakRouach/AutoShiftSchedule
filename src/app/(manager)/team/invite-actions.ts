@@ -117,6 +117,7 @@ export type InviteShareLink =
 export async function getInviteShareLinkForPhone(
   rawPhone: string,
   employeeName?: string,
+  employeeId?: string,
 ): Promise<InviteShareLink> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -129,7 +130,9 @@ export async function getInviteShareLinkForPhone(
 
   const invite = await ensureActiveInviteCode(supabase, workplace.id, user.id)
   if ('error' in invite) return { ok: false, error: invite.error }
-  const joinUrl = await resolveJoinUrl(invite.code)
+  // Carry the pending employee id so the join form prefills name + phone.
+  const baseJoinUrl = await resolveJoinUrl(invite.code)
+  const joinUrl = employeeId ? `${baseJoinUrl}?e=${employeeId}` : baseJoinUrl
 
   const greeting = employeeName ? `שלום ${employeeName}!` : 'שלום!'
   const text = `${greeting} הוזמנת לאפליקציית סידור עבודה — לחץ כאן להצטרפות: ${joinUrl}`
@@ -156,7 +159,7 @@ export async function getInviteShareLinkForEmployee(employeeId: string): Promise
     .maybeSingle()
   if (!emp) return { ok: false, error: 'העובד לא נמצא' }
   if (!emp.phone) return { ok: false, error: 'לעובד אין מספר טלפון' }
-  return getInviteShareLinkForPhone(emp.phone as string, emp.name as string | undefined)
+  return getInviteShareLinkForPhone(emp.phone as string, emp.name as string | undefined, employeeId)
 }
 
 export async function getLatestInvite(workplaceId: string): Promise<{ code: string; expiresAt: string } | null> {
