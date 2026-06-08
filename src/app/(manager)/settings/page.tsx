@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveWorkplace } from '@/lib/workplace/current'
+import { hhmm } from '@/lib/dates/time'
 import { signOut } from '@/app/(auth)/actions'
 import { DeleteAccountButton } from '@/components/account/DeleteAccountButton'
 import { deleteManagerAccount } from './account-actions'
@@ -107,7 +108,7 @@ export default async function SettingsPage() {
           </p>
           <DeadlineForm
             initialDow={settings?.request_deadline_dow ?? null}
-            initialTime={settings?.request_deadline_time ?? null}
+            initialTime={hhmm(settings?.request_deadline_time as string | null) || null}
           />
         </section>
 
@@ -122,7 +123,7 @@ export default async function SettingsPage() {
           </p>
           <PublishSettings
             initialDow={settings?.publish_dow ?? null}
-            initialTime={settings?.publish_time ?? null}
+            initialTime={hhmm(settings?.publish_time as string | null) || null}
           />
         </section>
 

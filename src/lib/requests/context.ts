@@ -50,9 +50,18 @@ export interface EmployeeRequestsContext {
 export async function getEmployeeRequestsContext(
   supabase: SupabaseClient,
 ): Promise<EmployeeRequestsContext | null> {
+  // Resolve THIS user's own employee row. We must filter by user_id explicitly:
+  // RLS now also exposes coworkers (employees_member_select, for the full
+  // published schedule), so an unfiltered select would return an arbitrary
+  // workplace employee and the submit actions (which scope by user_id) would
+  // then reject with "אין הרשאה".
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
   const { data: emp } = await supabase
     .from('employees')
     .select('id, name, workplace_id')
+    .eq('user_id', user.id)
     .limit(1)
     .maybeSingle()
 

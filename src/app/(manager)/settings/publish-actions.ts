@@ -9,6 +9,7 @@ import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveWorkplace } from '@/lib/workplace/current'
+import { hhmm } from '@/lib/dates/time'
 
 export type PublishActionState = {
   ok?: boolean
@@ -40,7 +41,8 @@ export async function updatePublishSettings(
 
   const raw = {
     publish_dow: formData.get('publish_dow'),
-    publish_time: formData.get('publish_time'),
+    // Normalise to HH:MM (the field may submit HH:MM:SS from a DB-seeded value).
+    publish_time: hhmm(formData.get('publish_time') as string | null),
   }
 
   const parsed = publishSchema.safeParse(raw)

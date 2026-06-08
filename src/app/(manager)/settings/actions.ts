@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveWorkplace } from '@/lib/workplace/current'
+import { hhmm } from '@/lib/dates/time'
 
 export type DeadlineActionState = {
   ok?: boolean
@@ -38,7 +39,8 @@ export async function updateRequestDeadline(
 
   const raw = {
     request_deadline_dow: formData.get('request_deadline_dow'),
-    request_deadline_time: formData.get('request_deadline_time'),
+    // Normalise to HH:MM (the field may submit HH:MM:SS from a DB-seeded value).
+    request_deadline_time: hhmm(formData.get('request_deadline_time') as string | null),
   }
 
   const parsed = deadlineSchema.safeParse(raw)

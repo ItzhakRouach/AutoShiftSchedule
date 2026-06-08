@@ -42,7 +42,9 @@ export async function getPublishedScheduleView(
     { data: dayNotesRaw },
   ] = await Promise.all([
     supabase.from('roles').select('id, name, color, rank').eq('workplace_id', workplaceId).eq('is_active', true).order('rank', { ascending: false }),
-    supabase.from('employees').select('id, name, color').eq('workplace_id', workplaceId).order('name'),
+    // Coworker roster via a SECURITY DEFINER RPC that returns ONLY id/name/color
+    // (no phone/observances/shift-bounds) — see migration 20260608000003.
+    supabase.rpc('workplace_roster', { wp: workplaceId }),
     supabase
       .from('assignments')
       .select('employee_id, day_of_week, shift_type_id, role_id')
@@ -102,7 +104,11 @@ export async function getPublishedScheduleView(
     days,
     shiftKeys: ['morning', 'noon', 'night'] as ShiftKey[],
     roles: (rolesRaw ?? []).map((r) => ({ id: r.id, name: r.name, color: r.color, rank: r.rank ?? 1 })),
-    employees: (empsRaw ?? []).map((e) => ({ id: e.id, name: e.name, color: e.color })),
+    employees: ((empsRaw ?? []) as { id: string; name: string; color: string }[]).map((e) => ({
+      id: e.id,
+      name: e.name,
+      color: e.color,
+    })),
     requirements: {},
     grid,
     twelve,
