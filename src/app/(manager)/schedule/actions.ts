@@ -191,6 +191,49 @@ export async function hasManualAssignments(periodId: string): Promise<boolean> {
   return (data ?? []).length > 0
 }
 
+/**
+ * Wipe ALL assignments for a period so the manager can generate a fresh
+ * schedule from scratch (auto + manual + 12h rows). If the period was
+ * published, it's unpublished first (clears the shared image + flips status).
+ */
+export async function clearSchedule(periodId: string): Promise<RunResult> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const workplace = await getActiveWorkplace(supabase)
+  if (!workplace) return { ok: false, error: 'לא נמצא מקום עבודה.' }
+
+  // Authorize: the period must belong to the manager's workplace.
+  const { data: period } = await supabase
+    .from('schedule_periods')
+    .select('id, status')
+    .eq('id', periodId)
+    .eq('workplace_id', workplace.id)
+    .maybeSingle()
+  if (!period) return { ok: false, error: GENERIC_ERROR }
+
+  // If published, unpublish first (status flip + image cleanup).
+  if (period.status === 'published') {
+    try {
+      const admin = createAdminClient()
+      await unpublishPeriod(supabase, admin, workplace.id, periodId)
+    } catch {
+      return { ok: false, error: GENERIC_ERROR }
+    }
+  }
+
+  const { error } = await supabase
+    .from('assignments')
+    .delete()
+    .eq('period_id', periodId)
+  if (error) return { ok: false, error: GENERIC_ERROR }
+
+  revalidatePath('/schedule')
+  revalidatePath('/me/schedule')
+  return { ok: true }
+}
+
 export async function unpublishSchedule(periodId: string): Promise<RunResult> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

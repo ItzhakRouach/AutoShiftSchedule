@@ -20,6 +20,7 @@ import { TwelveHourList, Generating } from './parts'
 import { RegenerateConfirm } from './RegenerateConfirm'
 import { ShareButton } from './ShareButton'
 import { UnpublishButton } from './UnpublishButton'
+import { DeleteScheduleButton } from './DeleteScheduleButton'
 
 interface Props {
   view: ScheduleView
@@ -185,6 +186,12 @@ export function ScheduleClient({ view, editMeta }: Props) {
               <ShareButton periodId={view.periodId} weekLabel={view.days[0]?.date ?? ''} shareUrl={view.imageShareUrl ?? null} />
               <UnpublishButton periodId={view.periodId} onDone={() => setPublished(false)} />
             </>
+          )}
+          {hasResult && (
+            <DeleteScheduleButton
+              periodId={view.periodId}
+              onDone={() => { setPublished(false); setCoverage(null); setSuggestions([]) }}
+            />
           )}
           </div>{/* schedule-controls */}
         </>

@@ -141,20 +141,25 @@ export function diversityCost(
   )
 }
 
-/** True when an employee can ONLY ever work night shifts (availability map
- *  present and every listed day allows night and nothing else). Such workers are
- *  exempt from the night cap — they have no other option. */
+/** True when an employee is only ever available for NIGHT (and optionally
+ *  EVENING = noon, 15–23) shifts — i.e. their availability map lists nothing
+ *  but noon/night, and includes at least one night. Such workers are exempt
+ *  from the night cap: per policy, "max 2–3 nights unless the worker's
+ *  availability is only nights and evening". They have little else to work. */
 function nightOnlyAvailable(emp: Employee): boolean {
   const avail = emp.availability
   if (!avail) return false
   const days = Object.keys(avail)
   if (days.length === 0) return false
+  let hasNight = false
   for (const d of days) {
     const allowed = avail[Number(d)] ?? []
-    if (allowed.length === 0) continue
-    if (allowed.some((s) => s !== 'night')) return false
+    for (const s of allowed) {
+      if (s === 'night') hasNight = true
+      else if (s !== 'noon') return false // a morning (or other) shift → not exempt
+    }
   }
-  return true
+  return hasNight
 }
 
 /** Per-employee night soft-cap: Infinity (exempt) for night-only workers, else
