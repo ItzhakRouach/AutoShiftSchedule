@@ -18,15 +18,17 @@ export async function getMeSummary(
   employeeId: string,
   workplaceId: string,
 ): Promise<MeSummaryData | null> {
+  // Current period only, and only while published — never fall back to an older
+  // published week (mirrors getPublishedScheduleView so the summary disappears
+  // when the manager unpublishes/clears the current schedule).
   const { data: period } = await supabase
     .from('schedule_periods')
-    .select('id')
+    .select('id, status')
     .eq('workplace_id', workplaceId)
-    .eq('status', 'published')
     .order('week_start_date', { ascending: false })
     .limit(1)
     .maybeSingle()
-  if (!period) return null
+  if (!period || period.status !== 'published') return null
 
   const [{ data: assigns }, { data: reqs }, { data: shiftTypes }, { data: roles }] = await Promise.all([
     supabase

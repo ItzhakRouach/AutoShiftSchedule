@@ -6,6 +6,10 @@ import { WeekTable } from '@/app/(manager)/schedule/WeekTable'
 import { MyRoleCounts } from './MyRoleCounts'
 import { Card } from '@/components/ui/Card'
 
+// Always reflect the current published state (no stale schedule after the
+// manager unpublishes/clears).
+export const dynamic = 'force-dynamic'
+
 export default async function MeSchedulePage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

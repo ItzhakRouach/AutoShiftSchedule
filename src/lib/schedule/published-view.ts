@@ -19,15 +19,19 @@ export async function getPublishedScheduleView(
   supabase: SupabaseClient,
   workplaceId: string,
 ): Promise<ScheduleView | null> {
+  // Mirror the manager's CURRENT period: take the latest period and show it only
+  // when it is published. We must NOT fall back to an older published week —
+  // otherwise unpublishing/deleting the current schedule would leave workers
+  // looking at a stale previous week. So the worker sees the current schedule
+  // only while it's published, and nothing once the manager unpublishes/clears.
   const { data: period } = await supabase
     .from('schedule_periods')
     .select('id, week_start_date, status')
     .eq('workplace_id', workplaceId)
-    .eq('status', 'published')
     .order('week_start_date', { ascending: false })
     .limit(1)
     .maybeSingle()
-  if (!period) return null
+  if (!period || period.status !== 'published') return null
 
   const [
     { data: rolesRaw },
