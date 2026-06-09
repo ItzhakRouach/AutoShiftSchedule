@@ -9,11 +9,12 @@ const DAYS_HEB = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמיש�
 interface Props {
   initialDow: number | null
   initialTime: string | null
+  initialMaxOffPerDay: number | null
 }
 
 const initialState: DeadlineActionState = {}
 
-export function DeadlineForm({ initialDow, initialTime }: Props) {
+export function DeadlineForm({ initialDow, initialTime, initialMaxOffPerDay }: Props) {
   const [state, action, pending] = useActionState(updateRequestDeadline, initialState)
 
   return (
@@ -77,6 +78,33 @@ export function DeadlineForm({ initialDow, initialTime }: Props) {
             {state.fieldErrors.request_deadline_time}
           </span>
         )}
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <label htmlFor="max-off-per-day" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
+          מקסימום חופשים ליום <span style={{ fontWeight: 400, color: 'var(--text-2)' }}>(ריק = ללא הגבלה)</span>
+        </label>
+        <input
+          id="max-off-per-day"
+          type="number"
+          name="max_off_per_day"
+          min={0}
+          max={50}
+          defaultValue={initialMaxOffPerDay ?? ''}
+          placeholder="ללא הגבלה"
+          style={{
+            padding: '10px 14px',
+            borderRadius: 'var(--r-md)',
+            border: '1px solid var(--border-strong)',
+            background: 'var(--surface)',
+            color: 'var(--text)',
+            fontSize: 15,
+            fontFamily: 'var(--font)',
+          }}
+        />
+        <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
+          מונע מצב שבו יותר מדי עובדים מבקשים חופש באותו יום ולא ניתן לאייש אותו
+        </span>
       </div>
 
       {state.error && (

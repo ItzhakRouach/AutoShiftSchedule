@@ -53,9 +53,14 @@ export interface DayMeta {
   isHoliday: boolean
 }
 
-/** Per employee per day request (caller has merged vacations + off-requests into `off`). */
+/** Per employee per day request. `off` is the union of any off-state (the normal
+ *  fill blocks it). `offHard` marks a NON-overridable off — a vacation or a
+ *  manager-set רענון — which the coverage-rescue pass must never reclaim. A
+ *  plain worker off-REQUEST is `off:true, offHard:false` (soft: overridable to
+ *  rescue an otherwise-uncoverable day). */
 export interface DayRequest {
   off: boolean
+  offHard?: boolean
   preferred: ShiftKey[]
 }
 
@@ -172,4 +177,15 @@ export interface EngineResult {
   stats: Record<string, EmployeeStat>
   feasibility: FeasibilityResult
   twelveHourSuggestions: TwelveHourSuggestion[]
+  /** Soft off-requests the coverage-rescue pass overrode to staff a day, so the
+   *  manager can be told who was pulled in despite requesting off. */
+  overriddenOff: OverriddenOff[]
+}
+
+/** A soft off-request reclaimed by coverage-rescue (see coverage-rescue.ts). */
+export interface OverriddenOff {
+  employeeId: string
+  day: number
+  shift: ShiftKey
+  roleId: string
 }

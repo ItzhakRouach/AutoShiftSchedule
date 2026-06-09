@@ -2,15 +2,34 @@
  * Helpers that transform a ScheduleView into the data shape the WeekTable needs.
  * Pure — no IO, no Supabase. Testable with plain fixtures.
  */
-import type { ScheduleView, ViewEmployee } from './view-data'
+import type { ScheduleView, ViewEmployee, ViewTwelve } from './view-data'
 import { TWELVE_HOUR_COVERS, TWELVE_HOUR_FILLS } from '@/lib/scheduling/fallback'
 import type { TwelveHourKey } from '@/lib/scheduling/types'
+
+/** Is a base (non-12h) person already assigned to this (day, shift, role)? */
+function baseOccupied(view: ScheduleView, day: number, shift: string, roleId: string): boolean {
+  return (view.grid[day]?.[shift]?.[roleId] ?? []).length > 0
+}
+
+/**
+ * Which base-shift cell shows a 12h person's NAME: the first shift it FILLS that
+ * isn't already staffed by a base person — i.e. the actual gap it's covering. So
+ * a 07–19 day shift covering a noon gap (morning already staffed) shows in
+ * צהריים, NOT stacked on top of the morning person. Falls back to fills[0].
+ */
+function twelveAnchor(view: ScheduleView, t: ViewTwelve): string | undefined {
+  const fills = TWELVE_HOUR_FILLS[t.variant as TwelveHourKey]
+  if (!fills || fills.length === 0) return undefined
+  return fills.find((s) => !baseOccupied(view, t.day, s, t.roleId)) ?? fills[0]
+}
 
 export interface CellEntry {
   employeeId: string
   is12h: boolean
   /** True when this assignment matches a shift the employee explicitly requested. */
   requested: boolean
+  /** 12h variant key (for the hour-range label), present only when is12h. */
+  variant?: string
 }
 
 /** weekGrid[day][shiftKey][roleId] = CellEntry[] */
@@ -45,7 +64,8 @@ export function buildWeekGrid(view: ScheduleView): WeekGrid {
     }
   }
 
-  // Place each 12h person in its ANCHOR cell only (fills[0]).
+  // Place each 12h person's NAME in the gap cell it fills (never stacked onto a
+  // base person — see twelveAnchor).
   for (const t of view.twelve) {
     const fills = TWELVE_HOUR_FILLS[t.variant as TwelveHourKey]
     if (!fills || fills.length === 0) continue
@@ -53,10 +73,11 @@ export function buildWeekGrid(view: ScheduleView): WeekGrid {
       const stId = view.shiftTypeIdByKey[baseShift] ?? ''
       return reqSet.has(`${t.employeeId}:${t.day}:${stId}`)
     })
-    const anchor = fills[0]
+    const anchor = twelveAnchor(view, t)
+    if (!anchor) continue
     const d = (grid[t.day] ??= {})
     const s = (d[anchor] ??= {})
-    ;(s[t.roleId] ??= []).push({ employeeId: t.employeeId, is12h: true, requested })
+    ;(s[t.roleId] ??= []).push({ employeeId: t.employeeId, is12h: true, requested, variant: t.variant })
   }
 
   return grid
@@ -75,11 +96,12 @@ export function coveredByTwelve(view: ScheduleView): Set<string> {
   const covered = new Set<string>()
   for (const t of view.twelve) {
     const physical = TWELVE_HOUR_COVERS[t.variant as TwelveHourKey]
-    const fills = TWELVE_HOUR_FILLS[t.variant as TwelveHourKey]
     if (!physical || physical.length === 0) continue
-    const anchor = fills?.[0]
+    const anchor = twelveAnchor(view, t) // where the NAME shows (the gap it fills)
     for (const baseShift of physical) {
       if (baseShift === anchor) continue
+      // A base-staffed cell shows that person — don't overwrite it with "12ש׳".
+      if (baseOccupied(view, t.day, baseShift, t.roleId)) continue
       covered.add(`${t.day}:${baseShift}:${t.roleId}`)
     }
   }

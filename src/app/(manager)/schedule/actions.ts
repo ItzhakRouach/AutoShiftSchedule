@@ -10,7 +10,7 @@ import { unpublishPeriod } from '@/lib/publish/unpublish'
 import { statusForDeadline } from '@/lib/publish/period-status'
 import { buildEngineInput } from '@/lib/schedule/build-input'
 import { generateSchedule } from '@/lib/scheduling'
-import type { Coverage, FeasibilityResult, TwelveHourSuggestion } from '@/lib/scheduling/types'
+import type { Coverage, FeasibilityResult, TwelveHourSuggestion, OverriddenOff, Warning } from '@/lib/scheduling/types'
 
 export interface RunResult {
   ok: boolean
@@ -19,6 +19,11 @@ export interface RunResult {
   feasibility?: FeasibilityResult
   warnings?: number
   twelveHourSuggestions?: TwelveHourSuggestion[]
+  /** Soft off-requests the engine overrode to staff a day (employeeId, day,
+   *  shift, roleId=role NAME) — surfaced so the manager can talk to them. */
+  overriddenOff?: OverriddenOff[]
+  /** Slots still uncovered after rescue + 12h (day, shift, roleId=name, missing). */
+  uncovered?: Warning[]
 }
 
 const GENERIC_ERROR = 'אירעה שגיאה בעת יצירת הסידור. נסו שוב.'
@@ -146,6 +151,8 @@ export async function runSchedule(
     feasibility: result.feasibility,
     warnings: result.warnings.length,
     twelveHourSuggestions: result.twelveHourSuggestions,
+    overriddenOff: result.overriddenOff,
+    uncovered: result.warnings,
   }
 }
 

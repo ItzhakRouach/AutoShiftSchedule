@@ -33,6 +33,8 @@ export interface RequestRow {
   preferred_shift_ids: string[] | null
 }
 export interface VacationRow { employee_id: string; date_from: string; date_to: string }
+/** A manager-set day note (רענון / השתלמות): the employee is reserved that day. */
+export interface DayNoteRow { employee_id: string; day_of_week: number }
 export interface RequirementRow {
   day_of_week: number
   shift_type_id: string
@@ -56,6 +58,8 @@ export interface MapInput {
   availability: AvailabilityRow[]
   requests: RequestRow[]
   vacations: VacationRow[]
+  /** Manager-set day notes (רענון) — reserve the employee that day (hard off). */
+  dayNotes?: DayNoteRow[]
   requirements: RequirementRow[]
   settings: SettingsRow | null
   seed: number
@@ -165,21 +169,28 @@ export function mapToEngineInput(rows: MapInput): MapResult {
     priorExtras: rows.priorExtras?.[e.id] ?? 0,
   }))
 
+  // רענון (day notes): employee_id → set of reserved day indices (hard off).
+  const refresherByEmp: Record<string, Set<number>> = {}
+  for (const n of rows.dayNotes ?? []) {
+    ;(refresherByEmp[n.employee_id] ??= new Set()).add(n.day_of_week)
+  }
+
   const requests: RequestMap = {}
   for (const e of rows.employees) {
-    const perDay: Record<number, { off: boolean; preferred: ShiftKey[] }> = {}
+    const perDay: Record<number, { off: boolean; offHard: boolean; preferred: ShiftKey[] }> = {}
     for (let d = 0; d < 7; d++) {
       const row = reqByEmp[e.id]?.[d]
       const preferred = (row?.preferred_shift_ids ?? [])
         .map((id) => idToKey[id])
         .filter((k): k is ShiftKey => Boolean(k))
-      let off = row?.is_off ?? false
-      // Merge vacations: any day whose date falls in a vacation range → off.
+      // Hard off (never overridden by coverage-rescue): vacation or רענון.
       const date = rows.weekDates[d]
-      if (!off && date) {
-        off = (vacByEmp[e.id] ?? []).some((v) => dateInRange(date, v.date_from, v.date_to))
-      }
-      perDay[d] = { off, preferred }
+      const onVacation = !!date && (vacByEmp[e.id] ?? []).some((v) => dateInRange(date, v.date_from, v.date_to))
+      const onRefresher = refresherByEmp[e.id]?.has(d) ?? false
+      const offHard = onVacation || onRefresher
+      // Soft off = a plain worker off-request (overridable to rescue coverage).
+      const offSoft = row?.is_off ?? false
+      perDay[d] = { off: offHard || offSoft, offHard, preferred }
     }
     requests[e.id] = perDay
   }

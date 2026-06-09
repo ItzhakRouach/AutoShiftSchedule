@@ -36,6 +36,7 @@ export function generateSchedule(input: EngineInput): EngineResult {
     stats,
     feasibility,
     twelveHourSuggestions: buildTwelveHourSuggestions(warnings, input.settings, st.committed),
+    overriddenOff: st.overriddenOff ?? [],
   }
 }
 

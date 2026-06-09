@@ -59,7 +59,7 @@ export async function saveDayRequest(input: unknown): Promise<ActionResult> {
     if (empRow) {
       const { data: settingsRow } = await supabase
         .from('workplace_settings')
-        .select('max_off_days_per_week')
+        .select('max_off_days_per_week, max_off_per_day')
         .eq('workplace_id', empRow.workplace_id)
         .maybeSingle()
       const cap = (settingsRow?.max_off_days_per_week as number | null) ?? 2
@@ -73,6 +73,18 @@ export async function saveDayRequest(input: unknown): Promise<ActionResult> {
       const usedExcludingThisDay = (otherOffs ?? []).length
       if (usedExcludingThisDay + 1 > cap) {
         return { error: `הגעת למקסימום ימי חופש לשבוע (${cap})` }
+      }
+      // Per-DAY cap: how many OTHER workers are already off this day (RLS-safe RPC).
+      const perDayCap = settingsRow?.max_off_per_day as number | null | undefined
+      if (perDayCap != null) {
+        const { data: dayOffCount } = await supabase.rpc('off_count_for_day', {
+          p_period: periodId,
+          p_day: dayOfWeek,
+          p_exclude: employeeId,
+        })
+        if (((dayOffCount as number | null) ?? 0) >= perDayCap) {
+          return { error: `כבר ${perDayCap} עובדים בחופש ביום זה — לא ניתן להוסיף` }
+        }
       }
     }
   }

@@ -58,8 +58,11 @@ export function DayEditor({ shiftTypes, request, periodId, employeeId, dayOfWeek
 
   return (
     <div>
-      <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-2)', marginBottom: 10 }}>
+      <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-2)', marginBottom: 4 }}>
         משמרות מועדפות
+      </div>
+      <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 10 }}>
+        ניתן לבחור כמה משמרות — אם הראשונה לא תתאפשר, יש סיכוי לשנייה
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>

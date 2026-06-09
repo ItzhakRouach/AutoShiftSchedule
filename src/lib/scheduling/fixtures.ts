@@ -75,14 +75,14 @@ export function mergeReqs(...parts: Requirements[]): Requirements {
 
 export function buildRequests(
   employees: Employee[],
-  per: (id: string, day: number) => { off?: boolean; preferred?: ShiftKey[] } = () => ({}),
+  per: (id: string, day: number) => { off?: boolean; offHard?: boolean; preferred?: ShiftKey[] } = () => ({}),
 ): RequestMap {
   const out: RequestMap = {}
   for (const e of employees) {
     out[e.id] = {}
     for (let d = 0; d < 7; d++) {
       const r = per(e.id, d)
-      out[e.id][d] = { off: r.off ?? false, preferred: r.preferred ?? [] }
+      out[e.id][d] = { off: r.off ?? r.offHard ?? false, offHard: r.offHard ?? false, preferred: r.preferred ?? [] }
     }
   }
   return out

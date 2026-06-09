@@ -7,9 +7,10 @@ import { Card } from '@/components/ui/Card'
 import { Segmented } from '@/components/ui/Segmented'
 import type { ScheduleView } from '@/lib/schedule/view-data'
 import type { EditMeta } from '@/lib/schedule/edit-meta'
-import type { Coverage, TwelveHourSuggestion } from '@/lib/scheduling/types'
+import type { Coverage, TwelveHourSuggestion, OverriddenOff, Warning } from '@/lib/scheduling/types'
 import { runSchedule, publishSchedule, hasManualAssignments } from './actions'
 import { FeasibilityBanner } from './FeasibilityBanner'
+import { CoverageIssues } from './CoverageIssues'
 import { WeekTable } from './WeekTable'
 import { RequestsOverview } from './RequestsOverview'
 import { SwapEditor, type SlotCtx } from './SwapEditor'
@@ -38,6 +39,8 @@ export function ScheduleClient({ view, editMeta }: Props) {
   const router = useRouter()
   const [coverage, setCoverage] = useState<Coverage | null>(null)
   const [suggestions, setSuggestions] = useState<TwelveHourSuggestion[]>([])
+  const [overriddenOff, setOverriddenOff] = useState<OverriddenOff[]>([])
+  const [uncovered, setUncovered] = useState<Warning[]>([])
   const [error, setError] = useState<string | null>(null)
   const [published, setPublished] = useState(view.status === 'published')
   const [slot, setSlot] = useState<SlotCtx | null>(null)
@@ -58,6 +61,8 @@ export function ScheduleClient({ view, editMeta }: Props) {
       if (!res.ok) { setError(res.error ?? 'שגיאה'); return }
       setCoverage(res.coverage ?? null)
       setSuggestions(res.twelveHourSuggestions ?? [])
+      setOverriddenOff(res.overriddenOff ?? [])
+      setUncovered(res.uncovered ?? [])
       router.refresh()
     })
   }
@@ -114,6 +119,8 @@ export function ScheduleClient({ view, editMeta }: Props) {
       </div>
 
       <FeasibilityBanner feasibility={view.feasibility} />
+
+      <CoverageIssues overridden={overriddenOff} uncovered={uncovered} view={view} />
 
       {error && (
         <div style={{

@@ -65,7 +65,7 @@ describe('buildWeekGrid — 12h expansion', () => {
       twelve: [{ day: 0, variant: 'm12_day', roleId: 'r-guard', employeeId: 'e1' }],
     })
     const grid = buildWeekGrid(view)
-    expect(grid[0]?.morning?.['r-guard'] ?? []).toEqual([{ employeeId: 'e1', is12h: true, requested: false }])
+    expect(grid[0]?.morning?.['r-guard'] ?? []).toEqual([{ employeeId: 'e1', is12h: true, requested: false, variant: 'm12_day' }])
     // noon is left EMPTY in the grid…
     expect(grid[0]?.noon?.['r-guard'] ?? []).toHaveLength(0)
     expect(grid[0]?.night?.['r-guard'] ?? []).toHaveLength(0)
@@ -80,7 +80,7 @@ describe('buildWeekGrid — 12h expansion', () => {
       twelve: [{ day: 1, variant: 'm12_night', roleId: 'r-achm', employeeId: 'e2' }],
     })
     const grid = buildWeekGrid(view)
-    expect(grid[1]?.night?.['r-achm'] ?? []).toEqual([{ employeeId: 'e2', is12h: true, requested: false }])
+    expect(grid[1]?.night?.['r-achm'] ?? []).toEqual([{ employeeId: 'e2', is12h: true, requested: false, variant: 'm12_night' }])
     expect(grid[1]?.morning?.['r-achm'] ?? []).toHaveLength(0)
   })
 

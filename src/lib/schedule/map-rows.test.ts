@@ -119,9 +119,22 @@ describe('mapToEngineInput', () => {
         ],
       }),
     )
-    expect(input.requests['e1'][0]).toEqual({ off: true, preferred: [] })
-    expect(input.requests['e1'][1]).toEqual({ off: false, preferred: ['morning', 'night'] })
-    expect(input.requests['e1'][5]).toEqual({ off: false, preferred: [] })
+    // is_off request → soft off (offHard:false, overridable by coverage-rescue).
+    expect(input.requests['e1'][0]).toEqual({ off: true, offHard: false, preferred: [] })
+    expect(input.requests['e1'][1]).toEqual({ off: false, offHard: false, preferred: ['morning', 'night'] })
+    expect(input.requests['e1'][5]).toEqual({ off: false, offHard: false, preferred: [] })
+  })
+
+  it('vacation and רענון (day note) map to HARD off (offHard:true)', () => {
+    const { input } = mapToEngineInput(
+      baseRows({
+        // weekDates[0] is a vacation day; day 3 has a רענון note.
+        vacations: [{ employee_id: 'e1', date_from: '2026-06-07', date_to: '2026-06-07' }],
+        dayNotes: [{ employee_id: 'e1', day_of_week: 3 }],
+      }),
+    )
+    expect(input.requests['e1'][0]).toEqual({ off: true, offHard: true, preferred: [] })
+    expect(input.requests['e1'][3]).toEqual({ off: true, offHard: true, preferred: [] })
   })
 
   it('builds requirements[day][key][roleId]=count and ignores unknown shift types', () => {

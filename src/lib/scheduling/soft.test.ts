@@ -10,14 +10,28 @@ import {
 } from './fixtures'
 
 describe('mustAccept', () => {
-  it('off-day is always honored (hard) — never assigned that day', () => {
+  it('soft off-request IS overridden to cover an otherwise-impossible slot', () => {
+    // Only employee, only slot, they requested off (soft). Coverage-rescue
+    // reclaims them to staff the day and records the override; no warning.
     const ma = emp('ma', { mustAccept: true })
     const requests = buildRequests([ma], (_id, d) => (d === 2 ? { off: true } : {}))
     const res = generateSchedule(
       input({ employees: [ma], requirements: reqFor([2], 'morning', GUARD, 1), requests }),
     )
+    expect(res.assignmentsByEmployee.ma).toHaveLength(1)
+    expect(res.warnings).toHaveLength(0)
+    expect(res.overriddenOff).toEqual([{ employeeId: 'ma', day: 2, shift: 'morning', roleId: GUARD }])
+  })
+
+  it('a vacation / רענון (hard off) is NEVER overridden — slot stays unfilled', () => {
+    const ma = emp('ma', { mustAccept: true })
+    const requests = buildRequests([ma], (_id, d) => (d === 2 ? { offHard: true } : {}))
+    const res = generateSchedule(
+      input({ employees: [ma], requirements: reqFor([2], 'morning', GUARD, 1), requests }),
+    )
     expect(res.assignmentsByEmployee.ma).toEqual([])
     expect(res.warnings).toHaveLength(1)
+    expect(res.overriddenOff).toEqual([])
   })
   it('preferred shift prioritized over a non-requester for a scarce slot', () => {
     const ma = emp('ma', { mustAccept: true })

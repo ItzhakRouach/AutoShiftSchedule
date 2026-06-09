@@ -189,6 +189,7 @@ export async function buildEngineInput(
   const [
     [{ data: employeeRoles }, { data: availability }, { data: vacations }],
     { data: holidayRows },
+    { data: dayNotesRaw },
   ] = await Promise.all([
     employeeIds.length > 0
       ? Promise.all([
@@ -209,6 +210,11 @@ export async function buildEngineInput(
       .eq('workplace_id', wp)
       .gte('date', weekDatesArr[0])
       .lte('date', dayAfterISO),
+    // רענון / day notes for this period → reserve those employees (hard off).
+    supabase
+      .from('day_notes')
+      .select('employee_id, day_of_week')
+      .eq('period_id', period.id),
   ])
 
   const holidayDates = new Set<string>((holidayRows ?? []).map((h: { date: string }) => h.date))
@@ -232,6 +238,7 @@ export async function buildEngineInput(
     availability: availability ?? [],
     requests: requests ?? [],
     vacations: vacations ?? [],
+    dayNotes: dayNotesRaw ?? [],
     requirements: requirements ?? [],
     settings: settings ?? null,
     seed: seedFromUuid(period.id),

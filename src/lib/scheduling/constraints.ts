@@ -77,10 +77,16 @@ export function underMax(emp: Employee, current: Assignment[]): boolean {
   return days.size < emp.maxShifts
 }
 
-/** All hard constraints combined. Returns true if the assignment is legal. */
-export function isAssignable(ctx: CheckContext): boolean {
+/** All hard constraints combined. Returns true if the assignment is legal.
+ *  `allowSoftOff` lets the coverage-rescue pass place an employee who only
+ *  REQUESTED off (soft) — a vacation/רענון (`offHard`) still blocks. */
+export function isAssignable(
+  ctx: CheckContext,
+  opts: { allowSoftOff?: boolean } = {},
+): boolean {
   if (!holdsRole(ctx.emp, ctx.roleId)) return false
-  if (isOff(ctx.request)) return false
+  const offBlocks = isOff(ctx.request) && !(opts.allowSoftOff && !ctx.request.offHard)
+  if (offBlocks) return false
   if (!availabilityAllows(ctx.emp, ctx.meta.index, ctx.shift)) return false
   if (isSacredBlocked(ctx.emp, ctx.meta, ctx.shift)) return false
   if (worksThatDay(ctx.current, ctx.meta.index)) return false

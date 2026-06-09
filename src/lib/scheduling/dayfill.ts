@@ -20,6 +20,8 @@ export interface FillState {
   lotteryRank: Record<string, number>
   /** canonical 12h-coverage records produced by the 12h pass (FIX: full coverage). */
   twelve?: TwelveHourAssignment[]
+  /** soft off-requests reclaimed by the coverage-rescue pass to staff a day. */
+  overriddenOff?: import('./types').OverriddenOff[]
 }
 
 function reqOf(input: EngineInput, empId: string, day: number) {

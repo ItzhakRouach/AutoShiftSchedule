@@ -9,6 +9,7 @@ import { matchDay, isTopPrecedenceFor, type FillState } from './dayfill'
 import { runTwelveFill } from './twelve-fill'
 import { runDiversityPass, buildNightThresholds } from './diversity'
 import { runNightUnloadPass } from './night-unload'
+import { runCoverageRescue } from './coverage-rescue'
 import { satisfiedCount as recountSatisfied } from './request-gate'
 
 function reqOf(input: EngineInput, empId: string, day: number) {
@@ -179,6 +180,10 @@ export function runFill(input: EngineInput, skipTwelve = false, skipDiversity = 
   // NEW: 12h auto-coverage pass closes residual gaps with 12h shifts (day/night
   // preferred, 03-15/15-03 last resort). Records flow through st.twelve.
   st.twelve = skipTwelve ? [] : runTwelveFill(input, st)
+  // LAST RESORT: if a day still can't be staffed (too many soft off-requests),
+  // reclaim the lowest-priority soft-off workers to cover it (vacation/רענון are
+  // never touched). Records the overrides so the manager can be alerted.
+  st.overriddenOff = runCoverageRescue(input, st, metas)
   return st
 }
 

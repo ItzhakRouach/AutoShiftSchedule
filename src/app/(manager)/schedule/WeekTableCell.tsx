@@ -1,6 +1,7 @@
 'use client'
 
 import { memo } from 'react'
+import { SHIFT_META, type ShiftId } from '@/lib/domain/constants'
 
 const S = {
   base: {
@@ -22,6 +23,8 @@ export interface CellEntry {
   employeeId: string
   is12h: boolean
   requested: boolean
+  /** 12h variant key — for the hour-range label (present only when is12h). */
+  variant?: string
 }
 
 export interface WeekTableCellProps {
@@ -96,7 +99,14 @@ function WeekTableCellImpl(props: WeekTableCellProps) {
             >
               {en.requested && <Badge />}
               {emp?.name ?? '?'}
-              {en.is12h ? <span style={{ color: 'var(--accent)', fontWeight: 800, marginRight: 2 }}>-12</span> : ''}
+              {en.is12h && (
+                <span
+                  title={en.variant ? SHIFT_META[en.variant as ShiftId]?.time : '12 שעות'}
+                  style={{ color: 'var(--accent)', fontWeight: 800, marginRight: 3, fontSize: 11 }}
+                >
+                  {en.variant ? SHIFT_META[en.variant as ShiftId]?.time ?? '12ש׳' : '12ש׳'}
+                </span>
+              )}
             </span>
           )
         })}
