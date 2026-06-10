@@ -19,6 +19,16 @@
   --accent-soft: rgba(52,87,240,0.12);
   --accent-ink: #FFFFFF;
 
+  /* secondary accent (teal) — employee-facing & success states */
+  --accent-2: #13A98E;
+  --accent-2-soft: rgba(19,169,142,0.12);
+
+  /* semantic state colors */
+  --success: #13A98E;
+  --success-soft: rgba(19,169,142,0.12);
+  --warning: #E0902A;
+  --warning-soft: rgba(224,144,42,0.14);
+
   /* danger (red) — destructive actions: logout hover, delete account */
   --danger: #D8423B;
   --danger-soft: rgba(216,66,59,0.12);
@@ -45,6 +55,12 @@
   --chrome: rgba(18,22,29,0.82);
   --scrim: rgba(0,0,0,0.6);
   --accent-soft: rgba(52,87,240,0.2);
+  --accent-2: #2BC0A4;
+  --accent-2-soft: rgba(43,192,164,0.18);
+  --success: #2BC0A4;
+  --success-soft: rgba(43,192,164,0.18);
+  --warning: #E9A23E;
+  --warning-soft: rgba(233,162,62,0.18);
   --danger: #F0655E;
   --danger-soft: rgba(240,101,94,0.18);
 }
@@ -63,6 +79,12 @@
   --shadow-lift: 0 10px 32px rgba(80,60,30,0.16);
   --chrome: rgba(255,252,247,0.85);
   --scrim: rgba(50,40,25,0.4);
+  --accent-2: #138A77;
+  --accent-2-soft: rgba(19,138,119,0.12);
+  --success: #138A77;
+  --success-soft: rgba(19,138,119,0.12);
+  --warning: #C77F23;
+  --warning-soft: rgba(199,127,35,0.14);
   --danger: #C5443C;
   --danger-soft: rgba(197,68,60,0.12);
 }

@@ -67,6 +67,7 @@ export function Btn({
   return (
     <button
       type={type}
+      className="btn"
       onClick={disabled ? undefined : onClick}
       disabled={disabled}
       style={{

@@ -67,7 +67,7 @@ export function WeekTable({ view, onSlot, onDayPair, initialSelectedId, showUnfi
                   <div style={{ fontWeight: 800, fontSize: 13 }}>{d.short}</div>
                   <div style={{ fontWeight: 500, color: 'var(--text-2)', fontSize: 11, marginTop: 2 }}>{d.date}</div>
                   {onDayPair && (
-                    <button data-testid="day-pair-btn" title="החל צמד משמרת 12 שעות ליום זה" onClick={() => onDayPair(d.index)} style={S.dayPairBtn}>12ש׳</button>
+                    <button data-testid="day-pair-btn" aria-label="החל צמד משמרת 12 שעות ליום זה" title="החל צמד משמרת 12 שעות ליום זה" onClick={() => onDayPair(d.index)} style={S.dayPairBtn}>12ש׳</button>
                   )}
                 </th>
               ))}

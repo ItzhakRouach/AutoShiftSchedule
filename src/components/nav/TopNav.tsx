@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { Icon, type IconName } from '@/components/ui/Icon'
 import { signOut } from '@/app/(auth)/actions'
 import { WorkplaceSwitcher } from './WorkplaceSwitcher'
+import { ThemeToggle } from './ThemeToggle'
 
 interface Tab {
   href: string
@@ -85,6 +86,7 @@ function TopBar({ tabs, centerSlot }: { tabs: Tab[]; centerSlot?: React.ReactNod
       >
         <button
           type="button"
+          className="nav-hamburger"
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
           aria-label="תפריט"
@@ -104,6 +106,37 @@ function TopBar({ tabs, centerSlot }: { tabs: Tab[]; centerSlot?: React.ReactNod
         >
           <HamburgerIcon open={open} />
         </button>
+
+        {/* Desktop: persistent inline tab bar (hidden on mobile via CSS). */}
+        <nav className="nav-tabs-desktop" aria-label="ניווט">
+          {tabs.map((tab) => {
+            const active = isTabActive(pathname, tab.href)
+            return (
+              <Link
+                key={tab.href}
+                href={tab.href}
+                className="nav-tab"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 14px',
+                  borderRadius: 'var(--r-md)',
+                  fontSize: 14.5,
+                  fontWeight: active ? 700 : 600,
+                  textDecoration: 'none',
+                  color: active ? 'var(--accent)' : 'var(--text-2)',
+                  background: active ? 'var(--accent-soft)' : 'transparent',
+                  transition: 'background .12s ease, color .12s ease',
+                }}
+              >
+                <Icon name={tab.icon} size={18} stroke={active ? 2.2 : 1.8} />
+                {tab.label}
+              </Link>
+            )
+          })}
+        </nav>
+
         <div style={{ flex: 1, display: 'flex', justifyContent: 'center', minWidth: 0 }}>
           {centerSlot ?? (
             <span style={{ fontSize: 19, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>
@@ -111,8 +144,23 @@ function TopBar({ tabs, centerSlot }: { tabs: Tab[]; centerSlot?: React.ReactNod
             </span>
           )}
         </div>
-        {/* Spacer to keep the center element balanced opposite the hamburger. */}
-        <span aria-hidden style={{ width: 40, flexShrink: 0 }} />
+        <ThemeToggle />
+        {/* Desktop-only sign-out (the dropdown holds it on mobile). */}
+        <form action={signOut} className="nav-desktop-only" style={{ margin: 0 }}>
+          <button
+            type="submit"
+            aria-label="התנתקות"
+            title="התנתקות"
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: 40, height: 40, flexShrink: 0, borderRadius: 'var(--r-md)',
+              border: '1px solid var(--border)', background: 'var(--surface)',
+              color: 'var(--text-2)', cursor: 'pointer',
+            }}
+          >
+            <Icon name="logout" size={20} stroke={1.9} />
+          </button>
+        </form>
       </div>
 
       {open && (

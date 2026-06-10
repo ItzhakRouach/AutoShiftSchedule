@@ -45,6 +45,13 @@ export default function RootLayout({
   return (
     <html lang="he" dir="rtl" className={`${assistant.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
+        {/* Apply the saved theme before paint to avoid a flash (default = light). */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "(function(){try{var t=localStorage.getItem('theme');if(t&&t!=='light'){document.documentElement.setAttribute('data-theme',t);}}catch(e){}})();",
+          }}
+        />
         {children}
         <SwRegister />
       </body>

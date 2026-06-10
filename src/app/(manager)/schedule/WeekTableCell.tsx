@@ -13,7 +13,7 @@ const S = {
 
 function Badge() {
   return (
-    <span title="ביקש משמרת זו" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 14, height: 14, borderRadius: '50%', background: 'rgba(19,169,142,0.18)', color: '#13A98E', fontSize: 9, fontWeight: 800, marginRight: 3, flexShrink: 0, cursor: 'help' }}>
+    <span title="ביקש משמרת זו" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 14, height: 14, borderRadius: '50%', background: 'var(--success-soft)', color: 'var(--success)', fontSize: 9, fontWeight: 800, marginInlineEnd: 3, flexShrink: 0, cursor: 'help' }}>
       ✓
     </span>
   )
@@ -102,7 +102,7 @@ function WeekTableCellImpl(props: WeekTableCellProps) {
               {en.is12h && (
                 <span
                   title={en.variant ? SHIFT_META[en.variant as ShiftId]?.time : '12 שעות'}
-                  style={{ color: 'var(--accent)', fontWeight: 800, marginRight: 3, fontSize: 11 }}
+                  style={{ color: 'var(--accent)', fontWeight: 800, marginInlineStart: 3, fontSize: 11 }}
                 >
                   {en.variant ? SHIFT_META[en.variant as ShiftId]?.time ?? '12ש׳' : '12ש׳'}
                 </span>

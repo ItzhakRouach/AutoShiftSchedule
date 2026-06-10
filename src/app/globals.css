@@ -80,3 +80,54 @@ body {
   border-radius: var(--r-md);
   animation: skeleton-pulse 1.2s ease-in-out infinite;
 }
+
+/* ── Accessibility: visible keyboard focus everywhere (mouse clicks unaffected) */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+/* Don't double-draw the native focus ring when we add our own. */
+:focus:not(:focus-visible) { outline: none; }
+
+/* ── Interaction polish: subtle lift on buttons + interactive cards. */
+.btn { transition: transform .12s ease, filter .15s ease, box-shadow .15s ease; }
+@media (hover: hover) {
+  .btn:not(:disabled):hover { transform: translateY(-1px); filter: brightness(0.97); }
+  .card-interactive:hover { transform: translateY(-1px); box-shadow: var(--shadow-lift); }
+}
+.btn:not(:disabled):active { transform: translateY(0) scale(0.99); filter: brightness(0.94); }
+.card-interactive { transition: transform .14s ease, box-shadow .14s ease; }
+
+/* ── Slimmer, theme-aware scrollbars (esp. the horizontal schedule scroll). */
+* { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+*::-webkit-scrollbar { height: 9px; width: 9px; }
+*::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; }
+*::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
+*::-webkit-scrollbar-track { background: transparent; }
+
+/* ── Respect reduced-motion preference. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Responsive top-nav: inline tab bar on desktop, hamburger on mobile. */
+.nav-tabs-desktop { display: none; }
+.nav-desktop-only { display: none; }
+@media (min-width: 1024px) {
+  .nav-hamburger { display: none !important; }
+  .nav-tabs-desktop { display: flex; gap: 4px; }
+  .nav-desktop-only { display: flex; }
+}
+.nav-tab:hover { background: var(--surface-2); }

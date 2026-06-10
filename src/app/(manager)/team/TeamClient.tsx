@@ -122,12 +122,27 @@ export function TeamClient({ employees, roles, shiftTypes }: TeamClientProps) {
             placeholder="חיפוש עובד לפי שם או טלפון…"
             aria-label="חיפוש עובד"
             style={{
-              width: '100%', boxSizing: 'border-box', padding: '11px 42px 11px 14px',
+              width: '100%', boxSizing: 'border-box', padding: '11px 42px 11px 42px',
               borderRadius: 'var(--r-md)', border: '1px solid var(--border-strong)',
               background: 'var(--surface)', color: 'var(--text)', fontSize: 14,
               fontFamily: 'var(--font)', direction: 'rtl',
             }}
           />
+          {query.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setQuery('')}
+              aria-label="נקה חיפוש"
+              style={{
+                position: 'absolute', insetInlineEnd: 10, top: '50%', transform: 'translateY(-50%)',
+                width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                borderRadius: '50%', border: 'none', background: 'var(--surface-2)',
+                color: 'var(--text-2)', cursor: 'pointer',
+              }}
+            >
+              <Icon name="x" size={15} stroke={2} />
+            </button>
+          )}
         </div>
       )}
 

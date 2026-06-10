@@ -113,7 +113,7 @@ export function HolidaysSection({ holidays, currentYear }: Props) {
             >
               <div>
                 <span style={{ fontWeight: 600, color: 'var(--text)', fontSize: 14 }}>{h.name}</span>
-                <span style={{ color: 'var(--text-2)', fontSize: 13, marginRight: 8 }}>{h.date}</span>
+                <span style={{ color: 'var(--text-2)', fontSize: 13, marginInlineStart: 8 }}>{h.date}</span>
               </div>
               <Btn
                 variant="ghost"

@@ -51,7 +51,7 @@ export function MeSummary({ summary, roles }: { summary: EmployeeSummary; roles:
 
       <Card style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>בקשות שכובדו</span>
-        <span style={{ fontSize: 14, fontWeight: 800, color: summary.honoredCount === summary.requestedCount && summary.requestedCount > 0 ? '#13A98E' : 'var(--text-2)' }}>
+        <span style={{ fontSize: 14, fontWeight: 800, color: summary.honoredCount === summary.requestedCount && summary.requestedCount > 0 ? 'var(--success)' : 'var(--text-2)' }}>
           {summary.requestedCount > 0 ? `כובדו ${summary.honoredCount} מתוך ${summary.requestedCount}` : 'לא הוגשו בקשות'}
         </span>
       </Card>

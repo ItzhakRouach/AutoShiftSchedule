@@ -77,7 +77,7 @@ export default async function SettingsPage() {
 
   return (
     <main style={{ background: 'var(--bg)' }}>
-      <div className="page-wrap narrow" style={{ direction: 'rtl' }}>
+      <div className="page-wrap wide" style={{ direction: 'rtl', maxWidth: 920 }}>
         <h1 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 24px', color: 'var(--text)' }}>
           הגדרות
         </h1>
