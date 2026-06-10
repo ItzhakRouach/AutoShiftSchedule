@@ -60,3 +60,32 @@ export async function managerSaveDayRequest(input: {
   revalidatePath('/schedule')
   return { ok: true }
 }
+
+/** Manager wipes ALL workers' requests for a period (a clean slate to re-enter).
+ *  Manager-only + workplace-scoped; the period FK guarantees the rows belong to
+ *  this workplace. Admin client (requests RLS is employee-owned). */
+export async function managerClearAllRequests(periodId: string): Promise<Result> {
+  if (!periodId) return { error: 'תקופה לא נמצאה' }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'אין הרשאה' }
+
+  const workplace = await getActiveWorkplace(supabase)
+  if (!workplace) return { error: 'לא נמצא מקום עבודה' }
+
+  const { data: period } = await supabase
+    .from('schedule_periods')
+    .select('id')
+    .eq('id', periodId)
+    .eq('workplace_id', workplace.id)
+    .maybeSingle()
+  if (!period) return { error: 'תקופה לא נמצאה' }
+
+  const admin = createAdminClient()
+  const { error } = await admin.from('requests').delete().eq('period_id', periodId)
+  if (error) return { error: 'שגיאה בניקוי הבקשות' }
+
+  revalidatePath('/schedule')
+  return { ok: true }
+}

@@ -1,16 +1,25 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { SHIFT_META, type ShiftId } from '@/lib/domain/constants'
 import { isInVacationRange } from '@/lib/dates/week'
 import type { ScheduleView, ViewEmployee, ViewRequest, ViewVacation } from '@/lib/schedule/view-data'
 import { ManagerRequestEditor, type ShiftOption, type RequestEditTarget } from './ManagerRequestEditor'
+import { managerClearAllRequests } from './request-actions'
 
 interface Props {
   view: ScheduleView
 }
 
 const BASE_KEYS = ['morning', 'noon', 'night'] as const
+
+const clearBtn = (danger: boolean): React.CSSProperties => ({
+  fontSize: 12.5, fontWeight: 700, padding: '5px 12px', borderRadius: 'var(--r-pill)',
+  border: `1px solid ${danger ? 'var(--danger)' : 'var(--border-strong)'}`,
+  background: danger ? 'var(--danger-soft)' : 'var(--surface)',
+  color: danger ? 'var(--danger)' : 'var(--text-2)', cursor: 'pointer', fontFamily: 'var(--font)',
+})
 
 /** Build a lookup: employeeId → dayOfWeek → ViewRequest */
 function buildRequestMap(
@@ -119,7 +128,18 @@ function isoForDayIndex(weekStart: string, dayIndex: number): string {
 }
 
 export function RequestsOverview({ view }: Props) {
+  const router = useRouter()
   const [editing, setEditing] = useState<RequestEditTarget | null>(null)
+  const [confirmClear, setConfirmClear] = useState(false)
+  const [clearing, startClear] = useTransition()
+
+  function clearAll() {
+    startClear(async () => {
+      await managerClearAllRequests(view.periodId)
+      setConfirmClear(false)
+      router.refresh()
+    })
+  }
 
   // Base-shift options the manager can pick for a worker's request.
   const shiftOptions: ShiftOption[] = BASE_KEYS.filter((k) => view.shiftTypeIdByKey[k]).map((k) => {
@@ -185,6 +205,20 @@ export function RequestsOverview({ view }: Props) {
             }}
           >
             {offTotals.total} ימי חופש · {offTotals.employees} עובדים
+          </span>
+        )}
+        {view.requests.length > 0 && (
+          <span style={{ marginInlineStart: 'auto', display: 'inline-flex', gap: 6 }}>
+            {confirmClear ? (
+              <>
+                <button onClick={clearAll} disabled={clearing} style={clearBtn(true)}>
+                  {clearing ? 'מנקה…' : 'בטוח? נקה הכל'}
+                </button>
+                <button onClick={() => setConfirmClear(false)} disabled={clearing} style={clearBtn(false)}>ביטול</button>
+              </>
+            ) : (
+              <button onClick={() => setConfirmClear(true)} style={clearBtn(false)}>נקה הכל</button>
+            )}
           </span>
         )}
       </div>
