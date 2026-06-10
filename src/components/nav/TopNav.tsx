@@ -16,7 +16,7 @@ interface Tab {
 
 const MANAGER_TABS: Tab[] = [
   { href: '/dashboard', label: 'דשבורד', icon: 'chart' },
-  { href: '/schedule', label: 'שיבוץ', icon: 'grid' },
+  { href: '/schedule', label: 'סידור עבודה', icon: 'grid' },
   { href: '/team', label: 'עובדים', icon: 'users' },
   { href: '/settings', label: 'הגדרות', icon: 'settings' },
 ]

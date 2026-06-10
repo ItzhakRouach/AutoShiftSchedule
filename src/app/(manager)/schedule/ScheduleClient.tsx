@@ -103,7 +103,7 @@ export function ScheduleClient({ view, editMeta }: Props) {
 
       <div className="schedule-controls">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <h1 style={{ margin: 0, fontSize: 'var(--text-h1)', fontWeight: 800 }}>שיבוץ אוטומטי</h1>
+        <h1 style={{ margin: 0, fontSize: 'var(--text-h1)', fontWeight: 800 }}>סידור עבודה</h1>
         {pct !== null && (
           <div style={{
             textAlign: 'center',
