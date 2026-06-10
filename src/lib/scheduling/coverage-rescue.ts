@@ -5,11 +5,15 @@
 // soft-off workers to fill the gaps — never touching a vacation/רענון
 // (offHard=true), and always honoring every other hard constraint (role, rest,
 // Shabbat, one-shift/day, maxShifts) via isAssignable({ allowSoftOff: true }).
-// Each override is recorded so the manager can be told who was pulled in.
+// PRIORITY: a SENIOR worker's off-request is honored first — we override the
+// non-senior (lower-priority) holders before ever pulling in a senior; a senior
+// is reclaimed only if no non-senior can cover the slot. Each override is
+// recorded so the manager can be told who was pulled in.
 import type { DayMeta, DayRequest, EngineInput, OverriddenOff } from './types'
 import type { FillState } from './dayfill'
 import { openSlotsForDay } from './dayfill'
 import { isAssignable } from './constraints'
+import { isSeniorForRole } from './scoring'
 
 export type { OverriddenOff } from './types'
 
@@ -51,10 +55,14 @@ export function runCoverageRescue(
             { allowSoftOff: true },
           )
         })
-        // Override the least-disruptive first: fewest shifts so far, then a
-        // deterministic lottery tie-break.
+        // Override the lowest-priority, least-disruptive worker first:
+        //  1) NON-senior before senior (a senior's off-request is honored unless
+        //     no one else can cover — see header).
+        //  2) fewest shifts so far (balance the load).
+        //  3) deterministic lottery tie-break.
         .sort(
           (a, b) =>
+            (isSeniorForRole(a, slot.roleId) ? 1 : 0) - (isSeniorForRole(b, slot.roleId) ? 1 : 0) ||
             st.committed[a.id].length - st.committed[b.id].length ||
             st.lotteryRank[a.id] - st.lotteryRank[b.id],
         )

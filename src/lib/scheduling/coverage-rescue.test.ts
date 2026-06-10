@@ -41,6 +41,20 @@ describe('coverage-rescue (soft off override)', () => {
     expect(d0?.employeeId).toBe('b')
   })
 
+  it('honors a SENIOR off-request — overrides the non-senior worker instead', () => {
+    // Both requested off; one is senior for the role. The day-0 slot must be
+    // covered by the NON-senior (sr keeps their day off).
+    const sr = emp('sr', { roleIds: [GUARD], seniorRoleIds: [GUARD] })
+    const jr = emp('jr', { roleIds: [GUARD] })
+    const requests = buildRequests([sr, jr], (_id, d) => (d === 0 ? { off: true } : {}))
+    const res = generateSchedule(
+      input({ employees: [sr, jr], requirements: reqFor([0], 'morning', GUARD, 1), requests, seed: 1 }),
+    )
+    expect(res.overriddenOff).toHaveLength(1)
+    expect(res.overriddenOff[0].employeeId).toBe('jr')
+    expect(res.assignmentsByEmployee.sr ?? []).toEqual([])
+  })
+
   it('never overrides a hard off (vacation/רענון)', () => {
     const a = emp('a', { roleIds: [GUARD] })
     const requests = buildRequests([a], (_id, d) => (d === 0 ? { offHard: true } : {}))

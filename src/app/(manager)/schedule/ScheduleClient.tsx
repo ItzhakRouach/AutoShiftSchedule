@@ -145,6 +145,16 @@ export function ScheduleClient({ view, editMeta }: Props) {
         </Card>
       )}
 
+      {editMeta && (
+        <>
+          <div style={{ height: 10 }} />
+          <Btn variant="outline" size="md" icon="bell" style={{ width: '100%' }} onClick={() => setShowDayNotes(true)}>
+            רענון / שמירת עובד ליום (לפני יצירה)
+          </Btn>
+        </>
+      )}
+
+      <div style={{ height: 12 }} />
       <Btn variant="primary" size="lg" icon="check" style={{ width: '100%' }} onClick={handleGenerateClick}>
         צור סידור אוטומטי
       </Btn>
@@ -168,14 +178,6 @@ export function ScheduleClient({ view, editMeta }: Props) {
           <DayNotesSummary view={view} />
           <div className="schedule-controls">
           <TwelveHourList suggestions={suggestions} roles={view.roles} />
-          {editMeta && (
-            <>
-              <div style={{ height: 14 }} />
-              <Btn variant="outline" size="md" icon="bell" style={{ width: '100%' }} onClick={() => setShowDayNotes(true)}>
-                רענון / הערת יום
-              </Btn>
-            </>
-          )}
           <div style={{ height: 14 }} />
           <Btn
             variant={published ? 'soft' : 'primary'}

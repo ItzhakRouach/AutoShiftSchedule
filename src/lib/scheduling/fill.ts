@@ -177,13 +177,16 @@ export function runFill(input: EngineInput, skipTwelve = false, skipDiversity = 
       st.satisfied[e.id] = recountSatisfied(input, e.id, st.committed[e.id])
     }
   }
-  // NEW: 12h auto-coverage pass closes residual gaps with 12h shifts (day/night
-  // preferred, 03-15/15-03 last resort). Records flow through st.twelve.
-  st.twelve = skipTwelve ? [] : runTwelveFill(input, st)
-  // LAST RESORT: if a day still can't be staffed (too many soft off-requests),
-  // reclaim the lowest-priority soft-off workers to cover it (vacation/רענון are
-  // never touched). Records the overrides so the manager can be alerted.
+  // COVERAGE-RESCUE FIRST: fill remaining gaps with normal 8h shifts by reclaiming
+  // the lowest-priority soft-off workers (vacation/רענון untouched; a senior's
+  // off-request is honored over a junior's — see coverage-rescue). Doing this
+  // BEFORE the 12h pass means a gap is patched with one 8h person rather than a
+  // LONE m12_day (07–19) that would leave 19:00→night thin with no m12_night
+  // partner. Records the overrides so the manager can be alerted.
   st.overriddenOff = runCoverageRescue(input, st, metas)
+  // LAST RESORT: 12h auto-coverage for any slot the 8h fill + rescue still can't
+  // staff (a genuine shortage). day/night pair preferred, 03-15/15-03 last.
+  st.twelve = skipTwelve ? [] : runTwelveFill(input, st)
   return st
 }
 
