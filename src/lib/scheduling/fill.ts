@@ -9,6 +9,7 @@ import { matchDay, isTopPrecedenceFor, type FillState } from './dayfill'
 import { runTwelveFill } from './twelve-fill'
 import { runDiversityPass, buildNightThresholds } from './diversity'
 import { runNightUnloadPass } from './night-unload'
+import { runSeniorRolePass } from './senior-role'
 import { runCoverageRescue } from './coverage-rescue'
 import { satisfiedCount as recountSatisfied } from './request-gate'
 
@@ -176,6 +177,10 @@ export function runFill(input: EngineInput, skipTwelve = false, skipDiversity = 
     for (const e of input.employees) {
       st.satisfied[e.id] = recountSatisfied(input, e.id, st.committed[e.id])
     }
+    // SENIOR ROLE: give senior-for-role workers their role within a shift via
+    // coverage-neutral same-shift swaps (a role swap keeps the same shifts, so
+    // satisfied counts are unchanged — no recount needed).
+    runSeniorRolePass(input, st, metas)
   }
   // COVERAGE-RESCUE FIRST: fill remaining gaps with normal 8h shifts by reclaiming
   // the lowest-priority soft-off workers (vacation/רענון untouched; a senior's
