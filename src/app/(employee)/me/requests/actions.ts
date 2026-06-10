@@ -6,18 +6,34 @@ import { saveDayRequestSchema, addVacationSchema } from '@/lib/validation/reques
 
 export type ActionResult = { ok: true } | { error: string }
 
-/** Resolves the employee row for the authenticated user, or null if none. */
+/** Resolves the employee row (id + workplace) for the authenticated user. */
 async function resolveEmployee(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
 ) {
   const { data } = await supabase
     .from('employees')
-    .select('id')
+    .select('id, workplace_id')
     .eq('user_id', userId)
     .limit(1)
     .maybeSingle()
   return data
+}
+
+/** True if the period exists AND belongs to the employee's workplace. Guards
+ *  against acting on another workplace's period via a crafted periodId. */
+async function periodInWorkplace(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  periodId: string,
+  workplaceId: string,
+): Promise<{ status: string } | null> {
+  const { data } = await supabase
+    .from('schedule_periods')
+    .select('status')
+    .eq('id', periodId)
+    .eq('workplace_id', workplaceId)
+    .maybeSingle()
+  return data ?? null
 }
 
 export async function saveDayRequest(input: unknown): Promise<ActionResult> {
@@ -34,13 +50,8 @@ export async function saveDayRequest(input: unknown): Promise<ActionResult> {
   const employee = await resolveEmployee(supabase, user.id)
   if (!employee || employee.id !== employeeId) return { error: 'אין הרשאה' }
 
-  // Guard: period must be 'collecting'
-  const { data: period } = await supabase
-    .from('schedule_periods')
-    .select('status')
-    .eq('id', periodId)
-    .maybeSingle()
-
+  // Guard: period must exist IN THIS WORKPLACE and be 'collecting'.
+  const period = await periodInWorkplace(supabase, periodId, employee.workplace_id)
   if (!period) return { error: 'תקופה לא נמצאה' }
   if (period.status !== 'collecting') {
     return { error: 'הבקשות נעולות — חלון ההגשה נסגר' }
@@ -51,40 +62,33 @@ export async function saveDayRequest(input: unknown): Promise<ActionResult> {
   // for OTHER days in the same period; the day being saved is excluded since
   // the upsert will replace it.
   if (isOff) {
-    const { data: empRow } = await supabase
-      .from('employees')
-      .select('workplace_id')
-      .eq('id', employeeId)
+    const { data: settingsRow } = await supabase
+      .from('workplace_settings')
+      .select('max_off_days_per_week, max_off_per_day')
+      .eq('workplace_id', employee.workplace_id)
       .maybeSingle()
-    if (empRow) {
-      const { data: settingsRow } = await supabase
-        .from('workplace_settings')
-        .select('max_off_days_per_week, max_off_per_day')
-        .eq('workplace_id', empRow.workplace_id)
-        .maybeSingle()
-      const cap = (settingsRow?.max_off_days_per_week as number | null) ?? 2
-      const { data: otherOffs } = await supabase
-        .from('requests')
-        .select('day_of_week')
-        .eq('period_id', periodId)
-        .eq('employee_id', employeeId)
-        .eq('is_off', true)
-        .neq('day_of_week', dayOfWeek)
-      const usedExcludingThisDay = (otherOffs ?? []).length
-      if (usedExcludingThisDay + 1 > cap) {
-        return { error: `הגעת למקסימום ימי חופש לשבוע (${cap})` }
-      }
-      // Per-DAY cap: how many OTHER workers are already off this day (RLS-safe RPC).
-      const perDayCap = settingsRow?.max_off_per_day as number | null | undefined
-      if (perDayCap != null) {
-        const { data: dayOffCount } = await supabase.rpc('off_count_for_day', {
-          p_period: periodId,
-          p_day: dayOfWeek,
-          p_exclude: employeeId,
-        })
-        if (((dayOffCount as number | null) ?? 0) >= perDayCap) {
-          return { error: `כבר ${perDayCap} עובדים בחופש ביום זה — לא ניתן להוסיף` }
-        }
+    const cap = (settingsRow?.max_off_days_per_week as number | null) ?? 2
+    const { data: otherOffs } = await supabase
+      .from('requests')
+      .select('day_of_week')
+      .eq('period_id', periodId)
+      .eq('employee_id', employeeId)
+      .eq('is_off', true)
+      .neq('day_of_week', dayOfWeek)
+    const usedExcludingThisDay = (otherOffs ?? []).length
+    if (usedExcludingThisDay + 1 > cap) {
+      return { error: `הגעת למקסימום ימי חופש לשבוע (${cap})` }
+    }
+    // Per-DAY cap: how many OTHER workers are already off this day (RLS-safe RPC).
+    const perDayCap = settingsRow?.max_off_per_day as number | null | undefined
+    if (perDayCap != null) {
+      const { data: dayOffCount } = await supabase.rpc('off_count_for_day', {
+        p_period: periodId,
+        p_day: dayOfWeek,
+        p_exclude: employeeId,
+      })
+      if (((dayOffCount as number | null) ?? 0) >= perDayCap) {
+        return { error: `כבר ${perDayCap} עובדים בחופש ביום זה — לא ניתן להוסיף` }
       }
     }
   }
@@ -118,11 +122,7 @@ export async function submitRequests(periodId: string): Promise<ActionResult> {
   const employee = await resolveEmployee(supabase, user.id)
   if (!employee) return { error: 'אין הרשאה' }
 
-  const { data: period } = await supabase
-    .from('schedule_periods')
-    .select('status')
-    .eq('id', periodId)
-    .maybeSingle()
+  const period = await periodInWorkplace(supabase, periodId, employee.workplace_id)
   if (!period) return { error: 'תקופה לא נמצאה' }
   if (period.status !== 'collecting') {
     return { error: 'הבקשות נעולות — חלון ההגשה נסגר' }
@@ -180,11 +180,7 @@ export async function clearAllRequests(periodId: string): Promise<ActionResult> 
   const employee = await resolveEmployee(supabase, user.id)
   if (!employee) return { error: 'אין הרשאה' }
 
-  const { data: period } = await supabase
-    .from('schedule_periods')
-    .select('status')
-    .eq('id', periodId)
-    .maybeSingle()
+  const period = await periodInWorkplace(supabase, periodId, employee.workplace_id)
   if (!period) return { error: 'תקופה לא נמצאה' }
   if (period.status !== 'collecting') {
     return { error: 'הבקשות נעולות — חלון ההגשה נסגר' }
@@ -212,11 +208,17 @@ export async function removeVacation(id: string): Promise<ActionResult> {
   if (!id) return { error: 'מזהה חופשה חסר' }
 
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'אין הרשאה' }
+  const employee = await resolveEmployee(supabase, user.id)
+  if (!employee) return { error: 'אין הרשאה' }
 
+  // Scope to the caller's own vacations (defense-in-depth beyond RLS).
   const { data, error } = await supabase
     .from('employee_vacations')
     .delete()
     .eq('id', id)
+    .eq('employee_id', employee.id)
     .select('id')
 
   if (error || !data || data.length === 0) {
