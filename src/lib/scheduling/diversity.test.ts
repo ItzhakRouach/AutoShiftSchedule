@@ -187,10 +187,13 @@ describe('diversity improves rest quality and night-cap load', () => {
     idsOf(inp).reduce((s, id) => s + nightOverage(st.committed[id] ?? [], 3), 0)
 
   it('total rest penalty never increases vs the no-pass baseline', () => {
+    // Isolate the diversity pass: skip the night→off pass in both runs, since it
+    // deliberately trades rest (a night worker kept on noon next day) for
+    // night-worker continuity.
     for (const [n, seed] of [[5, 11], [6, 1], [7, 3], [8, 21]] as const) {
       const inp = guardWeek(n, seed)
-      const base = runFill(inp, false, true)
-      const div = runFill(inp)
+      const base = runFill(inp, false, true, true)
+      const div = runFill(inp, false, false, true)
       expect(sumRest(inp, div)).toBeLessThanOrEqual(sumRest(inp, base))
     }
   })

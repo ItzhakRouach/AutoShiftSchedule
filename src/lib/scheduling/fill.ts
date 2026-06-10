@@ -10,6 +10,7 @@ import { runTwelveFill } from './twelve-fill'
 import { runDiversityPass, buildNightThresholds } from './diversity'
 import { runNightUnloadPass } from './night-unload'
 import { runSeniorRolePass } from './senior-role'
+import { runNightThenOffPass } from './night-then-off'
 import { runCoverageRescue } from './coverage-rescue'
 import { satisfiedCount as recountSatisfied } from './request-gate'
 
@@ -135,7 +136,7 @@ function generalFill(input: EngineInput, st: FillState, metas: Record<number, Da
  * short but 12h closes more) from "short" (12h cannot help). The default path
  * runs the full 8h + 12h fill.
  */
-export function runFill(input: EngineInput, skipTwelve = false, skipDiversity = false): FillState {
+export function runFill(input: EngineInput, skipTwelve = false, skipDiversity = false, skipNightThenOff = false): FillState {
   const st: FillState = {
     grid: emptyGrid(input),
     committed: {},
@@ -181,6 +182,16 @@ export function runFill(input: EngineInput, skipTwelve = false, skipDiversity = 
     // coverage-neutral same-shift swaps (a role swap keeps the same shifts, so
     // satisfied counts are unchanged — no recount needed).
     runSeniorRolePass(input, st, metas)
+  }
+  // NIGHT→OFF (hard rule): keep a night worker working the next day (coverage-
+  // neutral displacement) rather than leaving them off, unless they requested
+  // off. It deliberately trades some rest for night-worker continuity, so
+  // `skipNightThenOff` lets the rest-quality test isolate the diversity pass.
+  if (!skipNightThenOff) {
+    runNightThenOffPass(input, st, metas)
+    for (const e of input.employees) {
+      st.satisfied[e.id] = recountSatisfied(input, e.id, st.committed[e.id])
+    }
   }
   // COVERAGE-RESCUE FIRST: fill remaining gaps with normal 8h shifts by reclaiming
   // the lowest-priority soft-off workers (vacation/רענון untouched; a senior's
