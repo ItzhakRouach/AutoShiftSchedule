@@ -18,6 +18,10 @@ import { DashPanels } from './DashPanels'
 import { OnboardingSteps } from './OnboardingSteps'
 import type { Scope } from '@/lib/stats/types'
 
+// Always reflect the current PUBLISHED state — unpublish/delete must immediately
+// drop from the KPIs, hours-per-employee, and fairness panels.
+export const dynamic = 'force-dynamic'
+
 function isScope(v: unknown): v is Scope { return v === 'week' || v === 'month' || v === 'year' }
 
 export default async function DashboardPage({
