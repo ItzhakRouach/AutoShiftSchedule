@@ -13,12 +13,14 @@ interface Props {
   view: ScheduleView
   selDay: number
   onSlot?: (slot: SlotCtx) => void
+  /** When set (employee viewing their own schedule), that employee's chips pop. */
+  selfId?: string
 }
 
 /** Per-shift cards for the selected day, showing each role's required count
  *  and assigned employees, with red markers for unfilled slots. Slots open the
  *  SwapEditor via onSlot when provided. */
-export function DayGrid({ view, selDay, onSlot }: Props) {
+export function DayGrid({ view, selDay, onSlot, selfId }: Props) {
   const empById = new Map(view.employees.map((e) => [e.id, e]))
   const roleById = new Map(view.roles.map((r) => [r.id, r]))
   const open = (shift: ShiftKey, roleId: string, assignedIds: string[]) => {
@@ -86,6 +88,7 @@ export function DayGrid({ view, selDay, onSlot }: Props) {
                     <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
                       {filled.map((eid) => {
                         const e = empById.get(eid)
+                        const isSelf = !!selfId && eid === selfId
                         return (
                           <span
                             key={eid}
@@ -96,14 +99,14 @@ export function DayGrid({ view, selDay, onSlot }: Props) {
                               gap: 7,
                               padding: '5px 11px 5px 7px',
                               borderRadius: 99,
-                              border: '1px solid var(--border)',
-                              background: 'var(--surface-2)',
+                              border: `1.5px solid ${isSelf ? 'var(--accent)' : 'var(--border)'}`,
+                              background: isSelf ? 'var(--accent-soft)' : 'var(--surface-2)',
                               cursor: onSlot ? 'pointer' : 'default',
                             }}
                           >
                             <Avatar name={e?.name ?? '?'} color={e?.color ?? '#888'} size={24} />
-                            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-                              {e?.name ?? 'לא ידוע'}
+                            <span style={{ fontSize: 13, fontWeight: isSelf ? 800 : 600, color: isSelf ? 'var(--accent)' : 'var(--text)' }}>
+                              {e?.name ?? 'לא ידוע'}{isSelf ? ' (אני)' : ''}
                             </span>
                           </span>
                         )

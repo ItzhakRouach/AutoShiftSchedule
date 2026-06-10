@@ -17,6 +17,8 @@ interface Props {
   view: ScheduleView
   onSlot?: (slot: SlotCtx) => void
   onDayPair?: (day: number) => void
+  /** Employee viewing their OWN schedule — their shifts are highlighted. */
+  selfId?: string
 }
 
 /**
@@ -26,7 +28,7 @@ interface Props {
  * The week table renders ONCE — CSS classes decide where it's visible — so the
  * DOM (and test ids) stay unique.
  */
-export function ScheduleGrids({ view, onSlot, onDayPair }: Props) {
+export function ScheduleGrids({ view, onSlot, onDayPair, selfId }: Props) {
   const [layout, setLayout] = useState<'week' | 'day'>('week')
   const [selDay, setSelDay] = useState(0)
 
@@ -34,7 +36,7 @@ export function ScheduleGrids({ view, onSlot, onDayPair }: Props) {
     <>
       {/* Week table: always on desktop; on mobile only when 'week' is picked. */}
       <div className={layout === 'week' ? 'sched-week-on' : 'sched-week-deskonly'}>
-        <WeekTable view={view} onSlot={onSlot} onDayPair={onDayPair} />
+        <WeekTable view={view} onSlot={onSlot} onDayPair={onDayPair} initialSelectedId={selfId} />
       </div>
 
       {/* Mobile-only: layout toggle + (in day mode) a day selector + DayGrid. */}
@@ -71,7 +73,7 @@ export function ScheduleGrids({ view, onSlot, onDayPair }: Props) {
                 )
               })}
             </div>
-            <DayGrid view={view} selDay={selDay} onSlot={onSlot} />
+            <DayGrid view={view} selDay={selDay} onSlot={onSlot} selfId={selfId} />
           </>
         )}
       </div>

@@ -40,9 +40,16 @@ function Row({ v, busy, onSet }: { v: WorkplaceVacation; busy: boolean; onSet: (
         </div>
         <div style={{ fontSize: 12.5, color: 'var(--text-2)' }}>{range(v)}</div>
       </div>
-      {/* Always editable: the current decision is the filled button. */}
-      <Btn variant={v.status === 'rejected' ? 'soft' : 'outline'} size="sm" disabled={busy} onClick={() => onSet('rejected')}>דחה</Btn>
-      <Btn variant={v.status === 'approved' ? 'primary' : 'outline'} size="sm" disabled={busy} onClick={() => onSet('approved')}>אשר</Btn>
+      {/* Show only the action that changes the CURRENT decision:
+          pending → both; approved → reject/cancel; rejected → approve. */}
+      {v.status !== 'approved' && (
+        <Btn variant="primary" size="sm" disabled={busy} onClick={() => onSet('approved')}>אשר</Btn>
+      )}
+      {v.status !== 'rejected' && (
+        <Btn variant="soft" size="sm" disabled={busy} onClick={() => onSet('rejected')}>
+          {v.status === 'approved' ? 'בטל / דחה' : 'דחה'}
+        </Btn>
+      )}
     </div>
   )
 }

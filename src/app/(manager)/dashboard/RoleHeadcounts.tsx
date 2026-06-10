@@ -9,6 +9,9 @@ export function RoleHeadcounts({ roles }: { roles: RoleHeadcount[] }) {
   return (
     <>
       <SectionTitle>צוות לפי תפקיד</SectionTitle>
+      <p style={{ fontSize: 12, color: 'var(--text-3)', margin: '-4px 0 10px' }}>
+        כמה עובדים יכולים לאייש כל תפקיד — דרגה גבוהה יכולה לכסות גם תפקידים נמוכים יותר.
+      </p>
       <div
         style={{
           display: 'grid',

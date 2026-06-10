@@ -86,8 +86,9 @@ export default async function MeSchedulePage() {
         <>
           <div style={{ height: 14 }} />
           {/* Read-only, responsive: week table on desktop, per-day cards on
-              mobile (no sideways scroll, so role labels never disappear). */}
-          <ScheduleGrids view={view} />
+              mobile (no sideways scroll). selfId highlights the worker's own
+              shifts so they spot themselves in the full-team schedule. */}
+          <ScheduleGrids view={view} selfId={employee.id} />
         </>
       ) : (
         <div className="schedule-controls">

@@ -23,7 +23,14 @@ interface Props {
 
 const BASE_SHIFTS: ShiftKey[] = ['morning', 'noon', 'night']
 
+// Frozen-column widths (RTL: pinned to the physical RIGHT edge). The role
+// column's offset MUST equal the shift column's width so they don't overlap.
+const SHIFT_W = 96
+const ROLE_W = 78
+
 const S = {
+  // NOTE: the table uses border-collapse: separate — position:sticky on table
+  // cells does NOT hold with border-collapse: collapse in most browsers.
   sticky: { position: 'sticky', background: 'var(--surface-2)', fontWeight: 700, borderLeft: '1px solid var(--border)', borderBottom: '1px solid var(--border)', zIndex: 2 } as React.CSSProperties,
   dayPairBtn: { marginTop: 4, padding: '2px 8px', fontSize: 10.5, fontWeight: 700, borderRadius: 99, border: '1px solid var(--accent)', background: 'var(--accent-soft)', color: 'var(--accent)', cursor: 'pointer', fontFamily: 'var(--font)' } as React.CSSProperties,
 }
@@ -57,11 +64,11 @@ export function WeekTable({ view, onSlot, onDayPair, initialSelectedId, showUnfi
         <span>מוצג: <strong style={{ color: empById.get(selectedId)?.color }}>{empById.get(selectedId)?.name}</strong></span>
         <button onClick={() => setSelectedId(null)} style={{ fontSize: 11, padding: '2px 8px', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface)', cursor: 'pointer', color: 'var(--text-2)' }}>נקה</button></div>}
       <div data-testid="week-table" style={{ overflowX: 'auto', direction: 'rtl', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
-        <table style={{ borderCollapse: 'collapse', minWidth: 700, tableLayout: 'auto', width: '100%' }}>
+        <table style={{ borderCollapse: 'separate', borderSpacing: 0, minWidth: 700, tableLayout: 'auto', width: '100%' }}>
           <thead>
             <tr style={{ background: 'var(--surface-2)' }}>
-              <th style={{ ...S.sticky, right: 0, insetInlineEnd: 0, padding: '12px 14px', fontSize: 13, minWidth: 80 }}>משמרת</th>
-              <th style={{ ...S.sticky, right: 80, insetInlineEnd: 80, padding: '12px 10px', fontSize: 13, minWidth: 72 }}>תפקיד</th>
+              <th style={{ ...S.sticky, right: 0, zIndex: 3, padding: '10px 8px', fontSize: 13, width: SHIFT_W, minWidth: SHIFT_W, maxWidth: SHIFT_W }}>משמרת</th>
+              <th style={{ ...S.sticky, right: SHIFT_W, zIndex: 3, padding: '10px 8px', fontSize: 13, width: ROLE_W, minWidth: ROLE_W, maxWidth: ROLE_W }}>תפקיד</th>
               {days.map((d) => (
                 <th key={d.index} style={{ ...S.sticky, position: undefined, padding: '10px 8px', fontSize: 12, textAlign: 'center', minWidth: 96 }}>
                   <div style={{ fontWeight: 800, fontSize: 13 }}>{d.short}</div>
@@ -89,12 +96,12 @@ export function WeekTable({ view, onSlot, onDayPair, initialSelectedId, showUnfi
                 return (
                   <tr key={`${shift}-${roleId}`} style={{ background: rowBg, ...groupDividerStyle }}>
                     {ri === 0 && (
-                      <td rowSpan={roles.length} style={{ ...S.sticky, right: 0, insetInlineEnd: 0, padding: '12px 14px', textAlign: 'center', fontSize: 13, color: m.color, background: m.soft, verticalAlign: 'middle', minWidth: 80, borderTop: showGroupDivider ? '3px solid var(--border-strong, var(--border))' : undefined }}>
+                      <td rowSpan={roles.length} style={{ ...S.sticky, right: 0, padding: '12px 8px', textAlign: 'center', fontSize: 13, color: m.color, background: m.soft, verticalAlign: 'middle', width: SHIFT_W, minWidth: SHIFT_W, maxWidth: SHIFT_W, borderTop: showGroupDivider ? '3px solid var(--border-strong, var(--border))' : undefined }}>
                         <div style={{ fontWeight: 800, whiteSpace: 'nowrap', fontSize: 13 }}>{m.name}</div>
                         <div style={{ fontSize: 11, color: 'var(--text-2)', fontWeight: 600, marginTop: 3 }}>{m.time}</div>
                       </td>
                     )}
-                    <td style={{ ...S.sticky, right: 80, insetInlineEnd: 80, padding: '10px 12px', fontSize: 12.5, color: rm?.color ?? 'var(--text)', whiteSpace: 'nowrap', background: rm ? rm.soft : 'var(--surface-2)', minWidth: 72 }}>
+                    <td style={{ ...S.sticky, right: SHIFT_W, padding: '10px 8px', fontSize: 12.5, color: rm?.color ?? 'var(--text)', whiteSpace: 'nowrap', background: rm ? rm.soft : 'var(--surface-2)', width: ROLE_W, minWidth: ROLE_W, maxWidth: ROLE_W }}>
                       {role?.name ?? roleId}
                     </td>
                     {days.map((d) => (
