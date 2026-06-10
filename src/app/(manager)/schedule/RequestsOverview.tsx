@@ -1,12 +1,16 @@
 'use client'
 
-import { SHIFT_META } from '@/lib/domain/constants'
+import { useState } from 'react'
+import { SHIFT_META, type ShiftId } from '@/lib/domain/constants'
 import { isInVacationRange } from '@/lib/dates/week'
 import type { ScheduleView, ViewEmployee, ViewRequest, ViewVacation } from '@/lib/schedule/view-data'
+import { ManagerRequestEditor, type ShiftOption, type RequestEditTarget } from './ManagerRequestEditor'
 
 interface Props {
   view: ScheduleView
 }
+
+const BASE_KEYS = ['morning', 'noon', 'night'] as const
 
 /** Build a lookup: employeeId → dayOfWeek → ViewRequest */
 function buildRequestMap(
@@ -51,7 +55,7 @@ function ShiftChip({ shiftTypeId, shiftTypeIdByKey }: { shiftTypeId: string; shi
   )
 }
 
-function DayCell({ req, shiftTypeIdByKey, onVacation }: { req: ViewRequest | undefined; shiftTypeIdByKey: Record<string, string>; onVacation: boolean }) {
+function DayCell({ req, shiftTypeIdByKey, onVacation, onClick }: { req: ViewRequest | undefined; shiftTypeIdByKey: Record<string, string>; onVacation: boolean; onClick?: () => void }) {
   const cellStyle: React.CSSProperties = {
     padding: '8px 10px',
     borderLeft: '1px solid var(--border)',
@@ -59,6 +63,7 @@ function DayCell({ req, shiftTypeIdByKey, onVacation }: { req: ViewRequest | und
     textAlign: 'center',
     verticalAlign: 'middle',
     minWidth: 80,
+    cursor: onClick ? 'pointer' : 'default',
   }
   if (onVacation) {
     return (
@@ -72,20 +77,20 @@ function DayCell({ req, shiftTypeIdByKey, onVacation }: { req: ViewRequest | und
     )
   }
   if (!req) {
-    return <td style={cellStyle}><span style={{ color: 'var(--text-3)', fontSize: 12 }}>—</span></td>
+    return <td style={cellStyle} onClick={onClick} title="לחצו לעריכת הבקשה"><span style={{ color: 'var(--text-3)', fontSize: 12 }}>—</span></td>
   }
   if (req.isOff) {
     return (
-      <td style={{ ...cellStyle, background: 'var(--vacation-soft)' }}>
+      <td style={{ ...cellStyle, background: 'var(--vacation-soft)' }} onClick={onClick} title="לחצו לעריכת הבקשה">
         <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--vacation)' }}>חופש</span>
       </td>
     )
   }
   if (req.preferredShiftIds.length === 0) {
-    return <td style={cellStyle}><span style={{ color: 'var(--text-3)', fontSize: 12 }}>—</span></td>
+    return <td style={cellStyle} onClick={onClick} title="לחצו לעריכת הבקשה"><span style={{ color: 'var(--text-3)', fontSize: 12 }}>—</span></td>
   }
   return (
-    <td style={{ ...cellStyle, background: 'rgba(19,169,142,0.04)' }}>
+    <td style={{ ...cellStyle, background: 'rgba(19,169,142,0.04)' }} onClick={onClick} title="לחצו לעריכת הבקשה">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
         {req.preferredShiftIds.map((sid) => (
           <ShiftChip key={sid} shiftTypeId={sid} shiftTypeIdByKey={shiftTypeIdByKey} />
@@ -114,6 +119,14 @@ function isoForDayIndex(weekStart: string, dayIndex: number): string {
 }
 
 export function RequestsOverview({ view }: Props) {
+  const [editing, setEditing] = useState<RequestEditTarget | null>(null)
+
+  // Base-shift options the manager can pick for a worker's request.
+  const shiftOptions: ShiftOption[] = BASE_KEYS.filter((k) => view.shiftTypeIdByKey[k]).map((k) => {
+    const m = SHIFT_META[k as ShiftId]
+    return { id: view.shiftTypeIdByKey[k], name: m?.name ?? k, color: m?.color ?? 'var(--accent)', soft: m?.soft ?? 'var(--accent-soft)' }
+  })
+
   const reqMap = buildRequestMap(view.requests)
   const submitted = submittedCount(view.employees, reqMap)
   const total = view.employees.length
@@ -161,6 +174,7 @@ export function RequestsOverview({ view }: Props) {
         <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-2)' }}>
           הגישו {submitted}/{total} עובדים
         </span>
+        <span style={{ fontSize: 12, color: 'var(--text-3)' }}>· לחצו על משבצת כדי להוסיף/לערוך בקשה</span>
         {offTotals.total > 0 && (
           <span
             data-testid="off-requests-summary"
@@ -225,20 +239,41 @@ export function RequestsOverview({ view }: Props) {
                       </span>
                     )}
                   </td>
-                  {view.days.map((d) => (
-                    <DayCell
-                      key={d.index}
-                      req={byDay?.get(d.index)}
-                      shiftTypeIdByKey={view.shiftTypeIdByKey}
-                      onVacation={isInVacationRange(isoByDayIndex[d.index], empVacs.map((v) => ({ date_from: v.dateFrom, date_to: v.dateTo })))}
-                    />
-                  ))}
+                  {view.days.map((d) => {
+                    const req = byDay?.get(d.index)
+                    const onVacation = isInVacationRange(isoByDayIndex[d.index], empVacs.map((v) => ({ date_from: v.dateFrom, date_to: v.dateTo })))
+                    return (
+                      <DayCell
+                        key={d.index}
+                        req={req}
+                        shiftTypeIdByKey={view.shiftTypeIdByKey}
+                        onVacation={onVacation}
+                        onClick={onVacation ? undefined : () => setEditing({
+                          employeeId: emp.id,
+                          employeeName: emp.name,
+                          dayOfWeek: d.index,
+                          dayLabel: `${d.short} ${d.date}`,
+                          isOff: req?.isOff ?? false,
+                          preferredShiftIds: req?.preferredShiftIds ?? [],
+                        })}
+                      />
+                    )
+                  })}
                 </tr>
               )
             })}
           </tbody>
         </table>
       </div>
+
+      {editing && (
+        <ManagerRequestEditor
+          periodId={view.periodId}
+          target={editing}
+          shiftOptions={shiftOptions}
+          onClose={() => setEditing(null)}
+        />
+      )}
     </div>
   )
 }
