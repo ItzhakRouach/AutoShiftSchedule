@@ -1,8 +1,9 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getPublishedScheduleView } from '@/lib/schedule/published-view'
+import { getPublishedScheduleView, listPublishedWeeks } from '@/lib/schedule/published-view'
 import { countMyRoles } from '@/lib/stats/my-role-counts'
 import { ScheduleGrids } from '@/app/(manager)/schedule/ScheduleGrids'
+import { WeekNav } from '@/app/(manager)/schedule/WeekNav'
 import { MyRoleCounts } from './MyRoleCounts'
 import { Card } from '@/components/ui/Card'
 
@@ -10,7 +11,11 @@ import { Card } from '@/components/ui/Card'
 // manager unpublishes/clears).
 export const dynamic = 'force-dynamic'
 
-export default async function MeSchedulePage() {
+export default async function MeSchedulePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ w?: string }>
+}) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -22,8 +27,11 @@ export default async function MeSchedulePage() {
     .maybeSingle()
   if (!employee) redirect('/onboarding')
 
-  const view = await getPublishedScheduleView(supabase, employee.workplace_id)
-  const weekLabel = view ? `${view.days[0]?.date} – ${view.days[6]?.date}` : ''
+  // Week navigator: pick the requested published week (?w=) or the latest.
+  const weeks = await listPublishedWeeks(supabase, employee.workplace_id)
+  const sp = await searchParams
+  const selectedId = sp?.w && weeks.some((w) => w.id === sp.w) ? sp.w : weeks[0]?.id
+  const view = selectedId ? await getPublishedScheduleView(supabase, employee.workplace_id, selectedId) : null
   const myNotes = (view?.dayNotes ?? []).filter((n) => n.employeeId === employee.id)
   const myRoleCounts = view ? countMyRoles(view, employee.id) : { roles: [], total: 0 }
 
@@ -37,12 +45,10 @@ export default async function MeSchedulePage() {
     <main className="schedule-main" style={{ background: 'var(--bg)', direction: 'rtl' }}>
       <div className="schedule-controls">
         <div style={{ marginBottom: 14 }}>
-          <h1 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 800, letterSpacing: '-0.5px' }}>
+          <h1 style={{ margin: '0 0 10px', fontSize: 22, fontWeight: 800, letterSpacing: '-0.5px' }}>
             הסידור השבועי
           </h1>
-          {weekLabel && (
-            <p style={{ margin: 0, fontSize: 13, color: 'var(--text-2)' }}>שבוע {weekLabel}</p>
-          )}
+          {selectedId && weeks.length > 0 && <WeekNav weeks={weeks} selectedId={selectedId} />}
         </div>
 
         {myNotes.length > 0 && (

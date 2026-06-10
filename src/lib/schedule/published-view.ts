@@ -15,22 +15,44 @@ import type { ShiftKey } from '@/lib/scheduling/types'
 const DAY_SHORTS = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳']
 const BASE_KEYS = new Set(['morning', 'noon', 'night'])
 
+/** Published weeks for a workplace (newest first) — for the week navigator. */
+export interface PublishedWeek { id: string; weekStart: string; label: string }
+
+export async function listPublishedWeeks(
+  supabase: SupabaseClient,
+  workplaceId: string,
+): Promise<PublishedWeek[]> {
+  const { data } = await supabase
+    .from('schedule_periods')
+    .select('id, week_start_date')
+    .eq('workplace_id', workplaceId)
+    .eq('status', 'published')
+    .order('week_start_date', { ascending: false })
+  return (data ?? []).map((p) => {
+    const dates = weekDatesFrom(p.week_start_date as string)
+    return {
+      id: p.id as string,
+      weekStart: p.week_start_date as string,
+      label: `${formatHebDate(dates[0])} – ${formatHebDate(dates[6])}`,
+    }
+  })
+}
+
 export async function getPublishedScheduleView(
   supabase: SupabaseClient,
   workplaceId: string,
+  periodId?: string,
 ): Promise<ScheduleView | null> {
-  // Mirror the manager's CURRENT period: take the latest period and show it only
-  // when it is published. We must NOT fall back to an older published week —
-  // otherwise unpublishing/deleting the current schedule would leave workers
-  // looking at a stale previous week. So the worker sees the current schedule
-  // only while it's published, and nothing once the manager unpublishes/clears.
-  const { data: period } = await supabase
+  // With an explicit periodId (week navigator) load that PUBLISHED week; without
+  // one, default to the most recent PUBLISHED week. Either way only published
+  // schedules are shown — an unpublished/cleared week never appears.
+  const base = supabase
     .from('schedule_periods')
     .select('id, week_start_date, status')
     .eq('workplace_id', workplaceId)
-    .order('week_start_date', { ascending: false })
-    .limit(1)
-    .maybeSingle()
+  const { data: period } = periodId
+    ? await base.eq('id', periodId).maybeSingle()
+    : await base.eq('status', 'published').order('week_start_date', { ascending: false }).limit(1).maybeSingle()
   if (!period || period.status !== 'published') return null
 
   const [
