@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Btn } from '@/components/ui/Btn'
 import { Card } from '@/components/ui/Card'
 import { Segmented } from '@/components/ui/Segmented'
+import { Spinner } from '@/components/ui/Spinner'
 import type { ScheduleView } from '@/lib/schedule/view-data'
 import type { EditMeta } from '@/lib/schedule/edit-meta'
 import type { Coverage, TwelveHourSuggestion, OverriddenOff, Warning } from '@/lib/scheduling/types'
@@ -51,6 +52,8 @@ export function ScheduleClient({ view, editMeta }: Props) {
   const [viewMode, setViewMode] = useState<ViewMode>('schedule')
   const [running, startRun] = useTransition()
   const [publishing, startPublish] = useTransition()
+  // Pre-generate check (server round-trip) — give the button instant feedback.
+  const [checking, startCheck] = useTransition()
 
   const hasResult = view.hasAssignments || coverage !== null
 
@@ -71,9 +74,11 @@ export function ScheduleClient({ view, editMeta }: Props) {
     })
   }
 
-  async function handleGenerateClick() {
-    const manual = view.hasAssignments ? await hasManualAssignments(view.periodId) : false
-    if (manual) { setShowConfirm(true) } else { await triggerGenerate(false) }
+  function handleGenerateClick() {
+    startCheck(async () => {
+      const manual = view.hasAssignments ? await hasManualAssignments(view.periodId) : false
+      if (manual) { setShowConfirm(true) } else { await triggerGenerate(false) }
+    })
   }
 
   function publish() {
@@ -159,8 +164,9 @@ export function ScheduleClient({ view, editMeta }: Props) {
       )}
 
       <div style={{ height: 12 }} />
-      <Btn variant="primary" size="lg" icon="check" style={{ width: '100%' }} onClick={handleGenerateClick}>
-        צור סידור אוטומטי
+      <Btn variant="primary" size="lg" icon={checking ? undefined : 'check'} style={{ width: '100%' }} disabled={checking} onClick={handleGenerateClick}>
+        {checking ? <Spinner size={18} color="#fff" /> : null}
+        {checking ? 'רגע…' : 'צור סידור אוטומטי'}
       </Btn>
 
       <div style={{ height: 14 }} />

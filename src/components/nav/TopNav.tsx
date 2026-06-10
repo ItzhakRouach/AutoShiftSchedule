@@ -1,9 +1,10 @@
 'use client'
 
-import Link from 'next/link'
+import Link, { useLinkStatus } from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import { Icon, type IconName } from '@/components/ui/Icon'
+import { Spinner } from '@/components/ui/Spinner'
 import { signOut } from '@/app/(auth)/actions'
 import { WorkplaceSwitcher } from './WorkplaceSwitcher'
 import { ThemeToggle } from './ThemeToggle'
@@ -30,6 +31,17 @@ const EMPLOYEE_TABS: Tab[] = [
 function isTabActive(pathname: string, href: string): boolean {
   if (href === '/me') return pathname === '/me'
   return pathname === href || pathname.startsWith(href + '/')
+}
+
+/**
+ * Tab icon that turns into a spinner while ITS link's navigation is pending —
+ * instant per-tab feedback even before the next route's loading.tsx mounts.
+ * Must be rendered as a child of the <Link> it reports on.
+ */
+function TabIcon({ icon, size, stroke }: { icon: IconName; size: number; stroke: number }) {
+  const { pending } = useLinkStatus()
+  if (pending) return <Spinner size={size - 2} thickness={2} delayed />
+  return <Icon name={icon} size={size} stroke={stroke} />
 }
 
 function HamburgerIcon({ open }: { open: boolean }) {
@@ -125,7 +137,7 @@ function TopBar({ tabs, centerSlot }: { tabs: Tab[]; centerSlot?: React.ReactNod
                   transition: 'background .12s ease, color .12s ease',
                 }}
               >
-                <Icon name={tab.icon} size={18} stroke={active ? 2.2 : 1.8} />
+                <TabIcon icon={tab.icon} size={18} stroke={active ? 2.2 : 1.8} />
                 {tab.label}
               </Link>
             )
@@ -197,7 +209,7 @@ function TopBar({ tabs, centerSlot }: { tabs: Tab[]; centerSlot?: React.ReactNod
                     fontWeight: active ? 700 : 600,
                   }}
                 >
-                  <Icon name={tab.icon} size={22} stroke={active ? 2.2 : 1.8} />
+                  <TabIcon icon={tab.icon} size={22} stroke={active ? 2.2 : 1.8} />
                   {tab.label}
                 </Link>
               )

@@ -7,6 +7,8 @@ interface SpinnerProps {
   thickness?: number
   /** Override color (defaults to currentColor via the .spinner class). */
   color?: string
+  /** Fade in after ~150ms so fast operations don't flash a spinner. */
+  delayed?: boolean
   style?: React.CSSProperties
   'aria-label'?: string
 }
@@ -15,12 +17,12 @@ interface SpinnerProps {
  * A small rotating ring. Inherits `currentColor` so it matches the surrounding
  * text/button color out of the box. Animation lives in globals.css (`.spinner`).
  */
-export function Spinner({ size = 18, thickness = 2, color, style, ...rest }: SpinnerProps) {
+export function Spinner({ size = 18, thickness = 2, color, delayed, style, ...rest }: SpinnerProps) {
   return (
     <span
       role="status"
       aria-label={rest['aria-label'] ?? 'טוען'}
-      className="spinner"
+      className={delayed ? 'spinner spinner-delayed' : 'spinner'}
       style={{
         width: size,
         height: size,

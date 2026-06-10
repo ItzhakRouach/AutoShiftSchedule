@@ -1,7 +1,9 @@
 'use client'
 
+import { useEffect, useTransition } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { Icon } from '@/components/ui/Icon'
+import { Spinner } from '@/components/ui/Spinner'
 import type { PublishedWeek } from '@/lib/schedule/published-view'
 
 /**
@@ -12,6 +14,16 @@ import type { PublishedWeek } from '@/lib/schedule/published-view'
 export function WeekNav({ weeks, selectedId }: { weeks: PublishedWeek[]; selectedId: string }) {
   const router = useRouter()
   const pathname = usePathname()
+  const [isPending, startTransition] = useTransition()
+
+  // Warm the adjacent weeks so שבוע קודם/הבא open near-instantly.
+  useEffect(() => {
+    const i = Math.max(0, weeks.findIndex((w) => w.id === selectedId))
+    for (const adj of [weeks[i - 1], weeks[i + 1]]) {
+      if (adj) router.prefetch(`${pathname}?w=${adj.id}`)
+    }
+  }, [weeks, selectedId, pathname, router])
+
   if (weeks.length <= 1) {
     const only = weeks.find((w) => w.id === selectedId)
     return only ? (
@@ -28,7 +40,7 @@ export function WeekNav({ weeks, selectedId }: { weeks: PublishedWeek[]; selecte
 
   const go = (id: string | undefined) => {
     if (!id) return
-    router.push(`${pathname}?w=${id}`)
+    startTransition(() => router.push(`${pathname}?w=${id}`))
   }
 
   // Calendar: pick any date → jump to the published week that contains it.
@@ -57,13 +69,14 @@ export function WeekNav({ weeks, selectedId }: { weeks: PublishedWeek[]; selecte
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         {/* RTL: previous (older) week on the right, newer on the left */}
-        <button type="button" style={btn(!!older)} disabled={!older} onClick={() => go(older?.id)} aria-label="שבוע קודם">
+        <button type="button" style={btn(!!older && !isPending)} disabled={!older || isPending} onClick={() => go(older?.id)} aria-label="שבוע קודם">
           <Icon name="chevronRight" size={16} /> שבוע קודם
         </button>
-        <div style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--text)', textAlign: 'center', flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 13.5, fontWeight: 800, color: 'var(--text)', textAlign: 'center', flex: 1, minWidth: 0 }}>
+          {isPending && <Spinner size={14} delayed color="var(--accent)" aria-label="טוען שבוע" />}
           שבוע {cur?.label ?? ''}
         </div>
-        <button type="button" style={btn(!!newer)} disabled={!newer} onClick={() => go(newer?.id)} aria-label="שבוע הבא">
+        <button type="button" style={btn(!!newer && !isPending)} disabled={!newer || isPending} onClick={() => go(newer?.id)} aria-label="שבוע הבא">
           שבוע הבא <Icon name="chevronLeft" size={16} />
         </button>
       </div>

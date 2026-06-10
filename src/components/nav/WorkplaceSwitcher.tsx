@@ -1,7 +1,8 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useState, useTransition } from 'react'
 import { Icon } from '@/components/ui/Icon'
+import { Spinner } from '@/components/ui/Spinner'
 import { setActiveWorkplace, addWorkplace, type AddWorkplaceState } from '@/lib/workplace/actions'
 
 interface Props {
@@ -15,7 +16,21 @@ export function WorkplaceSwitcher({ workplaces, activeId }: Props) {
   const [open, setOpen] = useState(false)
   const [adding, setAdding] = useState(false)
   const [state, action, pending] = useActionState(addWorkplace, initialState)
+  const [switching, startSwitch] = useTransition()
+  const [switchingId, setSwitchingId] = useState<string | null>(null)
   const active = workplaces.find((w) => w.id === activeId) ?? workplaces[0]
+
+  function switchTo(id: string) {
+    if (switching || id === activeId) return
+    setSwitchingId(id)
+    startSwitch(async () => {
+      // The action sets the cookie and revalidates the whole layout; the menu
+      // closes only once the new workplace's data is in.
+      await setActiveWorkplace(id)
+      setOpen(false)
+      setSwitchingId(null)
+    })
+  }
 
   return (
     <div style={{ position: 'relative', maxWidth: '60%' }}>
@@ -52,22 +67,30 @@ export function WorkplaceSwitcher({ workplaces, activeId }: Props) {
           >
             {workplaces.map((w) => {
               const isActive = w.id === activeId
+              const isSwitching = switching && switchingId === w.id
               return (
-                <form key={w.id} action={setActiveWorkplace.bind(null, w.id)} style={{ margin: 0 }}>
-                  <button
-                    type="submit"
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 12px',
-                      borderRadius: 'var(--r-md)', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
-                      textAlign: 'right', fontSize: 14, fontWeight: isActive ? 700 : 600,
-                      color: isActive ? 'var(--accent)' : 'var(--text)',
-                      background: isActive ? 'var(--accent-soft)' : 'transparent',
-                    }}
-                  >
+                <button
+                  key={w.id}
+                  type="button"
+                  onClick={() => switchTo(w.id)}
+                  disabled={switching}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 12px',
+                    borderRadius: 'var(--r-md)', border: 'none', fontFamily: 'inherit',
+                    cursor: switching ? 'default' : 'pointer',
+                    opacity: switching && !isSwitching ? 0.55 : 1,
+                    textAlign: 'right', fontSize: 14, fontWeight: isActive ? 700 : 600,
+                    color: isActive ? 'var(--accent)' : 'var(--text)',
+                    background: isActive ? 'var(--accent-soft)' : 'transparent',
+                  }}
+                >
+                  {isSwitching ? (
+                    <Spinner size={16} aria-label="מחליף מקום עבודה" />
+                  ) : (
                     <Icon name={isActive ? 'check' : 'home'} size={18} stroke={1.9} />
-                    {w.name}
-                  </button>
-                </form>
+                  )}
+                  {w.name}
+                </button>
               )
             })}
 

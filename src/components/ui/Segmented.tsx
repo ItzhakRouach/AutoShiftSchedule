@@ -31,6 +31,7 @@ export function Segmented({ options, value, onChange }: SegmentedProps) {
         return (
           <button
             key={val}
+            type="button"
             onClick={() => onChange(val)}
             style={{
               flex: 1,
