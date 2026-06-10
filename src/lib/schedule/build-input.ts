@@ -128,7 +128,8 @@ export async function buildEngineInput(
           supabase
             .from('employee_vacations')
             .select('employee_id, date_from, date_to')
-            .in('employee_id', employeeIds),
+            .in('employee_id', employeeIds)
+            .eq('status', 'approved'), // only manager-approved vacations are time off
         ])
       : Promise.resolve([{ data: [] as never[] }, { data: [] as never[] }, { data: [] as never[] }]),
     supabase

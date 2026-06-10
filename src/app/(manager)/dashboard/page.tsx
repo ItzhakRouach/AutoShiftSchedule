@@ -1,8 +1,11 @@
 import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { getActiveWorkplace } from '@/lib/workplace/current'
+import { getPendingVacations } from '@/lib/vacations/pending'
 import { fetchDashboardStats } from '@/lib/stats/fetch'
+import { PendingVacations } from './PendingVacations'
 import { Card } from '@/components/ui/Card'
 import { Stat } from '@/components/ui/Stat'
 import { Icon } from '@/components/ui/Icon'
@@ -29,6 +32,9 @@ export default async function DashboardPage({
   const scope: Scope = isScope(sp?.scope) ? sp.scope as Scope : 'week'
 
   const stats = workplace ? await fetchDashboardStats(supabase, workplace.id, scope) : null
+  const pendingVacations = workplace
+    ? await getPendingVacations(createAdminClient(), workplace.id)
+    : []
   const maxHours = Math.max(...(stats?.employees.map((e) => e.hours) ?? [1]), 1)
   const kpis = stats?.kpis
 
@@ -55,6 +61,9 @@ export default async function DashboardPage({
           <Icon name="chart" size={20} stroke={2} />
         </div>
       </div>
+
+      {/* Pending vacation requests — popup on entry + card */}
+      <PendingVacations items={pendingVacations} />
 
       {/* Scope toggle */}
       <div style={{ marginBottom: 18 }}>

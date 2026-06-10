@@ -4,8 +4,26 @@ import React, { useState, useTransition } from 'react'
 import { Card } from '@/components/ui/Card'
 import { Btn } from '@/components/ui/Btn'
 import { formatHebDate, hebrewDayName } from '@/lib/dates/week'
-import type { VacationRow } from '@/lib/requests/context'
+import type { VacationRow, VacationStatus } from '@/lib/requests/context'
 import { addVacation, removeVacation } from './actions'
+
+const STATUS_META: Record<VacationStatus, { label: string; color: string; soft: string }> = {
+  pending: { label: 'ממתין לאישור', color: 'var(--warning)', soft: 'var(--warning-soft)' },
+  approved: { label: 'אושר ✓', color: 'var(--success)', soft: 'var(--success-soft)' },
+  rejected: { label: 'נדחה', color: 'var(--danger)', soft: 'var(--danger-soft)' },
+}
+
+function VacationStatusBadge({ status }: { status: VacationStatus }) {
+  const m = STATUS_META[status] ?? STATUS_META.pending
+  return (
+    <span style={{
+      alignSelf: 'flex-start', fontSize: 11.5, fontWeight: 700, color: m.color,
+      background: m.soft, padding: '2px 9px', borderRadius: 'var(--r-pill)',
+    }}>
+      {m.label}
+    </span>
+  )
+}
 
 interface VacationSectionProps {
   employeeId: string
@@ -82,16 +100,14 @@ export function VacationSection({ employeeId, vacations, isReadOnly }: VacationS
                 padding: '12px 14px',
               }}
             >
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
                   יום {hebrewDayName(v.date_from)} {formatHebDate(v.date_from)}
                   {v.date_from !== v.date_to && (
                     <> — יום {hebrewDayName(v.date_to)} {formatHebDate(v.date_to)}</>
                   )}
                 </div>
-                <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
-                  {v.date_from === v.date_to ? v.date_from : `${v.date_from} – ${v.date_to}`}
-                </div>
+                <VacationStatusBadge status={v.status} />
               </div>
               {!isReadOnly && (
                 <button

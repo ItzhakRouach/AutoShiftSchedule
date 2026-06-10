@@ -29,7 +29,8 @@ export default async function RequestsPage() {
       dayOfWeek: i,
       dateLabel: formatHebDate(iso),
       request: requestsByDay[i] ?? null,
-      inVacation: isInVacationRange(iso, vacations),
+      // Only APPROVED vacations lock a day off; a pending request doesn't yet.
+      inVacation: isInVacationRange(iso, vacations.filter((v) => v.status === 'approved')),
     }
   })
 

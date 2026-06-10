@@ -19,10 +19,13 @@ export interface RequestRow {
   preferred_shift_ids: string[]
 }
 
+export type VacationStatus = 'pending' | 'approved' | 'rejected'
+
 export interface VacationRow {
   id: string
   date_from: string
   date_to: string
+  status: VacationStatus
 }
 
 export interface EmployeeRequestsContext {
@@ -102,7 +105,7 @@ export async function getEmployeeRequestsContext(
       .eq('employee_id', emp.id),
     supabase
       .from('employee_vacations')
-      .select('id, date_from, date_to')
+      .select('id, date_from, date_to, status')
       .eq('employee_id', emp.id)
       .order('date_from'),
     supabase
