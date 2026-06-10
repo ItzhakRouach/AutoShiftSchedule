@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { getAuthUser } from '@/lib/auth/user'
 import { getActiveWorkplace } from '@/lib/workplace/current'
 import { hhmm } from '@/lib/dates/time'
 import { signOut } from '@/app/(auth)/actions'
@@ -15,7 +16,7 @@ import { WorkingDaysSection } from './WorkingDaysSection'
 
 export default async function SettingsPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) redirect('/login')
 
   const workplace = await getActiveWorkplace(supabase)

@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { getAuthUser } from '@/lib/auth/user'
 import { signOut } from '@/app/(auth)/actions'
 import { Icon, type IconName } from '@/components/ui/Icon'
 import { Card } from '@/components/ui/Card'
@@ -31,7 +32,7 @@ function NavCard({ href, icon, title, subtitle }: { href: string; icon: IconName
 
 export default async function MePage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) redirect('/login')
 
   const { data: employee } = await supabase

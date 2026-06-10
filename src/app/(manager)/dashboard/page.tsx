@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getAuthUser } from '@/lib/auth/user'
 import { getActiveWorkplace } from '@/lib/workplace/current'
 import { getWorkplaceVacations } from '@/lib/vacations/pending'
 import { getRoleHeadcounts } from '@/lib/stats/role-headcounts'
@@ -30,18 +31,22 @@ export default async function DashboardPage({
   searchParams: Promise<{ scope?: string }>
 }) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) redirect('/login')
 
   const workplace = await getActiveWorkplace(supabase)
   const sp = await searchParams
   const scope: Scope = isScope(sp?.scope) ? sp.scope as Scope : 'week'
 
-  const stats = workplace ? await fetchDashboardStats(supabase, workplace.id, scope) : null
   const todayISO = new Date().toISOString().slice(0, 10)
   const admin = createAdminClient()
-  const pendingVacations = workplace ? await getWorkplaceVacations(admin, workplace.id, todayISO) : []
-  const roleHeadcounts = workplace ? await getRoleHeadcounts(admin, workplace.id) : []
+  // The three data sources are independent — fetch them in parallel instead of
+  // three sequential round-trips.
+  const [stats, pendingVacations, roleHeadcounts] = await Promise.all([
+    workplace ? fetchDashboardStats(supabase, workplace.id, scope) : null,
+    workplace ? getWorkplaceVacations(admin, workplace.id, todayISO) : [],
+    workplace ? getRoleHeadcounts(admin, workplace.id) : [],
+  ])
   const maxHours = Math.max(...(stats?.employees.map((e) => e.hours) ?? [1]), 1)
   const kpis = stats?.kpis
 

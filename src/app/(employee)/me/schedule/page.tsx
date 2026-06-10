@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { getAuthUser } from '@/lib/auth/user'
 import { getPublishedScheduleView, listPublishedWeeks } from '@/lib/schedule/published-view'
 import { countMyRoles } from '@/lib/stats/my-role-counts'
 import { ScheduleGrids } from '@/app/(manager)/schedule/ScheduleGrids'
@@ -17,7 +18,7 @@ export default async function MeSchedulePage({
   searchParams: Promise<{ w?: string }>
 }) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) redirect('/login')
 
   const { data: employee } = await supabase

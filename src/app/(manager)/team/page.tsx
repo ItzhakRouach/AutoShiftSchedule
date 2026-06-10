@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
+import { getAuthUser } from '@/lib/auth/user'
 import { getActiveWorkplace } from '@/lib/workplace/current'
 import { fetchSeniorRoleIds } from '@/lib/employees/roles'
 import { getLatestInvite } from './invite-actions'
@@ -18,7 +19,7 @@ export const dynamic = 'force-dynamic'
 export default async function TeamPage() {
   const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) redirect('/login')
 
   const workplace = await getActiveWorkplace(supabase)
@@ -29,14 +30,31 @@ export default async function TeamPage() {
   const proto = host.startsWith('localhost') ? 'http' : 'https'
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? `${proto}://${host}`
 
-  const latestInvite = await getLatestInvite(workplace.id)
-
-  // Fetch roles
-  const { data: rolesRaw } = await supabase
-    .from('roles')
-    .select('id, name, color, rank')
-    .eq('workplace_id', workplace.id)
-    .order('name')
+  // Invite, roles, shift types and employees are independent — fetch them in
+  // parallel (was a 4-step sequential waterfall).
+  const [latestInvite, { data: rolesRaw }, { data: shiftTypesRaw }, { data: employeesRaw }] =
+    await Promise.all([
+      getLatestInvite(workplace.id),
+      supabase
+        .from('roles')
+        .select('id, name, color, rank')
+        .eq('workplace_id', workplace.id)
+        .order('name'),
+      // Base (non-fallback) shift types ordered by start hour so the
+      // custom-availability matrix reads בוקר → צהריים → לילה (07 → 15 → 23)
+      // instead of the unpredictable Hebrew-name alphabetic order.
+      supabase
+        .from('shift_types')
+        .select('id, name')
+        .eq('workplace_id', workplace.id)
+        .eq('is_fallback', false)
+        .order('start_hour'),
+      supabase
+        .from('employees')
+        .select('id, name, phone, color, min_shifts_per_week, max_shifts_per_week, employment_type, observes_shabbat, observes_holidays, must_accept, status, employee_roles(role_id)')
+        .eq('workplace_id', workplace.id)
+        .order('name'),
+    ])
 
   const roles: RoleOption[] = (rolesRaw ?? []).map((r) => ({
     id: r.id,
@@ -45,39 +63,23 @@ export default async function TeamPage() {
     rank: r.rank ?? 1,
   }))
 
-  // Fetch base (non-fallback) shift types for this workplace, ordered by
-  // start hour so the custom-availability matrix reads בוקר → צהריים → לילה
-  // (07 → 15 → 23) instead of the unpredictable Hebrew-name alphabetic order.
-  const { data: shiftTypesRaw } = await supabase
-    .from('shift_types')
-    .select('id, name')
-    .eq('workplace_id', workplace.id)
-    .eq('is_fallback', false)
-    .order('start_hour')
-
   const shiftTypes: ShiftTypeOption[] = (shiftTypesRaw ?? []).map((st) => ({
     id: st.id,
     name: st.name,
   }))
 
-  // Fetch employees with role_ids
-  const { data: employeesRaw } = await supabase
-    .from('employees')
-    .select('id, name, phone, color, min_shifts_per_week, max_shifts_per_week, employment_type, observes_shabbat, observes_holidays, must_accept, status, employee_roles(role_id)')
-    .eq('workplace_id', workplace.id)
-    .order('name')
-
-  // Fetch all availability rows for the workplace in one query
+  // Availability + senior roles both depend only on the employee ids — run
+  // them together. Senior role IDs stay resilient to a pre-migration DB.
   const employeeIds = (employeesRaw ?? []).map((e) => e.id)
-  const { data: availRaw } = employeeIds.length > 0
-    ? await supabase
-        .from('employee_availability')
-        .select('employee_id, day_of_week, shift_type_id')
-        .in('employee_id', employeeIds)
-    : { data: [] }
-
-  // Senior role IDs per employee (resilient to a pre-migration DB).
-  const seniorByEmployee = await fetchSeniorRoleIds(supabase, employeeIds)
+  const [{ data: availRaw }, seniorByEmployee] = await Promise.all([
+    employeeIds.length > 0
+      ? supabase
+          .from('employee_availability')
+          .select('employee_id, day_of_week, shift_type_id')
+          .in('employee_id', employeeIds)
+      : Promise.resolve({ data: [] as { employee_id: string; day_of_week: number; shift_type_id: string }[] }),
+    fetchSeniorRoleIds(supabase, employeeIds),
+  ])
 
   // Group availability by employee_id
   const availByEmployee: Record<string, AvailabilityItem[]> = {}

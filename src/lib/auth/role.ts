@@ -1,4 +1,6 @@
+import { cache } from 'react'
 import type { SupabaseClient, User } from '@supabase/supabase-js'
+import { getAuthUser } from './user'
 
 export type UserRole = 'manager' | 'employee' | 'none'
 
@@ -23,14 +25,13 @@ export interface ResolvedRole {
  * workplace (multi-workplace employee), in which case `.maybeSingle()` throws
  * PGRST116 and the role would wrongly resolve to 'none', locking the user.
  */
-export async function resolveUserRole(
+export const resolveUserRole = cache(async (
   supabase: SupabaseClient,
   preUser?: User | null,
-): Promise<ResolvedRole> {
+): Promise<ResolvedRole> => {
   let user = preUser ?? null
   if (user === null && preUser === undefined) {
-    const { data } = await supabase.auth.getUser()
-    user = data.user
+    user = await getAuthUser(supabase)
   }
 
   if (!user) return { user: null, role: 'none' }
@@ -52,7 +53,7 @@ export async function resolveUserRole(
   if (employees && employees.length > 0) return { user, role: 'employee' }
 
   return { user, role: 'none' }
-}
+})
 
 /** Convenience wrapper returning only the role. */
 export async function getUserRole(

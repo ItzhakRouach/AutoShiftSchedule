@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { getAuthUser } from '@/lib/auth/user'
 import { upcomingWeekStartISO } from '@/lib/dates/week'
 import { deadlineLabel } from '@/lib/deadline/compute'
 
@@ -56,7 +57,7 @@ export async function getEmployeeRequestsContext(
   // Resolve THIS user's own employee row — ALWAYS filter by user_id (identity is
   // never inferred from RLS scoping). Coworker visibility for the schedule now
   // comes via the workplace_roster RPC, not a broad employees policy.
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) return null
 
   const { data: emp } = await supabase

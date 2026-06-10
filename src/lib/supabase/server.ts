@@ -1,7 +1,11 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { cache } from 'react'
 
-export async function createClient() {
+// Per-request memoized: every layout/page/helper in the same render shares one
+// client instance, which also lets downstream React.cache() helpers (keyed on
+// the instance) dedupe their Supabase round-trips.
+export const createClient = cache(async () => {
   const cookieStore = await cookies()
 
   return createServerClient(
@@ -24,4 +28,4 @@ export async function createClient() {
       },
     },
   )
-}
+})
