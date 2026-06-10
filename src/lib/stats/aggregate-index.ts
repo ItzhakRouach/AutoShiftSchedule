@@ -37,14 +37,17 @@ export function reqIsHonored(
   req: { day_of_week: number; is_off?: boolean; preferred_shift_ids: string[] | null },
 ): boolean {
   const perEmp = index.get(empId)
+  // Got any preferred shift? (covers shift-only and "shift OR off" requests).
+  if (perEmp && req.preferred_shift_ids) {
+    for (const sid of req.preferred_shift_ids) {
+      if (perEmp.has(`${req.day_of_week}:${sid}`)) return true
+    }
+  }
+  // Off acceptable AND not working that day → honored.
   if (req.is_off) {
-    if (!perEmp) return true // no assignments at all → the day off is honored
+    if (!perEmp) return true
     for (const k of perEmp) if (k.startsWith(`${req.day_of_week}:`)) return false
     return true
-  }
-  if (!perEmp || !req.preferred_shift_ids) return false
-  for (const sid of req.preferred_shift_ids) {
-    if (perEmp.has(`${req.day_of_week}:${sid}`)) return true
   }
   return false
 }

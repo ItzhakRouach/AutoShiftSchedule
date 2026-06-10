@@ -158,13 +158,13 @@ export function aggregateFairness(
     const empReqs = reqsByEmp.get(e.id) ?? []
     let honoredCount = 0
     for (const req of empReqs) {
+      // Honored if a preferred shift was given, OR (off acceptable) they didn't work.
+      const gotPreferred = req.preferred_shift_ids?.some((sid) => agg.daysShifts.has(`${req.day_of_week}:${sid}`))
+      if (gotPreferred) { honoredCount += 1; continue }
       if (req.is_off) {
-        // Off-day honored = the employee did not work that day.
         let worksThatDay = false
         for (const k of agg.daysShifts) if (k.startsWith(`${req.day_of_week}:`)) { worksThatDay = true; break }
         if (!worksThatDay) honoredCount += 1
-      } else if (req.preferred_shift_ids?.some((sid) => agg.daysShifts.has(`${req.day_of_week}:${sid}`))) {
-        honoredCount += 1
       }
     }
     return {

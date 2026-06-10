@@ -85,7 +85,12 @@ export function isAssignable(
   opts: { allowSoftOff?: boolean } = {},
 ): boolean {
   if (!holdsRole(ctx.emp, ctx.roleId)) return false
-  const offBlocks = isOff(ctx.request) && !(opts.allowSoftOff && !ctx.request.offHard)
+  // A "mixed" request (off + preferred shifts) means "one of these shifts OR a
+  // day off": the worker stays AVAILABLE for their preferred shifts, and off
+  // only rules out the OTHER shifts. A pure off-request (no preferred) rules out
+  // every shift. allowSoftOff (coverage-rescue) can still override a soft off.
+  const ruledOutByOff = ctx.request.off && !ctx.request.preferred.includes(ctx.shift)
+  const offBlocks = ruledOutByOff && !(opts.allowSoftOff && !ctx.request.offHard)
   if (offBlocks) return false
   if (!availabilityAllows(ctx.emp, ctx.meta.index, ctx.shift)) return false
   if (isSacredBlocked(ctx.emp, ctx.meta, ctx.shift)) return false

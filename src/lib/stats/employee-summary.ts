@@ -57,20 +57,16 @@ export function summarizeEmployee(
   let requestedCount = 0
   let honoredCount = 0
   for (const r of requests) {
-    if (r.is_off) {
-      // An off-DAY the worker asked for is a request too — honored when they end
-      // up NOT working that day (got the day off they wanted).
-      requestedCount += 1
-      const worksThatDay = assignments.some((a) => a.day_of_week === r.day_of_week)
-      if (!worksThatDay) honoredCount += 1
-      continue
-    }
-    if (!r.preferred_shift_ids || r.preferred_shift_ids.length === 0) continue
+    const hasPref = !!r.preferred_shift_ids && r.preferred_shift_ids.length > 0
+    if (!r.is_off && !hasPref) continue // empty (no real ask)
     requestedCount += 1
-    const matched = assignments.some(
+    // A request may offer alternatives ("morning OR off"). It's honored if the
+    // worker got ANY preferred shift, OR (off was acceptable) they didn't work.
+    const gotPreferred = hasPref && assignments.some(
       (a) => a.day_of_week === r.day_of_week && r.preferred_shift_ids!.includes(a.shift_type_id),
     )
-    if (matched) honoredCount += 1
+    const worksThatDay = assignments.some((a) => a.day_of_week === r.day_of_week)
+    if (gotPreferred || (r.is_off && !worksThatDay)) honoredCount += 1
   }
 
   return { total: assignments.length, byShiftType, byRole, requestedCount, honoredCount }

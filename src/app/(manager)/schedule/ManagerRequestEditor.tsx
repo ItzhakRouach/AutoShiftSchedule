@@ -35,16 +35,14 @@ export function ManagerRequestEditor({
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
 
+  // Shifts and "off" are independent, combinable preferences ("morning OR off").
   function toggleShift(id: string) {
-    // Shift vs off are mutually exclusive but never block: picking a shift
-    // cancels an off-day.
-    setIsOff(false)
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
   }
 
   function save() {
     setError(null)
-    const preferredShiftIds = isOff ? [] : selected
+    const preferredShiftIds = selected
     startTransition(async () => {
       const res = await managerSaveDayRequest({
         periodId,
@@ -71,10 +69,11 @@ export function ManagerRequestEditor({
         </div>
         <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 14 }}>בקשה ליום {target.dayLabel}</div>
 
-        <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-2)', marginBottom: 8 }}>משמרות מועדפות</div>
+        <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-2)', marginBottom: 2 }}>משמרות מועדפות</div>
+        <div style={{ fontSize: 11.5, color: 'var(--text-3)', marginBottom: 10 }}>ניתן לבחור משמרות וגם &quot;יום חופש&quot; — הסידור ייתן אחת מהאפשרויות</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginBottom: 14 }}>
           {shiftOptions.map((st) => {
-            const on = !isOff && selected.includes(st.id)
+            const on = selected.includes(st.id)
             return (
               <button key={st.id} onClick={() => toggleShift(st.id)} style={{
                 display: 'flex', alignItems: 'center', padding: '12px 14px', textAlign: 'start',
@@ -89,7 +88,7 @@ export function ManagerRequestEditor({
           })}
         </div>
 
-        <button onClick={() => { setIsOff((p) => !p); if (!isOff) setSelected([]) }} style={{
+        <button onClick={() => setIsOff((p) => !p)} style={{
           display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', width: '100%', textAlign: 'start',
           borderRadius: 'var(--r-md)', cursor: 'pointer', marginBottom: 14, fontFamily: 'var(--font)',
           border: `1.5px solid ${isOff ? 'var(--vacation)' : 'var(--border)'}`,

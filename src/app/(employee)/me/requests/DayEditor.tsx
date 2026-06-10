@@ -34,24 +34,23 @@ export function DayEditor({ shiftTypes, request, periodId, employeeId, dayOfWeek
   // not already marked off (toggling OFF an existing off-day is always allowed).
   const offDisabled = offCapReached && !isOff
 
+  // Shifts and "day off" are independent, combinable preferences: e.g. pick
+  // morning AND off → "give me morning, or a day off". The engine satisfies any
+  // selected option. (Selecting nothing + off = a plain off-request.)
   function toggleShift(id: string) {
-    // Choosing a shift and "off" are mutually exclusive but never block each
-    // other: picking a shift cancels an off-day.
-    setIsOff(false)
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
   }
 
   function toggleOff() {
     if (offDisabled) return
     setIsOff((prev) => !prev)
-    if (!isOff) setSelectedIds([])
   }
 
   function handleSave() {
     startTransition(async () => {
       const result: ActionResult = await saveDayRequest({
         periodId, employeeId, dayOfWeek, isOff,
-        preferredShiftIds: isOff ? [] : selectedIds,
+        preferredShiftIds: selectedIds,
       })
       if ('error' in result) setError(result.error)
       else onDone()
@@ -64,13 +63,13 @@ export function DayEditor({ shiftTypes, request, periodId, employeeId, dayOfWeek
         משמרות מועדפות
       </div>
       <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 10 }}>
-        ניתן לבחור כמה משמרות — אם הראשונה לא תתאפשר, יש סיכוי לשנייה
+        ניתן לבחור כמה משמרות וגם &quot;יום חופש&quot; יחד — הסידור ייתן אחת מהאפשרויות שבחרת
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
         {shiftTypes.map((st) => {
           const meta = SHIFT_META[st.key as keyof typeof SHIFT_META]
-          const on = !isOff && selectedIds.includes(st.id)
+          const on = selectedIds.includes(st.id)
           const color = meta?.color ?? st.color
           const soft = meta?.soft ?? `${st.color}22`
           return (

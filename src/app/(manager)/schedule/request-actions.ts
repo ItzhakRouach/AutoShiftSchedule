@@ -40,7 +40,8 @@ export async function managerSaveDayRequest(input: {
   if (!period) return { error: 'תקופה לא נמצאה' }
   if (!emp) return { error: 'עובד לא נמצא' }
 
-  const shiftIds = isOff ? [] : preferredShiftIds
+  // Shifts + off are combinable ("morning OR off"), so keep both.
+  const shiftIds = preferredShiftIds
   const ownErr = await workplaceOwnershipError(supabase, workplace.id, [], shiftIds)
   if (ownErr) return { error: ownErr }
 
