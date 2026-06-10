@@ -51,7 +51,10 @@ export function deadlineLabel(
 ): string {
   const weekStart = DateTime.fromISO(weekStartISO, { zone: timeZone })
   const d = weekStart.minus({ days: 7 }).plus({ days: dow })
-  return `יום ${HEB_DAYS[dow] ?? ''}, ${d.day}.${d.month} בשעה ${time}`
+  // The DB `time` column comes back as "HH:MM:SS" — always display HH:MM.
+  const [h = '00', m = '00'] = time.split(':')
+  const hm = `${h.padStart(2, '0')}:${m.padStart(2, '0')}`
+  return `יום ${HEB_DAYS[dow] ?? ''}, ${d.day}.${d.month} בשעה ${hm}`
 }
 
 /**

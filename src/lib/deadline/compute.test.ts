@@ -1,5 +1,16 @@
 import { describe, it, expect } from 'vitest'
-import { deadlineDateTime, isPastDeadline } from './compute'
+import { deadlineDateTime, deadlineLabel, isPastDeadline } from './compute'
+
+describe('deadlineLabel — always HH:MM', () => {
+  it('strips seconds from the DB time column', () => {
+    const label = deadlineLabel('2026-06-07', 4, '18:00:00')
+    expect(label).toContain('בשעה 18:00')
+    expect(label).not.toContain('18:00:00')
+  })
+  it('pads HH:MM input', () => {
+    expect(deadlineLabel('2026-06-07', 4, '9:05')).toContain('בשעה 09:05')
+  })
+})
 
 /**
  * Fixture: weekStart = 2026-06-07 (Sunday), dow=4 (Thursday), time='18:00', tz='Asia/Jerusalem'
