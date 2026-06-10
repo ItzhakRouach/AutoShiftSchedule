@@ -61,25 +61,30 @@ export async function fetchDashboardStats(
     shiftTypes.map((s) => [s.id, s.is_fallback ?? s.hours >= 12]),
   )
 
-  // 3. Periods — PUBLISHED only, so the dashboard reflects the published reality:
-  // unpublishing or deleting a schedule drops it from the KPIs + fairness table.
-  // latest 1 for the current period; scope range for charts.
-  let periodsQuery = supabase
-    .from('schedule_periods')
-    .select('id, week_start_date, status')
-    .eq('workplace_id', workplaceId)
-    .eq('status', 'published')
-    .order('week_start_date', { ascending: false })
-
-  const startDate = scope === 'week' ? null : scopeStartDate(scope)
-  if (startDate) {
-    periodsQuery = periodsQuery.gte('week_start_date', startDate)
+  // 3. Periods. WEEK = the CURRENT period (latest by date), counted ONLY if it's
+  // published — so unpublishing/deleting it (or never generating one) shows an
+  // empty dashboard, and we never fall back to a stale older published week.
+  // MONTH/YEAR = all published periods in the range (cumulative history charts).
+  let periods: { id: string; week_start_date: string; status: string }[]
+  if (scope === 'week') {
+    const { data: latest } = await supabase
+      .from('schedule_periods')
+      .select('id, week_start_date, status')
+      .eq('workplace_id', workplaceId)
+      .order('week_start_date', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    periods = latest && latest.status === 'published' ? [latest] : []
   } else {
-    periodsQuery = periodsQuery.limit(1)
+    const { data } = await supabase
+      .from('schedule_periods')
+      .select('id, week_start_date, status')
+      .eq('workplace_id', workplaceId)
+      .eq('status', 'published')
+      .gte('week_start_date', scopeStartDate(scope))
+      .order('week_start_date', { ascending: false })
+    periods = data ?? []
   }
-
-  const { data: periodsRaw } = await periodsQuery
-  const periods = periodsRaw ?? []
 
   if (periods.length === 0) {
     return {

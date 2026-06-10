@@ -31,6 +31,21 @@ export function WeekNav({ weeks, selectedId }: { weeks: PublishedWeek[]; selecte
     router.push(`${pathname}?w=${id}`)
   }
 
+  // Calendar: pick any date → jump to the published week that contains it.
+  const weekEnd = (start: string) => {
+    const d = new Date(start + 'T00:00:00')
+    d.setDate(d.getDate() + 6)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }
+  const sorted = [...weeks].sort((a, b) => a.weekStart.localeCompare(b.weekStart))
+  const minDate = sorted[0]?.weekStart
+  const maxDate = sorted.length ? weekEnd(sorted[sorted.length - 1].weekStart) : undefined
+  const onPick = (val: string) => {
+    if (!val) return
+    const hit = weeks.find((w) => val >= w.weekStart && val <= weekEnd(w.weekStart))
+    if (hit) go(hit.id)
+  }
+
   const btn = (enabled: boolean): React.CSSProperties => ({
     display: 'flex', alignItems: 'center', gap: 4, padding: '7px 12px', borderRadius: 'var(--r-md)',
     border: '1px solid var(--border)', background: 'var(--surface)',
@@ -39,17 +54,36 @@ export function WeekNav({ weeks, selectedId }: { weeks: PublishedWeek[]; selecte
   })
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 14 }}>
-      {/* RTL: previous (older) week on the right, newer on the left */}
-      <button type="button" style={btn(!!older)} disabled={!older} onClick={() => go(older?.id)} aria-label="שבוע קודם">
-        <Icon name="chevronRight" size={16} /> שבוע קודם
-      </button>
-      <div style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--text)', textAlign: 'center', flex: 1, minWidth: 0 }}>
-        שבוע {cur?.label ?? ''}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        {/* RTL: previous (older) week on the right, newer on the left */}
+        <button type="button" style={btn(!!older)} disabled={!older} onClick={() => go(older?.id)} aria-label="שבוע קודם">
+          <Icon name="chevronRight" size={16} /> שבוע קודם
+        </button>
+        <div style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--text)', textAlign: 'center', flex: 1, minWidth: 0 }}>
+          שבוע {cur?.label ?? ''}
+        </div>
+        <button type="button" style={btn(!!newer)} disabled={!newer} onClick={() => go(newer?.id)} aria-label="שבוע הבא">
+          שבוע הבא <Icon name="chevronLeft" size={16} />
+        </button>
       </div>
-      <button type="button" style={btn(!!newer)} disabled={!newer} onClick={() => go(newer?.id)} aria-label="שבוע הבא">
-        שבוע הבא <Icon name="chevronLeft" size={16} />
-      </button>
+      {/* Calendar: jump to the published week containing the chosen date. */}
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: 'var(--text-2)' }}>
+        <Icon name="calendar" size={15} color="var(--text-2)" />
+        בחירת שבוע מהיומן:
+        <input
+          type="date"
+          min={minDate}
+          max={maxDate}
+          value={cur?.weekStart ?? ''}
+          onChange={(e) => onPick(e.target.value)}
+          aria-label="בחר שבוע לפי תאריך"
+          style={{
+            padding: '6px 10px', borderRadius: 'var(--r-md)', border: '1px solid var(--border-strong)',
+            background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font)',
+          }}
+        />
+      </label>
     </div>
   )
 }
