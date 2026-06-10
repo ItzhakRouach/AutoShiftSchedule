@@ -184,6 +184,7 @@ export async function publishSchedule(periodId: string): Promise<RunResult> {
   }
 
   revalidatePath('/schedule')
+  revalidatePath('/dashboard') // KPIs + fairness reflect published schedules
   return { ok: true }
 }
 
@@ -250,6 +251,7 @@ export async function clearSchedule(periodId: string): Promise<RunResult> {
 
   revalidatePath('/schedule')
   revalidatePath('/me/schedule')
+  revalidatePath('/dashboard')
   return { ok: true }
 }
 
@@ -273,5 +275,6 @@ export async function unpublishSchedule(periodId: string): Promise<RunResult> {
 
   revalidatePath('/schedule')
   revalidatePath('/me/schedule')
+  revalidatePath('/dashboard')
   return { ok: true }
 }

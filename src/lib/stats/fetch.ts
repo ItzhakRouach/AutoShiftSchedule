@@ -61,11 +61,14 @@ export async function fetchDashboardStats(
     shiftTypes.map((s) => [s.id, s.is_fallback ?? s.hours >= 12]),
   )
 
-  // 3. Periods — latest 1 for current period; scope range for charts
+  // 3. Periods — PUBLISHED only, so the dashboard reflects the published reality:
+  // unpublishing or deleting a schedule drops it from the KPIs + fairness table.
+  // latest 1 for the current period; scope range for charts.
   let periodsQuery = supabase
     .from('schedule_periods')
     .select('id, week_start_date, status')
     .eq('workplace_id', workplaceId)
+    .eq('status', 'published')
     .order('week_start_date', { ascending: false })
 
   const startDate = scope === 'week' ? null : scopeStartDate(scope)
