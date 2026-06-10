@@ -47,12 +47,25 @@ describe('summarizeEmployee', () => {
     const requests: SummaryRequest[] = [
       { day_of_week: 0, is_off: false, preferred_shift_ids: ['st-morning'] }, // honored
       { day_of_week: 1, is_off: false, preferred_shift_ids: ['st-morning'] }, // requested, not honored
-      { day_of_week: 3, is_off: true, preferred_shift_ids: [] }, // day-off, ignored
+      { day_of_week: 3, is_off: true, preferred_shift_ids: [] }, // day-off, honored (not working day 3)
       { day_of_week: 4, is_off: false, preferred_shift_ids: [] }, // empty, ignored
     ]
     const s = summarizeEmployee(assignments, requests, shiftKeyById, roleNameById)
-    expect(s.requestedCount).toBe(2)
-    expect(s.honoredCount).toBe(1)
+    // 3 real requests (2 shift + 1 off); honored = morning(day0) + off(day3) = 2.
+    expect(s.requestedCount).toBe(3)
+    expect(s.honoredCount).toBe(2)
+  })
+
+  it('counts an off-day request as NOT honored when the employee works that day', () => {
+    const assignments: SummaryAssignment[] = [
+      { day_of_week: 2, shift_type_id: 'st-morning', role_id: 'r-moked' },
+    ]
+    const requests: SummaryRequest[] = [
+      { day_of_week: 2, is_off: true, preferred_shift_ids: [] }, // asked off but was scheduled
+    ]
+    const s = summarizeEmployee(assignments, requests, shiftKeyById, roleNameById)
+    expect(s.requestedCount).toBe(1)
+    expect(s.honoredCount).toBe(0)
   })
 
   it('shiftTypeOrder keeps base order then extras', () => {

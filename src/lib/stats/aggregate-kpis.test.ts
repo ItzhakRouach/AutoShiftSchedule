@@ -137,13 +137,14 @@ describe('computeTwoRequestsHonored', () => {
     expect(result.total).toBe(1)
   })
 
-  it('employees with no non-off requests are excluded from total (divide-by-zero guard)', () => {
+  it('counts an off-day request toward the honored total when the day off is given', () => {
     const requests = [
       { employee_id: 'e1', period_id: 'p1', day_of_week: 0, is_off: true, preferred_shift_ids: null },
     ]
     const result = computeTwoRequestsHonored([], requests, employees)
-    expect(result.count).toBe(0)
-    expect(result.total).toBe(0)
+    // 1 request (off-day), threshold min(2,1)=1, honored (no assignments) → passes.
+    expect(result.count).toBe(1)
+    expect(result.total).toBe(1)
   })
 
   it('employees with empty preferred_shift_ids are excluded from total', () => {

@@ -25,13 +25,23 @@ export function indexAssignments(rows: AssignmentRow[]): AssignmentIndex {
   return index
 }
 
-/** True if `emp` was assigned to ANY of `req`'s preferred shifts that day. */
+/**
+ * Was this request honored? For a preferred-shift request: assigned to ANY of
+ * the preferred shifts that day. For an OFF-day request: honored when the
+ * employee was NOT assigned any shift that day (they got the day off they asked
+ * for). Both count as honored requests.
+ */
 export function reqIsHonored(
   index: AssignmentIndex,
   empId: string,
-  req: { day_of_week: number; preferred_shift_ids: string[] | null },
+  req: { day_of_week: number; is_off?: boolean; preferred_shift_ids: string[] | null },
 ): boolean {
   const perEmp = index.get(empId)
+  if (req.is_off) {
+    if (!perEmp) return true // no assignments at all → the day off is honored
+    for (const k of perEmp) if (k.startsWith(`${req.day_of_week}:`)) return false
+    return true
+  }
   if (!perEmp || !req.preferred_shift_ids) return false
   for (const sid of req.preferred_shift_ids) {
     if (perEmp.has(`${req.day_of_week}:${sid}`)) return true
@@ -39,12 +49,13 @@ export function reqIsHonored(
   return false
 }
 
-/** Group non-off, has-preferences requests by employee_id. O(R). */
+/** Group real requests (off-day OR has-preferences) by employee_id. O(R). An
+ *  empty non-off request (no preferences) isn't a real ask, so it's skipped. */
 export function groupRequestsByEmployee(requests: RequestRow[]): Map<string, RequestRow[]> {
   const m = new Map<string, RequestRow[]>()
   for (const r of requests) {
-    if (r.is_off) continue
-    if (!r.preferred_shift_ids || r.preferred_shift_ids.length === 0) continue
+    const hasPref = !!r.preferred_shift_ids && r.preferred_shift_ids.length > 0
+    if (!r.is_off && !hasPref) continue
     let list = m.get(r.employee_id)
     if (!list) { list = []; m.set(r.employee_id, list) }
     list.push(r)

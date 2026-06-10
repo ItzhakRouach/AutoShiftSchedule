@@ -72,14 +72,14 @@ describe('aggregateFairness', () => {
     expect(e1.honoredCount).toBe(1)
   })
 
-  it('returns zero counts when no non-off requests exist (divide-by-zero guard)', () => {
+  it('counts an off-day request honored when the employee does not work that day', () => {
     const requests = [
       { employee_id: 'e1', period_id: 'p1', day_of_week: 0, is_off: true, preferred_shift_ids: null },
     ]
     const result = aggregateFairness([], requests, employees, shiftKeyById)
     const e1 = result.find((f) => f.id === 'e1')!
-    expect(e1.requestedCount).toBe(0)
-    expect(e1.honoredCount).toBe(0)
+    expect(e1.requestedCount).toBe(1)
+    expect(e1.honoredCount).toBe(1) // no assignments → the day off was honored
   })
 
   it('returns zero counts when preferred_shift_ids is empty (no-request guard)', () => {
