@@ -115,48 +115,41 @@ export function DayList({
                     >
                       🌴 חופשה
                     </span>
-                  ) : r?.is_off ? (
-                    <span
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        fontSize: 13.5,
-                        fontWeight: 700,
-                        color: '#C0598F',
-                        background: 'rgba(192,89,143,0.12)',
-                        padding: '6px 12px',
-                        borderRadius: 99,
-                      }}
-                    >
-                      יום חופש
-                    </span>
-                  ) : r && r.preferred_shift_ids.length > 0 ? (
-                    shiftTypes
-                      .filter((st) => r.preferred_shift_ids.includes(st.id))
-                      .map((st) => {
-                        const meta = SHIFT_META[st.key as keyof typeof SHIFT_META]
-                        const color = meta?.color ?? st.color
-                        const soft = meta?.soft ?? `${st.color}22`
-                        return (
-                          <span
-                            key={st.id}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 6,
-                              fontSize: 13,
-                              fontWeight: 700,
-                              color,
-                              background: soft,
-                              padding: '6px 11px',
-                              borderRadius: 99,
-                            }}
-                          >
-                            {st.name}
-                          </span>
-                        )
-                      })
+                  ) : (r?.is_off || (r?.preferred_shift_ids.length ?? 0) > 0) ? (
+                    // Show EVERY chosen option: preferred shift chips AND a "יום
+                    // חופש" chip for a mixed "shift OR off" request.
+                    <>
+                      {shiftTypes
+                        .filter((st) => r?.preferred_shift_ids.includes(st.id))
+                        .map((st) => {
+                          const meta = SHIFT_META[st.key as keyof typeof SHIFT_META]
+                          const color = meta?.color ?? st.color
+                          const soft = meta?.soft ?? `${st.color}22`
+                          return (
+                            <span
+                              key={st.id}
+                              style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 6,
+                                fontSize: 13, fontWeight: 700, color, background: soft,
+                                padding: '6px 11px', borderRadius: 99,
+                              }}
+                            >
+                              {st.name}
+                            </span>
+                          )
+                        })}
+                      {r?.is_off && (
+                        <span
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 6,
+                            fontSize: 13.5, fontWeight: 700, color: 'var(--vacation)',
+                            background: 'var(--vacation-soft)', padding: '6px 12px', borderRadius: 99,
+                          }}
+                        >
+                          יום חופש
+                        </span>
+                      )}
+                    </>
                   ) : (
                     <span style={{ fontSize: 14, color: 'var(--text-3)', fontWeight: 600 }}>
                       {isReadOnly ? 'לא הוגשה בקשה' : 'טרם נבחר — הקישו להוספה'}

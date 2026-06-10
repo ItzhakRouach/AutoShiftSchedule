@@ -87,22 +87,28 @@ function DayCell({ req, shiftTypeIdByKey, onVacation, onClick }: { req: ViewRequ
   if (!req) {
     return <td style={cellStyle} onClick={onClick} title="לחצו לעריכת הבקשה"><span style={{ color: 'var(--text-3)', fontSize: 12 }}>—</span></td>
   }
-  if (req.isOff) {
-    return (
-      <td style={{ ...cellStyle, background: 'var(--vacation-soft)' }} onClick={onClick} title="לחצו לעריכת הבקשה">
-        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--vacation)' }}>חופש</span>
-      </td>
-    )
-  }
-  if (req.preferredShiftIds.length === 0) {
+  const hasPref = req.preferredShiftIds.length > 0
+  // Empty request (neither shifts nor off) → dash.
+  if (!hasPref && !req.isOff) {
     return <td style={cellStyle} onClick={onClick} title="לחצו לעריכת הבקשה"><span style={{ color: 'var(--text-3)', fontSize: 12 }}>—</span></td>
   }
+  // Show EVERY chosen option together — preferred shift chips AND a "חופש" chip
+  // for a mixed "shift OR off" request (not just one of them).
   return (
-    <td style={{ ...cellStyle, background: 'rgba(19,169,142,0.04)' }} onClick={onClick} title="לחצו לעריכת הבקשה">
+    <td
+      style={{ ...cellStyle, background: hasPref ? 'rgba(19,169,142,0.04)' : 'var(--vacation-soft)' }}
+      onClick={onClick}
+      title="לחצו לעריכת הבקשה"
+    >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
         {req.preferredShiftIds.map((sid) => (
           <ShiftChip key={sid} shiftTypeId={sid} shiftTypeIdByKey={shiftTypeIdByKey} />
         ))}
+        {req.isOff && (
+          <span style={{ display: 'inline-block', padding: '2px 7px', borderRadius: 'var(--r-pill)', background: 'var(--vacation-soft)', color: 'var(--vacation)', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
+            חופש
+          </span>
+        )}
       </div>
     </td>
   )
