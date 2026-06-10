@@ -8,7 +8,8 @@ import {
   type MapInput,
 } from './map-rows'
 import { computePriorWeekTail } from './prior-tail'
-import { findPriorPublishedPeriod, type PriorPeriodRow } from './prior-period'
+import { findPriorPublishedPeriod } from './prior-period'
+import { computePriorMetrics } from './prior-metrics'
 
 export interface PeriodInfo {
   id: string
@@ -49,84 +50,10 @@ export interface BuiltInput {
   period: PeriodInfo
 }
 
-interface EmpMinRow {
-  id: string
-  min_shifts_per_week: number | null
-}
-
-/**
- * Cross-week minimum fairness. For each employee computes priorDeficit =
- * max(0, minShifts − shiftsThen), where shiftsThen = distinct assigned days in
- * the supplied prior published period (one shift/day, per the assignments
- * unique(period,employee,day) constraint — a 12h counts once). Returns {}
- * (all-zero) when `prior` is null.
- *
- * The caller resolves the prior period once via `findPriorPublishedPeriod` and
- * passes it to BOTH this and `computePriorWeekTail` to avoid two identical
- * lookups per buildEngineInput call.
- */
-export async function computePriorDeficit(
-  supabase: SupabaseClient,
-  prior: PriorPeriodRow | null,
-  employees: EmpMinRow[],
-): Promise<Record<string, number>> {
-  if (!prior) return {}
-  const { data: rows } = await supabase
-    .from('assignments')
-    .select('employee_id, day_of_week')
-    .eq('period_id', prior.id)
-  // Count DISTINCT (employee, day) pairs — defensive even though the unique
-  // constraint already guarantees one row per employee/day.
-  const seen = new Set<string>()
-  const counts: Record<string, number> = {}
-  for (const r of (rows ?? []) as { employee_id: string; day_of_week: number }[]) {
-    const k = `${r.employee_id}:${r.day_of_week}`
-    if (seen.has(k)) continue
-    seen.add(k)
-    counts[r.employee_id] = (counts[r.employee_id] ?? 0) + 1
-  }
-  const deficit: Record<string, number> = {}
-  for (const e of employees) {
-    const min = e.min_shifts_per_week ?? 0
-    deficit[e.id] = Math.max(0, min - (counts[e.id] ?? 0))
-  }
-  return deficit
-}
-
-/**
- * Cross-week extras fairness. For each employee computes priorExtras =
- * max(0, shiftsThen − minShifts), where shiftsThen = distinct assigned days
- * in the supplied prior published period (one shift/day, per the assignments
- * unique(period,employee,day) constraint — a 12h counts once). Returns {}
- * (all-zero) when `prior` is null. Mirrors `computePriorDeficit` and reads
- * the same rows; both should be issued in parallel against the same `prior`
- * to avoid duplicate round-trips.
- */
-export async function computePriorExtras(
-  supabase: SupabaseClient,
-  prior: PriorPeriodRow | null,
-  employees: EmpMinRow[],
-): Promise<Record<string, number>> {
-  if (!prior) return {}
-  const { data: rows } = await supabase
-    .from('assignments')
-    .select('employee_id, day_of_week')
-    .eq('period_id', prior.id)
-  const seen = new Set<string>()
-  const counts: Record<string, number> = {}
-  for (const r of (rows ?? []) as { employee_id: string; day_of_week: number }[]) {
-    const k = `${r.employee_id}:${r.day_of_week}`
-    if (seen.has(k)) continue
-    seen.add(k)
-    counts[r.employee_id] = (counts[r.employee_id] ?? 0) + 1
-  }
-  const extras: Record<string, number> = {}
-  for (const e of employees) {
-    const min = e.min_shifts_per_week ?? 0
-    extras[e.id] = Math.max(0, (counts[e.id] ?? 0) - min)
-  }
-  return extras
-}
+// Cross-week fairness (deficit + extras) lives in prior-metrics. Re-export the
+// per-metric functions for the unit tests that import them from here; the hot
+// path uses computePriorMetrics (one assignments fetch, not two).
+export { computePriorDeficit, computePriorExtras } from './prior-metrics'
 
 /**
  * Loads everything the scheduling engine needs for `periodId` from the DB and
@@ -223,9 +150,8 @@ export async function buildEngineInput(
   // (fairness carry-over) and tail (rest carry-over) — saves a duplicate
   // schedule_periods lookup. The two computations are then run in parallel.
   const prior = await findPriorPublishedPeriod(supabase, wp, period.week_start_date as string)
-  const [priorDeficit, priorExtras, priorWeekTail] = await Promise.all([
-    computePriorDeficit(supabase, prior, employees ?? []),
-    computePriorExtras(supabase, prior, employees ?? []),
+  const [{ deficit: priorDeficit, extras: priorExtras }, priorWeekTail] = await Promise.all([
+    computePriorMetrics(supabase, prior, employees ?? []),
     computePriorWeekTail(supabase, wp, prior, period.week_start_date as string),
   ])
 
