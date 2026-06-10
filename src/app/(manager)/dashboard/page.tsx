@@ -10,6 +10,7 @@ import { ScopeToggle } from './ScopeToggle'
 import { DashNav } from './DashNav'
 import { CoverageCard } from './CoverageCard'
 import { DashPanels } from './DashPanels'
+import { OnboardingSteps } from './OnboardingSteps'
 import type { Scope } from '@/lib/stats/types'
 
 function isScope(v: unknown): v is Scope { return v === 'week' || v === 'month' || v === 'year' }
@@ -45,7 +46,7 @@ export default async function DashboardPage({
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
         <div>
-          <h1 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 800, letterSpacing: '-0.5px' }}>
+          <h1 style={{ margin: '0 0 4px', fontSize: 'var(--text-h1)', fontWeight: 800, letterSpacing: '-0.5px' }}>
             {workplace?.name ?? 'דשבורד'}
           </h1>
           <p style={{ margin: 0, fontSize: 13, color: 'var(--text-2)' }}>שלום, {user.email}</p>
@@ -61,10 +62,7 @@ export default async function DashboardPage({
       </div>
 
       {!stats || stats.kpis.activeEmployees === 0 ? (
-        <Card style={{ textAlign: 'center', padding: 32, color: 'var(--text-2)' }}>
-          <div style={{ fontSize: 15, fontWeight: 600 }}>אין נתונים להצגה עדיין</div>
-          <div style={{ fontSize: 13, marginTop: 8 }}>הוסיפו עובדים וצרו סידור ראשון</div>
-        </Card>
+        <OnboardingSteps />
       ) : (
         <>
           {/* Prominent coverage indicator */}

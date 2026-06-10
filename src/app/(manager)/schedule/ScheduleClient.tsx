@@ -11,7 +11,7 @@ import type { Coverage, TwelveHourSuggestion, OverriddenOff, Warning } from '@/l
 import { runSchedule, publishSchedule, hasManualAssignments } from './actions'
 import { FeasibilityBanner } from './FeasibilityBanner'
 import { CoverageIssues } from './CoverageIssues'
-import { WeekTable } from './WeekTable'
+import { ScheduleGrids } from './ScheduleGrids'
 import { RequestsOverview } from './RequestsOverview'
 import { SwapEditor, type SlotCtx } from './SwapEditor'
 import { TwelvePairEditor } from './TwelvePairEditor'
@@ -99,7 +99,7 @@ export function ScheduleClient({ view, editMeta }: Props) {
 
       <div className="schedule-controls">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>שיבוץ אוטומטי</h1>
+        <h1 style={{ margin: 0, fontSize: 'var(--text-h1)', fontWeight: 800 }}>שיבוץ אוטומטי</h1>
         {pct !== null && (
           <div style={{
             textAlign: 'center',
@@ -164,7 +164,7 @@ export function ScheduleClient({ view, editMeta }: Props) {
 
       {viewMode === 'schedule' && hasResult && (
         <>
-          <WeekTable view={view} onSlot={editMeta ? setSlot : undefined} onDayPair={editMeta ? setPairDay : undefined} />
+          <ScheduleGrids view={view} onSlot={editMeta ? setSlot : undefined} onDayPair={editMeta ? setPairDay : undefined} />
           <DayNotesSummary view={view} />
           <div className="schedule-controls">
           <TwelveHourList suggestions={suggestions} roles={view.roles} />

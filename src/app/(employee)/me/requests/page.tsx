@@ -68,7 +68,7 @@ export default async function RequestsPage() {
       {!isReadOnly && period && (
         <>
           <ClearAllButton periodId={period.id} hasAnyRequest={filled > 0} />
-          <div style={{ marginTop: 20 }}>
+          <div className="submit-bar-sticky" style={{ marginTop: 20 }}>
             <SubmitBar periodId={period.id} initialSubmittedAt={submittedAt} deadlineLabel={deadlineLabel} />
           </div>
         </>

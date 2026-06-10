@@ -78,7 +78,7 @@ export default async function SettingsPage() {
   return (
     <main style={{ background: 'var(--bg)' }}>
       <div className="page-wrap wide" style={{ direction: 'rtl', maxWidth: 920 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 24px', color: 'var(--text)' }}>
+        <h1 style={{ fontSize: 'var(--text-h1)', fontWeight: 800, margin: '0 0 24px', color: 'var(--text)' }}>
           הגדרות
         </h1>
 
@@ -100,7 +100,7 @@ export default async function SettingsPage() {
 
         {/* Request deadline */}
         <section style={section}>
-          <h2 style={{ fontSize: 17, fontWeight: 700, margin: '0 0 6px', color: 'var(--text)' }}>
+          <h2 style={{ fontSize: 'var(--text-h2)', fontWeight: 700, margin: '0 0 6px', color: 'var(--text)' }}>
             מועד אחרון להגשת בקשות
           </h2>
           <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '0 0 20px', lineHeight: 1.5 }}>
@@ -115,7 +115,7 @@ export default async function SettingsPage() {
 
         {/* Publish + WhatsApp (Evolution API) */}
         <section style={section}>
-          <h2 style={{ fontSize: 17, fontWeight: 700, margin: '0 0 6px', color: 'var(--text)' }}>
+          <h2 style={{ fontSize: 'var(--text-h2)', fontWeight: 700, margin: '0 0 6px', color: 'var(--text)' }}>
             פרסום אוטומטי לווטסאפ
           </h2>
           <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '0 0 20px', lineHeight: 1.5 }}>
@@ -132,7 +132,7 @@ export default async function SettingsPage() {
 
         {/* Account */}
         <section style={section}>
-          <h2 style={{ fontSize: 17, fontWeight: 700, margin: '0 0 6px', color: 'var(--text)' }}>
+          <h2 style={{ fontSize: 'var(--text-h2)', fontWeight: 700, margin: '0 0 6px', color: 'var(--text)' }}>
             חשבון
           </h2>
           <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '0 0 20px', lineHeight: 1.5 }}>

@@ -38,6 +38,23 @@
   --r-md: 16px;
   --r-sm: 11px;
   --r-pill: 999px;
+
+  /* type scale (theme-independent) */
+  --text-h1: 22px;
+  --text-h2: 17px;
+  --text-h3: 15px;
+  --text-body: 14px;
+  --text-sm: 13px;
+  --text-xs: 11px;
+
+  /* spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
 }
 
 [data-theme="dark"] {

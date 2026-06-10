@@ -6,6 +6,8 @@ import { Icon, type IconName } from '@/components/ui/Icon'
 import { Card } from '@/components/ui/Card'
 import { DeleteAccountButton } from '@/components/account/DeleteAccountButton'
 import { getMeSummary } from '@/lib/stats/me-summary-data'
+import { upcomingWeekStartISO } from '@/lib/dates/week'
+import { deadlineLabel } from '@/lib/deadline/compute'
 import { deleteMyAccount } from './actions'
 import { MeSummary } from './MeSummary'
 
@@ -38,19 +40,45 @@ export default async function MePage() {
     .maybeSingle()
   if (!employee) redirect('/onboarding')
 
-  const [{ data: workplace }, summaryData] = await Promise.all([
-    supabase.from('workplaces').select('name').eq('id', employee.workplace_id).maybeSingle(),
+  const [{ data: workplace }, { data: settings }, summaryData] = await Promise.all([
+    supabase.from('workplaces').select('name, timezone').eq('id', employee.workplace_id).maybeSingle(),
+    supabase
+      .from('workplace_settings')
+      .select('request_deadline_dow, request_deadline_time')
+      .eq('workplace_id', employee.workplace_id)
+      .maybeSingle(),
     getMeSummary(supabase, employee.id, employee.workplace_id),
   ])
+
+  const dDow = settings?.request_deadline_dow as number | null | undefined
+  const dTime = settings?.request_deadline_time as string | null | undefined
+  const tz = (workplace?.timezone as string | null) ?? 'Asia/Jerusalem'
+  const deadline =
+    dDow != null && dTime
+      ? deadlineLabel(upcomingWeekStartISO(new Date()), dDow, dTime, tz)
+      : null
 
   return (
     <main className="page-wrap narrow" style={{ direction: 'rtl' }}>
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 800, letterSpacing: '-0.5px' }}>
+        <h1 style={{ margin: '0 0 4px', fontSize: 'var(--text-h1)', fontWeight: 800, letterSpacing: '-0.5px' }}>
           שלום, {employee.name}!
         </h1>
         <p style={{ margin: 0, fontSize: 13, color: 'var(--text-2)' }}>{workplace?.name ?? ''}</p>
       </div>
+
+      {deadline && (
+        <Link href="/me/requests" style={{ textDecoration: 'none', display: 'block', marginBottom: 12 }}>
+          <Card interactive style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', background: 'var(--accent-soft)', border: '1px solid var(--accent)' }}>
+            <Icon name="bell" size={20} stroke={1.9} color="var(--accent)" />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>מועד אחרון להגשת בקשות</div>
+              <div style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 700, marginTop: 1 }}>{deadline}</div>
+            </div>
+            <Icon name="chevronLeft" size={17} color="var(--text-3)" />
+          </Card>
+        </Link>
+      )}
 
       {summaryData && <MeSummary summary={summaryData.summary} roles={summaryData.roles} />}
 

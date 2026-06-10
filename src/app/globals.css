@@ -131,3 +131,23 @@ textarea:focus-visible,
   .nav-desktop-only { display: flex; }
 }
 .nav-tab:hover { background: var(--surface-2); }
+
+/* ── Responsive schedule: full week table on desktop; week↔day toggle on mobile.
+   The week table renders once; these classes decide where it shows. */
+.sched-mobile { display: block; }
+.sched-week-deskonly { display: none; }
+@media (min-width: 1024px) {
+  .sched-mobile { display: none; }
+  .sched-week-deskonly { display: block; }
+}
+
+/* ── Sticky submit bar on mobile so "submit" is always reachable on the
+   long worker-requests page (static within the flow on desktop). */
+@media (max-width: 1023px) {
+  .submit-bar-sticky {
+    position: sticky;
+    bottom: 12px;
+    z-index: 20;
+  }
+  .submit-bar-sticky > div { box-shadow: var(--shadow-lift); }
+}
