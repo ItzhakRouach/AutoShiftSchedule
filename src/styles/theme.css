@@ -28,6 +28,8 @@
   --success-soft: rgba(19,169,142,0.12);
   --warning: #E0902A;
   --warning-soft: rgba(224,144,42,0.14);
+  --vacation: #5B61D6;
+  --vacation-soft: rgba(91,97,214,0.12);
 
   /* danger (red) — destructive actions: logout hover, delete account */
   --danger: #D8423B;
@@ -78,6 +80,8 @@
   --success-soft: rgba(43,192,164,0.18);
   --warning: #E9A23E;
   --warning-soft: rgba(233,162,62,0.18);
+  --vacation: #9197EC;
+  --vacation-soft: rgba(145,151,236,0.20);
   --danger: #F0655E;
   --danger-soft: rgba(240,101,94,0.18);
 }

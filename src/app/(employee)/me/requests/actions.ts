@@ -157,6 +157,7 @@ export async function addVacation(input: unknown): Promise<ActionResult> {
     employee_id: employeeId,
     date_from: dateFrom,
     date_to: dateTo,
+    status: 'pending', // explicit — awaits manager approval before it counts
   })
 
   if (error) return { error: 'שגיאה בהוספת חופשה' }

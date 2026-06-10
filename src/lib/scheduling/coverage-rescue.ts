@@ -76,6 +76,7 @@ export function runCoverageRescue(
         day: slot.day,
         shift: slot.shift,
         roleId: slot.roleId,
+        is12h: false,
       })
       overrides.push({ employeeId: pick.id, day: slot.day, shift: slot.shift, roleId: slot.roleId })
     }

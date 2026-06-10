@@ -35,6 +35,7 @@ export function VacationSection({ employeeId, vacations, isReadOnly }: VacationS
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [addError, setAddError] = useState<string | null>(null)
+  const [removeError, setRemoveError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
   function handleAdd() {
@@ -51,8 +52,10 @@ export function VacationSection({ employeeId, vacations, isReadOnly }: VacationS
   }
 
   function handleRemove(id: string) {
+    setRemoveError(null)
     startTransition(async () => {
-      await removeVacation(id)
+      const result = await removeVacation(id)
+      if ('error' in result) setRemoveError(result.error)
     })
   }
 
@@ -81,6 +84,10 @@ export function VacationSection({ employeeId, vacations, isReadOnly }: VacationS
       >
         חופשות ואי-זמינות
       </div>
+
+      {removeError && (
+        <div style={{ marginBottom: 10, fontSize: 13, color: 'var(--danger)', fontWeight: 600 }}>{removeError}</div>
+      )}
 
       {vacations.length === 0 ? (
         <div

@@ -41,9 +41,14 @@ export function summarizeEmployee(
   const byRole: Record<string, number> = {}
 
   for (const a of assignments) {
-    const key = shiftKeyById.get(a.shift_type_id) ?? ''
-    const label = SHIFT_LABEL[key] ?? '12 שעות' // 12h variants grouped together
-    byShiftType[label] = (byShiftType[label] ?? 0) + 1
+    // Only categorize KNOWN shift types: a base key → its label, any other known
+    // (12h) key → "12 שעות". An unknown shift_type_id (orphaned/corrupt) is not
+    // counted as 12h — it's skipped from the breakdown.
+    const key = shiftKeyById.get(a.shift_type_id)
+    if (key) {
+      const label = SHIFT_LABEL[key] ?? '12 שעות'
+      byShiftType[label] = (byShiftType[label] ?? 0) + 1
+    }
 
     const roleName = roleNameById.get(a.role_id)
     if (roleName) byRole[roleName] = (byRole[roleName] ?? 0) + 1

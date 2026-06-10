@@ -65,9 +65,9 @@ function DayCell({ req, shiftTypeIdByKey, onVacation }: { req: ViewRequest | und
       <td
         data-testid="vacation-cell"
         title="העובד בחופשה ביום זה"
-        style={{ ...cellStyle, background: 'rgba(91,97,214,0.12)' }}
+        style={{ ...cellStyle, background: 'var(--vacation-soft)' }}
       >
-        <span style={{ fontSize: 12, fontWeight: 800, color: '#5B61D6' }}>🌴 חופשה</span>
+        <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--vacation)' }}>🌴 חופשה</span>
       </td>
     )
   }
@@ -76,8 +76,8 @@ function DayCell({ req, shiftTypeIdByKey, onVacation }: { req: ViewRequest | und
   }
   if (req.isOff) {
     return (
-      <td style={{ ...cellStyle, background: 'rgba(91,97,214,0.06)' }}>
-        <span style={{ fontSize: 12, fontWeight: 700, color: '#5B61D6' }}>חופש</span>
+      <td style={{ ...cellStyle, background: 'var(--vacation-soft)' }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--vacation)' }}>חופש</span>
       </td>
     )
   }
@@ -166,8 +166,8 @@ export function RequestsOverview({ view }: Props) {
             data-testid="off-requests-summary"
             title="כמות בקשות 'יום חופש / לא זמין' השבוע"
             style={{
-              fontSize: 12.5, fontWeight: 700, color: '#5B61D6',
-              background: 'rgba(91,97,214,0.08)', padding: '4px 10px', borderRadius: 99,
+              fontSize: 12.5, fontWeight: 700, color: 'var(--vacation)',
+              background: 'var(--vacation-soft)', padding: '4px 10px', borderRadius: 99,
             }}
           >
             {offTotals.total} ימי חופש · {offTotals.employees} עובדים
@@ -219,7 +219,7 @@ export function RequestsOverview({ view }: Props) {
                     {empHasAnyVac && (
                       <span
                         title="לעובד יש חופשה בשבוע זה או חופשה פעילה"
-                        style={{ marginInlineStart: 6, fontSize: 11, fontWeight: 800, color: '#5B61D6', background: 'rgba(91,97,214,0.12)', padding: '1px 6px', borderRadius: 99 }}
+                        style={{ marginInlineStart: 6, fontSize: 11, fontWeight: 800, color: 'var(--vacation)', background: 'var(--vacation-soft)', padding: '1px 6px', borderRadius: 99 }}
                       >
                         🌴
                       </span>

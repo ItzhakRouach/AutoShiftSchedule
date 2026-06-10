@@ -159,7 +159,8 @@ export async function getScheduleView(
     // owned by the manager — no explicit workplace filter needed.
     supabase
       .from('employee_vacations')
-      .select('employee_id, date_from, date_to'),
+      .select('employee_id, date_from, date_to')
+      .eq('status', 'approved'), // only APPROVED vacations count (match the engine)
   ])
 
   // All shift-type keys (base + 12h) so manual 12h assignments can be surfaced.

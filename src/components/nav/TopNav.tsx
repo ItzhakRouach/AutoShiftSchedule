@@ -54,14 +54,9 @@ const rowBase: React.CSSProperties = {
 
 function TopBar({ tabs, centerSlot }: { tabs: Tab[]; centerSlot?: React.ReactNode }) {
   const pathname = usePathname()
+  // The menu closes via each item's onClick + the backdrop, so no route-change
+  // effect is needed (and we avoid a setState-in-render/effect anti-pattern).
   const [open, setOpen] = useState(false)
-
-  // Collapse the menu whenever the route changes (adjust state during render).
-  const [navPath, setNavPath] = useState(pathname)
-  if (navPath !== pathname) {
-    setNavPath(pathname)
-    setOpen(false)
-  }
 
   return (
     <header

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/Card'
 import { Btn } from '@/components/ui/Btn'
@@ -60,19 +60,35 @@ export function PendingVacations({ items }: { items: WorkplaceVacation[] }) {
   const router = useRouter()
   const [dismissed, setDismissed] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [, startTransition] = useTransition()
+
+  // Close the popup on Escape (keyboard accessibility).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setDismissed(true) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   if (items.length === 0) return null
   const pending = items.filter((v) => v.status === 'pending')
 
   const setStatus = (id: string, status: 'approved' | 'rejected') => {
     setBusyId(id)
+    setError(null)
     startTransition(async () => {
-      await (status === 'approved' ? approveVacation(id) : rejectVacation(id))
+      const res = await (status === 'approved' ? approveVacation(id) : rejectVacation(id))
       setBusyId(null)
+      if (res && 'error' in res) { setError(res.error); return }
       router.refresh()
     })
   }
+
+  const errorBox = error ? (
+    <div style={{ marginBottom: 10, padding: '9px 12px', borderRadius: 'var(--r-md)', background: 'var(--danger-soft)', color: 'var(--danger)', fontSize: 13, fontWeight: 600 }}>
+      {error}
+    </div>
+  ) : null
 
   const list = (
     <div>
@@ -90,7 +106,7 @@ export function PendingVacations({ items }: { items: WorkplaceVacation[] }) {
           onClick={() => setDismissed(true)}
           style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'var(--scrim)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, direction: 'rtl' }}
         >
-          <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(440px, 100%)', maxHeight: '85vh', overflowY: 'auto', background: 'var(--surface)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--shadow-lift)', padding: '20px 20px 16px' }}>
+          <div role="dialog" aria-modal="true" aria-label="בקשות חופשה לאישור" onClick={(e) => e.stopPropagation()} style={{ width: 'min(440px, 100%)', maxHeight: '85vh', overflowY: 'auto', background: 'var(--surface)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--shadow-lift)', padding: '20px 20px 16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
               <Icon name="plane" size={20} stroke={1.9} color="var(--accent)" />
               <div style={{ fontSize: 'var(--text-h2)', fontWeight: 800, color: 'var(--text)' }}>
@@ -100,6 +116,7 @@ export function PendingVacations({ items }: { items: WorkplaceVacation[] }) {
             <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '0 0 12px', lineHeight: 1.6 }}>
               עובדים ביקשו חופשה. אשרו או דחו — רק חופשה מאושרת נחשבת כיום חופש בסידור.
             </p>
+            {errorBox}
             <div>
               {pending.map((v) => (
                 <Row key={v.id} v={v} busy={busyId === v.id} onSet={(s) => setStatus(v.id, s)} />
@@ -120,6 +137,7 @@ export function PendingVacations({ items }: { items: WorkplaceVacation[] }) {
             חופשות{pending.length > 0 ? ` · ${pending.length} לאישור` : ''}
           </span>
         </div>
+        {!(!dismissed && pending.length > 0) && errorBox}
         {list}
       </Card>
     </>

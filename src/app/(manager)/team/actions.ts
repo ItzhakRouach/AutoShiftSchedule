@@ -9,6 +9,7 @@ import { employeeSchema } from '@/lib/validation/employee'
 import { parseFormData, buildFieldErrors } from '@/lib/employees/form'
 import { syncEmployeeRoles } from '@/lib/employees/roles'
 import { syncEmployeeAvailability } from '@/lib/employees/availability'
+import { workplaceOwnershipError } from '@/lib/employees/validate-ownership'
 import { pickUniqueColor } from '@/lib/employees/colors'
 import { normalizeIsraeliPhone } from '@/lib/whatsapp/phone'
 
@@ -40,6 +41,14 @@ export async function createEmployee(
     observesShabbat, observesHolidays, mustAccept, roleIds, seniorRoleIds, availability,
   } = parsed.data
   const seniorSet = new Set(seniorRoleIds.filter((rid) => roleIds.includes(rid)))
+
+  // Defense-in-depth: roles + availability shift types must be this workplace's.
+  const ownErr = await workplaceOwnershipError(
+    supabase, workplace.id,
+    [...roleIds, ...seniorRoleIds],
+    (availability ?? []).map((a) => a.shiftTypeId),
+  )
+  if (ownErr) return { error: ownErr }
 
   const { data: existingEmps } = await supabase
     .from('employees')
@@ -115,6 +124,13 @@ export async function updateEmployee(
     name, phone, minShifts, maxShifts, employmentType,
     observesShabbat, observesHolidays, mustAccept, roleIds, seniorRoleIds, availability,
   } = parsed.data
+
+  const ownErr = await workplaceOwnershipError(
+    supabase, workplace.id,
+    [...roleIds, ...seniorRoleIds],
+    (availability ?? []).map((a) => a.shiftTypeId),
+  )
+  if (ownErr) return { error: ownErr }
 
   const { error: updateError } = await supabase
     .from('employees')
