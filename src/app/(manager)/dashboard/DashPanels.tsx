@@ -42,16 +42,21 @@ export function DashPanels({ employees, fairness, maxHours }: Props) {
               <span style={{ textAlign: 'center' }}>סוף שבוע</span>
               <span style={{ textAlign: 'center' }}>בקשות</span>
             </div>
-            {fairness.map((f, i) => (
-              <div key={f.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', padding: '10px 14px', borderBottom: i < fairness.length - 1 ? '1px solid var(--border)' : 'none', fontSize: 13, alignItems: 'center' }}>
-                <span style={{ fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
-                <span style={{ textAlign: 'center', fontWeight: 700, color: 'var(--text-2)' }}>{f.nightShifts}</span>
-                <span style={{ textAlign: 'center', fontWeight: 700, color: 'var(--text-2)' }}>{f.weekendShifts}</span>
-                <span style={{ textAlign: 'center', fontWeight: 700, color: f.requestedCount > 0 && f.honoredCount === f.requestedCount ? '#13A98E' : 'var(--text-2)' }}>
-                  {f.requestedCount > 0 ? `קיבל ${f.honoredCount} מתוך ${f.requestedCount}` : '—'}
-                </span>
-              </div>
-            ))}
+            {fairness.map((f, i) => {
+              // Green when the worker met the ≥2-honored target (or got all of
+              // their requests if they asked for fewer than 2).
+              const met = f.requestedCount > 0 && f.honoredCount >= Math.min(2, f.requestedCount)
+              return (
+                <div key={f.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', padding: '10px 14px', borderBottom: i < fairness.length - 1 ? '1px solid var(--border)' : 'none', fontSize: 13, alignItems: 'center', background: met ? 'var(--success-soft)' : 'transparent' }}>
+                  <span style={{ fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
+                  <span style={{ textAlign: 'center', fontWeight: 700, color: 'var(--text-2)' }}>{f.nightShifts}</span>
+                  <span style={{ textAlign: 'center', fontWeight: 700, color: 'var(--text-2)' }}>{f.weekendShifts}</span>
+                  <span style={{ textAlign: 'center', fontWeight: 700, color: met ? 'var(--success)' : 'var(--text-2)' }}>
+                    {f.requestedCount > 0 ? `קיבל ${f.honoredCount} מתוך ${f.requestedCount}` : '—'}
+                  </span>
+                </div>
+              )
+            })}
           </Card>
         </>
       )}

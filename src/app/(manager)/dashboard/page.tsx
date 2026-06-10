@@ -3,9 +3,11 @@ import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getActiveWorkplace } from '@/lib/workplace/current'
-import { getPendingVacations } from '@/lib/vacations/pending'
+import { getWorkplaceVacations } from '@/lib/vacations/pending'
+import { getRoleHeadcounts } from '@/lib/stats/role-headcounts'
 import { fetchDashboardStats } from '@/lib/stats/fetch'
 import { PendingVacations } from './PendingVacations'
+import { RoleHeadcounts } from './RoleHeadcounts'
 import { Card } from '@/components/ui/Card'
 import { Stat } from '@/components/ui/Stat'
 import { Icon } from '@/components/ui/Icon'
@@ -32,9 +34,10 @@ export default async function DashboardPage({
   const scope: Scope = isScope(sp?.scope) ? sp.scope as Scope : 'week'
 
   const stats = workplace ? await fetchDashboardStats(supabase, workplace.id, scope) : null
-  const pendingVacations = workplace
-    ? await getPendingVacations(createAdminClient(), workplace.id)
-    : []
+  const todayISO = new Date().toISOString().slice(0, 10)
+  const admin = createAdminClient()
+  const pendingVacations = workplace ? await getWorkplaceVacations(admin, workplace.id, todayISO) : []
+  const roleHeadcounts = workplace ? await getRoleHeadcounts(admin, workplace.id) : []
   const maxHours = Math.max(...(stats?.employees.map((e) => e.hours) ?? [1]), 1)
   const kpis = stats?.kpis
 
@@ -74,6 +77,9 @@ export default async function DashboardPage({
         <OnboardingSteps />
       ) : (
         <>
+          {/* Team composition by role (hybrid — any roles, each its own color) */}
+          <RoleHeadcounts roles={roleHeadcounts} />
+
           {/* Prominent coverage indicator */}
           {kpis && <CoverageCard kpis={kpis} />}
 

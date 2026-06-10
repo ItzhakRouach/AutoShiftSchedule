@@ -6,66 +6,79 @@ import { Card } from '@/components/ui/Card'
 import { Btn } from '@/components/ui/Btn'
 import { Icon } from '@/components/ui/Icon'
 import { formatHebDate } from '@/lib/dates/week'
-import type { PendingVacation } from '@/lib/vacations/pending'
+import type { WorkplaceVacation, VacationStatus } from '@/lib/vacations/pending'
 import { approveVacation, rejectVacation } from './vacation-actions'
 
-function range(v: PendingVacation): string {
+const STATUS_META: Record<VacationStatus, { label: string; color: string; soft: string }> = {
+  pending: { label: 'ממתין', color: 'var(--warning)', soft: 'var(--warning-soft)' },
+  approved: { label: 'אושר', color: 'var(--success)', soft: 'var(--success-soft)' },
+  rejected: { label: 'נדחה', color: 'var(--danger)', soft: 'var(--danger-soft)' },
+}
+
+function range(v: WorkplaceVacation): string {
   return v.dateFrom === v.dateTo
     ? formatHebDate(v.dateFrom)
     : `${formatHebDate(v.dateFrom)} – ${formatHebDate(v.dateTo)}`
 }
 
-function Row({ v, busy, onApprove, onReject }: {
-  v: PendingVacation; busy: boolean; onApprove: () => void; onReject: () => void
-}) {
+function StatusPill({ status }: { status: VacationStatus }) {
+  const m = STATUS_META[status]
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+    <span style={{ fontSize: 11, fontWeight: 700, color: m.color, background: m.soft, padding: '2px 8px', borderRadius: 'var(--r-pill)' }}>
+      {m.label}
+    </span>
+  )
+}
+
+function Row({ v, busy, onSet }: { v: WorkplaceVacation; busy: boolean; onSet: (s: 'approved' | 'rejected') => void }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{v.employeeName}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{v.employeeName}</span>
+          <StatusPill status={v.status} />
+        </div>
         <div style={{ fontSize: 12.5, color: 'var(--text-2)' }}>{range(v)}</div>
       </div>
-      <Btn variant="soft" size="sm" disabled={busy} onClick={onReject}>דחה</Btn>
-      <Btn variant="primary" size="sm" disabled={busy} onClick={onApprove}>אשר</Btn>
+      {/* Always editable: the current decision is the filled button. */}
+      <Btn variant={v.status === 'rejected' ? 'soft' : 'outline'} size="sm" disabled={busy} onClick={() => onSet('rejected')}>דחה</Btn>
+      <Btn variant={v.status === 'approved' ? 'primary' : 'outline'} size="sm" disabled={busy} onClick={() => onSet('approved')}>אשר</Btn>
     </div>
   )
 }
 
-/** Pending vacation requests: a dismissible popup on entry + a persistent card,
- *  each with approve/reject. */
-export function PendingVacations({ items }: { items: PendingVacation[] }) {
+/** Workplace vacation requests: a dismissible popup on entry (pending only) +
+ *  a persistent, always-editable card (any status → approve/reject anytime). */
+export function PendingVacations({ items }: { items: WorkplaceVacation[] }) {
   const router = useRouter()
   const [dismissed, setDismissed] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
-  const [pending, startTransition] = useTransition()
+  const [, startTransition] = useTransition()
 
   if (items.length === 0) return null
+  const pending = items.filter((v) => v.status === 'pending')
 
-  const act = (id: string, fn: (id: string) => Promise<unknown>) => {
+  const setStatus = (id: string, status: 'approved' | 'rejected') => {
     setBusyId(id)
     startTransition(async () => {
-      await fn(id)
+      await (status === 'approved' ? approveVacation(id) : rejectVacation(id))
       setBusyId(null)
       router.refresh()
     })
   }
-  const rows = (
+
+  const list = (
     <div>
       {items.map((v) => (
-        <Row
-          key={v.id}
-          v={v}
-          busy={pending && busyId === v.id}
-          onApprove={() => act(v.id, approveVacation)}
-          onReject={() => act(v.id, rejectVacation)}
-        />
+        <Row key={v.id} v={v} busy={busyId === v.id} onSet={(s) => setStatus(v.id, s)} />
       ))}
     </div>
   )
 
   return (
     <>
-      {/* Popup on entry */}
-      {!dismissed && (
+      {/* Popup on entry — only when there are PENDING requests to act on. */}
+      {!dismissed && pending.length > 0 && (
         <div
           onClick={() => setDismissed(true)}
           style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'var(--scrim)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, direction: 'rtl' }}
@@ -74,13 +87,17 @@ export function PendingVacations({ items }: { items: PendingVacation[] }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
               <Icon name="plane" size={20} stroke={1.9} color="var(--accent)" />
               <div style={{ fontSize: 'var(--text-h2)', fontWeight: 800, color: 'var(--text)' }}>
-                בקשות חופשה לאישור ({items.length})
+                בקשות חופשה לאישור ({pending.length})
               </div>
             </div>
             <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '0 0 12px', lineHeight: 1.6 }}>
               עובדים ביקשו חופשה. אשרו או דחו — רק חופשה מאושרת נחשבת כיום חופש בסידור.
             </p>
-            {rows}
+            <div>
+              {pending.map((v) => (
+                <Row key={v.id} v={v} busy={busyId === v.id} onSet={(s) => setStatus(v.id, s)} />
+              ))}
+            </div>
             <div style={{ marginTop: 14 }}>
               <Btn variant="outline" size="md" style={{ width: '100%' }} onClick={() => setDismissed(true)}>סגור</Btn>
             </div>
@@ -88,15 +105,15 @@ export function PendingVacations({ items }: { items: PendingVacation[] }) {
         </div>
       )}
 
-      {/* Persistent card */}
-      <Card style={{ padding: '14px 16px', marginBottom: 16, border: '1px solid var(--accent)' }}>
+      {/* Persistent, editable card — all current/upcoming vacations. */}
+      <Card style={{ padding: '14px 16px', marginBottom: 16, border: `1px solid ${pending.length > 0 ? 'var(--accent)' : 'var(--border)'}` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
           <Icon name="plane" size={18} stroke={1.9} color="var(--accent)" />
           <span style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--text)' }}>
-            בקשות חופשה לאישור ({items.length})
+            חופשות{pending.length > 0 ? ` · ${pending.length} לאישור` : ''}
           </span>
         </div>
-        {rows}
+        {list}
       </Card>
     </>
   )

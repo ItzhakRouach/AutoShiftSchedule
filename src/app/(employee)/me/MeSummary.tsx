@@ -49,12 +49,19 @@ export function MeSummary({ summary, roles }: { summary: EmployeeSummary; roles:
         </div>
       </Card>
 
-      <Card style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>בקשות שכובדו</span>
-        <span style={{ fontSize: 14, fontWeight: 800, color: summary.honoredCount === summary.requestedCount && summary.requestedCount > 0 ? 'var(--success)' : 'var(--text-2)' }}>
-          {summary.requestedCount > 0 ? `כובדו ${summary.honoredCount} מתוך ${summary.requestedCount}` : 'לא הוגשו בקשות'}
-        </span>
-      </Card>
+      {(() => {
+        // "Met" = honored at least 2 of their requests (or all, if they asked
+        // for fewer than 2). Shown green so satisfied workers stand out.
+        const met = summary.requestedCount > 0 && summary.honoredCount >= Math.min(2, summary.requestedCount)
+        return (
+          <Card style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: met ? '1px solid var(--success)' : '1px solid var(--border)', background: met ? 'var(--success-soft)' : 'var(--surface)' }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>בקשות שכובדו</span>
+            <span style={{ fontSize: 14, fontWeight: 800, color: met ? 'var(--success)' : 'var(--text-2)' }}>
+              {summary.requestedCount > 0 ? `כובדו ${summary.honoredCount} מתוך ${summary.requestedCount}` : 'לא הוגשו בקשות'}
+            </span>
+          </Card>
+        )
+      })()}
     </div>
   )
 }

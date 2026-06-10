@@ -5,11 +5,12 @@ import { signOut } from '@/app/(auth)/actions'
 import { Icon, type IconName } from '@/components/ui/Icon'
 import { Card } from '@/components/ui/Card'
 import { DeleteAccountButton } from '@/components/account/DeleteAccountButton'
-import { getMeSummary } from '@/lib/stats/me-summary-data'
+import { getMeSummary, getMeStats } from '@/lib/stats/me-summary-data'
 import { upcomingWeekStartISO } from '@/lib/dates/week'
 import { deadlineLabel } from '@/lib/deadline/compute'
 import { deleteMyAccount } from './actions'
 import { MeSummary } from './MeSummary'
+import { MeStats } from './MeStats'
 
 function NavCard({ href, icon, title, subtitle }: { href: string; icon: IconName; title: string; subtitle: string }) {
   return (
@@ -40,7 +41,7 @@ export default async function MePage() {
     .maybeSingle()
   if (!employee) redirect('/onboarding')
 
-  const [{ data: workplace }, { data: settings }, summaryData] = await Promise.all([
+  const [{ data: workplace }, { data: settings }, summaryData, statsData] = await Promise.all([
     supabase.from('workplaces').select('name, timezone').eq('id', employee.workplace_id).maybeSingle(),
     supabase
       .from('workplace_settings')
@@ -48,6 +49,7 @@ export default async function MePage() {
       .eq('workplace_id', employee.workplace_id)
       .maybeSingle(),
     getMeSummary(supabase, employee.id, employee.workplace_id),
+    getMeStats(supabase, employee.id, employee.workplace_id),
   ])
 
   const dDow = settings?.request_deadline_dow as number | null | undefined
@@ -81,6 +83,8 @@ export default async function MePage() {
       )}
 
       {summaryData && <MeSummary summary={summaryData.summary} roles={summaryData.roles} />}
+
+      <MeStats data={statsData} />
 
       <NavCard href="/me/schedule" icon="grid" title="הסידור השבועי" subtitle="צפייה בסידור העבודה המפורסם" />
       <NavCard href="/me/requests" icon="calendar" title="הגשת בקשות" subtitle="בקשות לשבוע הקרוב" />

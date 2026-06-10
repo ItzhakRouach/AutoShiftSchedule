@@ -143,13 +143,19 @@ export function VacationSection({ employeeId, vacations, isReadOnly }: VacationS
             <input
               type="date"
               value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
+              onChange={(e) => {
+                setDateFrom(e.target.value)
+                // Keep "to" ≥ "from": if the chosen start is after the current
+                // end (or no end yet), snap the end to the start.
+                if (e.target.value && (!dateTo || dateTo < e.target.value)) setDateTo(e.target.value)
+              }}
               style={inputStyle}
               aria-label="תאריך התחלה"
             />
             <input
               type="date"
               value={dateTo}
+              min={dateFrom || undefined}
               onChange={(e) => setDateTo(e.target.value)}
               style={inputStyle}
               aria-label="תאריך סיום"
