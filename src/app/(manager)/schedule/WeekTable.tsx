@@ -31,7 +31,9 @@ const ROLE_W = 78
 const S = {
   // NOTE: the table uses border-collapse: separate — position:sticky on table
   // cells does NOT hold with border-collapse: collapse in most browsers.
-  sticky: { position: 'sticky', background: 'var(--surface-2)', fontWeight: 700, borderLeft: '1px solid var(--border)', borderBottom: '1px solid var(--border)', zIndex: 2 } as React.CSSProperties,
+  // backfaceVisibility is a safe paint hint (a transform on the cell itself can
+  // break stickiness, so the GPU-layer promotion goes on the scroll container).
+  sticky: { position: 'sticky', background: 'var(--surface-2)', fontWeight: 700, borderLeft: '1px solid var(--border)', borderBottom: '1px solid var(--border)', zIndex: 2, WebkitBackfaceVisibility: 'hidden', backfaceVisibility: 'hidden' } as React.CSSProperties,
   dayPairBtn: { marginTop: 4, padding: '2px 8px', fontSize: 10.5, fontWeight: 700, borderRadius: 99, border: '1px solid var(--accent)', background: 'var(--accent-soft)', color: 'var(--accent)', cursor: 'pointer', fontFamily: 'var(--font)' } as React.CSSProperties,
 }
 
@@ -63,7 +65,7 @@ export function WeekTable({ view, onSlot, onDayPair, initialSelectedId, showUnfi
       {selectedId && <div style={{ direction: 'rtl', marginBottom: 8, fontSize: 12, color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: 8 }}>
         <span>מוצג: <strong style={{ color: empById.get(selectedId)?.color }}>{empById.get(selectedId)?.name}</strong></span>
         <button onClick={() => setSelectedId(null)} style={{ fontSize: 11, padding: '2px 8px', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface)', cursor: 'pointer', color: 'var(--text-2)' }}>נקה</button></div>}
-      <div data-testid="week-table" style={{ overflowX: 'auto', direction: 'rtl', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
+      <div data-testid="week-table" style={{ overflowX: 'auto', direction: 'rtl', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', transform: 'translateZ(0)' }}>
         <table style={{ borderCollapse: 'separate', borderSpacing: 0, minWidth: 700, tableLayout: 'auto', width: '100%' }}>
           <thead>
             <tr style={{ background: 'var(--surface-2)' }}>
