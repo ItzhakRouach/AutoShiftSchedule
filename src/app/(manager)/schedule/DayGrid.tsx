@@ -35,7 +35,13 @@ export function DayGrid({ view, selDay, onSlot, selfId }: Props) {
       {view.shiftKeys.map((shift: ShiftKey) => {
         const m = SHIFT_META[shift]
         const req = view.requirements[selDay]?.[shift] ?? {}
-        const roleIds = Object.keys(req)
+        const gridForShift = view.grid[selDay]?.[shift] ?? {}
+        // Show roles that have a staffing requirement OR an assignment. The
+        // worker's published view has no requirements (RLS), so fall back to
+        // whoever is actually assigned. Ordered by view.roles (rank-desc).
+        const roleIds = view.roles
+          .map((r) => r.id)
+          .filter((rid) => (req[rid] ?? 0) > 0 || (gridForShift[rid]?.length ?? 0) > 0)
         return (
           <Card key={shift} pad={0} style={{ overflow: 'hidden' }}>
             <div
@@ -55,13 +61,12 @@ export function DayGrid({ view, selDay, onSlot, selfId }: Props) {
             <div style={{ padding: '6px 14px 12px' }}>
               {roleIds.length === 0 && (
                 <div style={{ fontSize: 13, color: 'var(--text-3)', padding: '8px 0' }}>
-                  אין דרישת איוש למשמרת זו
+                  אין שיבוץ למשמרת זו
                 </div>
               )}
               {roleIds.map((roleId) => {
                 const need = req[roleId] ?? 0
-                if (!need) return null
-                const filled = view.grid[selDay]?.[shift]?.[roleId] ?? []
+                const filled = gridForShift[roleId] ?? []
                 const role = roleById.get(roleId)
                 const missing = Math.max(0, need - filled.length)
                 return (
@@ -79,10 +84,10 @@ export function DayGrid({ view, selDay, onSlot, selfId }: Props) {
                         style={{
                           fontSize: 12,
                           fontWeight: 700,
-                          color: filled.length >= need ? '#13A98E' : '#EB6A4E',
+                          color: need > 0 ? (filled.length >= need ? 'var(--success)' : '#EB6A4E') : 'var(--text-2)',
                         }}
                       >
-                        {filled.length}/{need}
+                        {need > 0 ? `${filled.length}/${need}` : filled.length}
                       </span>
                     </div>
                     <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>

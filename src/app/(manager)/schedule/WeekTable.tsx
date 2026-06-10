@@ -35,6 +35,11 @@ const S = {
   // break stickiness, so the GPU-layer promotion goes on the scroll container).
   sticky: { position: 'sticky', background: 'var(--surface-2)', fontWeight: 700, borderLeft: '1px solid var(--border)', borderBottom: '1px solid var(--border)', zIndex: 2, WebkitBackfaceVisibility: 'hidden', backfaceVisibility: 'hidden' } as React.CSSProperties,
   dayPairBtn: { marginTop: 4, padding: '2px 8px', fontSize: 10.5, fontWeight: 700, borderRadius: 99, border: '1px solid var(--accent)', background: 'var(--accent-soft)', color: 'var(--accent)', cursor: 'pointer', fontFamily: 'var(--font)' } as React.CSSProperties,
+  // iOS WebKit (Safari/iPhone-Chrome) lazily repaints sticky cells during
+  // momentum scroll → their TEXT blanks out. Putting the cell's CONTENT on its
+  // own GPU layer forces it to re-composite, without a transform on the sticky
+  // cell itself (which would break stickiness).
+  layer: { display: 'block', WebkitTransform: 'translateZ(0)', transform: 'translateZ(0)' } as React.CSSProperties,
 }
 
 export function WeekTable({ view, onSlot, onDayPair, initialSelectedId, showUnfilled = true }: Props) {
@@ -69,8 +74,8 @@ export function WeekTable({ view, onSlot, onDayPair, initialSelectedId, showUnfi
         <table style={{ borderCollapse: 'separate', borderSpacing: 0, minWidth: 700, tableLayout: 'auto', width: '100%' }}>
           <thead>
             <tr style={{ background: 'var(--surface-2)' }}>
-              <th style={{ ...S.sticky, right: 0, zIndex: 3, padding: '10px 8px', fontSize: 13, width: SHIFT_W, minWidth: SHIFT_W, maxWidth: SHIFT_W }}>משמרת</th>
-              <th style={{ ...S.sticky, right: SHIFT_W, zIndex: 3, padding: '10px 8px', fontSize: 13, width: ROLE_W, minWidth: ROLE_W, maxWidth: ROLE_W }}>תפקיד</th>
+              <th style={{ ...S.sticky, right: 0, zIndex: 3, padding: '10px 8px', fontSize: 13, width: SHIFT_W, minWidth: SHIFT_W, maxWidth: SHIFT_W }}><span style={S.layer}>משמרת</span></th>
+              <th style={{ ...S.sticky, right: SHIFT_W, zIndex: 3, padding: '10px 8px', fontSize: 13, width: ROLE_W, minWidth: ROLE_W, maxWidth: ROLE_W }}><span style={S.layer}>תפקיד</span></th>
               {days.map((d) => (
                 <th key={d.index} style={{ ...S.sticky, position: undefined, padding: '10px 8px', fontSize: 12, textAlign: 'center', minWidth: 96 }}>
                   <div style={{ fontWeight: 800, fontSize: 13 }}>{d.short}</div>
@@ -99,12 +104,14 @@ export function WeekTable({ view, onSlot, onDayPair, initialSelectedId, showUnfi
                   <tr key={`${shift}-${roleId}`} style={{ background: rowBg, ...groupDividerStyle }}>
                     {ri === 0 && (
                       <td rowSpan={roles.length} style={{ ...S.sticky, right: 0, padding: '12px 8px', textAlign: 'center', fontSize: 13, color: m.color, background: `color-mix(in srgb, ${m.color} 16%, var(--surface))`, verticalAlign: 'middle', width: SHIFT_W, minWidth: SHIFT_W, maxWidth: SHIFT_W, borderTop: showGroupDivider ? '3px solid var(--border-strong, var(--border))' : undefined }}>
-                        <div style={{ fontWeight: 800, whiteSpace: 'nowrap', fontSize: 13 }}>{m.name}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-2)', fontWeight: 600, marginTop: 3 }}>{m.time}</div>
+                        <div style={S.layer}>
+                          <div style={{ fontWeight: 800, whiteSpace: 'nowrap', fontSize: 13 }}>{m.name}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-2)', fontWeight: 600, marginTop: 3 }}>{m.time}</div>
+                        </div>
                       </td>
                     )}
                     <td style={{ ...S.sticky, right: SHIFT_W, padding: '10px 8px', fontSize: 12.5, color: rm?.color ?? 'var(--text)', whiteSpace: 'nowrap', background: rm ? `color-mix(in srgb, ${rm.color} 16%, var(--surface))` : 'var(--surface-2)', width: ROLE_W, minWidth: ROLE_W, maxWidth: ROLE_W }}>
-                      {role?.name ?? roleId}
+                      <span style={S.layer}>{role?.name ?? roleId}</span>
                     </td>
                     {days.map((d) => (
                       <WeekTableCell key={d.index}
