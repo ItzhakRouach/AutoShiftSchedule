@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
 import { Btn } from '@/components/ui/Btn'
 import { managerSaveDayRequest } from './request-actions'
 
@@ -20,36 +19,42 @@ export function ManagerRequestEditor({
   periodId,
   target,
   shiftOptions,
+  onSaved,
   onClose,
 }: {
   periodId: string
   target: RequestEditTarget
   shiftOptions: ShiftOption[]
+  /** Called with the saved request so the grid updates WITHOUT a full page
+   *  refresh — the manager stays on the tab to enter more requests. */
+  onSaved: (saved: { employeeId: string; dayOfWeek: number; isOff: boolean; preferredShiftIds: string[] }) => void
   onClose: () => void
 }) {
-  const router = useRouter()
   const [isOff, setIsOff] = useState(target.isOff)
   const [selected, setSelected] = useState<string[]>(target.preferredShiftIds)
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
 
   function toggleShift(id: string) {
-    if (isOff) return
+    // Shift vs off are mutually exclusive but never block: picking a shift
+    // cancels an off-day.
+    setIsOff(false)
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
   }
 
   function save() {
     setError(null)
+    const preferredShiftIds = isOff ? [] : selected
     startTransition(async () => {
       const res = await managerSaveDayRequest({
         periodId,
         employeeId: target.employeeId,
         dayOfWeek: target.dayOfWeek,
         isOff,
-        preferredShiftIds: isOff ? [] : selected,
+        preferredShiftIds,
       })
       if ('error' in res) { setError(res.error); return }
-      router.refresh()
+      onSaved({ employeeId: target.employeeId, dayOfWeek: target.dayOfWeek, isOff, preferredShiftIds })
       onClose()
     })
   }
@@ -73,9 +78,9 @@ export function ManagerRequestEditor({
             return (
               <button key={st.id} onClick={() => toggleShift(st.id)} style={{
                 display: 'flex', alignItems: 'center', padding: '12px 14px', textAlign: 'start',
-                borderRadius: 'var(--r-md)', cursor: isOff ? 'default' : 'pointer', width: '100%',
+                borderRadius: 'var(--r-md)', cursor: 'pointer', width: '100%',
                 border: `1.5px solid ${on ? st.color : 'var(--border)'}`,
-                background: on ? st.soft : 'var(--surface)', opacity: isOff ? 0.4 : 1,
+                background: on ? st.soft : 'var(--surface)',
                 fontFamily: 'var(--font)', fontSize: 14, fontWeight: 700, color: on ? st.color : 'var(--text)',
               }}>
                 {st.name}

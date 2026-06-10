@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
 import { SHIFT_META, type ShiftId } from '@/lib/domain/constants'
 import { isInVacationRange } from '@/lib/dates/week'
 import type { ScheduleView, ViewEmployee, ViewRequest, ViewVacation } from '@/lib/schedule/view-data'
@@ -128,16 +127,25 @@ function isoForDayIndex(weekStart: string, dayIndex: number): string {
 }
 
 export function RequestsOverview({ view }: Props) {
-  const router = useRouter()
+  // Local copy so manager edits reflect instantly WITHOUT a full page refresh
+  // (which would bounce off the requests tab) — lets them enter many in a row.
+  const [requests, setRequests] = useState<ViewRequest[]>(view.requests)
   const [editing, setEditing] = useState<RequestEditTarget | null>(null)
   const [confirmClear, setConfirmClear] = useState(false)
   const [clearing, startClear] = useTransition()
 
+  function onSaved(saved: { employeeId: string; dayOfWeek: number; isOff: boolean; preferredShiftIds: string[] }) {
+    setRequests((prev) => [
+      ...prev.filter((r) => !(r.employeeId === saved.employeeId && r.dayOfWeek === saved.dayOfWeek)),
+      { employeeId: saved.employeeId, dayOfWeek: saved.dayOfWeek, isOff: saved.isOff, preferredShiftIds: saved.preferredShiftIds },
+    ])
+  }
+
   function clearAll() {
     startClear(async () => {
-      await managerClearAllRequests(view.periodId)
+      const res = await managerClearAllRequests(view.periodId)
       setConfirmClear(false)
-      router.refresh()
+      if (!('error' in res)) setRequests([]) // local clear; no refresh → stay on the tab
     })
   }
 
@@ -147,7 +155,7 @@ export function RequestsOverview({ view }: Props) {
     return { id: view.shiftTypeIdByKey[k], name: m?.name ?? k, color: m?.color ?? 'var(--accent)', soft: m?.soft ?? 'var(--accent-soft)' }
   })
 
-  const reqMap = buildRequestMap(view.requests)
+  const reqMap = buildRequestMap(requests)
   const submitted = submittedCount(view.employees, reqMap)
   const total = view.employees.length
   const vacsByEmp = buildVacationsByEmployee(view.vacations ?? [])
@@ -157,7 +165,7 @@ export function RequestsOverview({ view }: Props) {
   const offTotals = (() => {
     let total = 0
     const empsWithOff = new Set<string>()
-    for (const r of view.requests) {
+    for (const r of requests) {
       if (r.isOff) { total += 1; empsWithOff.add(r.employeeId) }
     }
     return { total, employees: empsWithOff.size }
@@ -207,7 +215,7 @@ export function RequestsOverview({ view }: Props) {
             {offTotals.total} ימי חופש · {offTotals.employees} עובדים
           </span>
         )}
-        {view.requests.length > 0 && (
+        {requests.length > 0 && (
           <span style={{ marginInlineStart: 'auto', display: 'inline-flex', gap: 6 }}>
             {confirmClear ? (
               <>
@@ -305,6 +313,7 @@ export function RequestsOverview({ view }: Props) {
           periodId={view.periodId}
           target={editing}
           shiftOptions={shiftOptions}
+          onSaved={onSaved}
           onClose={() => setEditing(null)}
         />
       )}

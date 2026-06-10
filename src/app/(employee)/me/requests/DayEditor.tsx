@@ -35,7 +35,9 @@ export function DayEditor({ shiftTypes, request, periodId, employeeId, dayOfWeek
   const offDisabled = offCapReached && !isOff
 
   function toggleShift(id: string) {
-    if (isOff) return
+    // Choosing a shift and "off" are mutually exclusive but never block each
+    // other: picking a shift cancels an off-day.
+    setIsOff(false)
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
   }
 
@@ -74,9 +76,9 @@ export function DayEditor({ shiftTypes, request, periodId, employeeId, dayOfWeek
           return (
             <button key={st.id} onClick={() => toggleShift(st.id)} style={{
               display: 'flex', alignItems: 'center', gap: 13, padding: '12px 14px',
-              textAlign: 'start', borderRadius: 'var(--r-md)', cursor: isOff ? 'default' : 'pointer',
+              textAlign: 'start', borderRadius: 'var(--r-md)', cursor: 'pointer',
               width: '100%', border: `1.5px solid ${on ? color : 'var(--border)'}`,
-              background: on ? soft : 'var(--surface)', opacity: isOff ? 0.4 : 1,
+              background: on ? soft : 'var(--surface)',
               transition: 'all .12s ease', fontFamily: 'var(--font)',
             }}>
               <div style={{
