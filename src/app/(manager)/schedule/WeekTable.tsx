@@ -96,12 +96,12 @@ export function WeekTable({ view, onSlot, onDayPair, initialSelectedId, showUnfi
                 return (
                   <tr key={`${shift}-${roleId}`} style={{ background: rowBg, ...groupDividerStyle }}>
                     {ri === 0 && (
-                      <td rowSpan={roles.length} style={{ ...S.sticky, right: 0, padding: '12px 8px', textAlign: 'center', fontSize: 13, color: m.color, background: m.soft, verticalAlign: 'middle', width: SHIFT_W, minWidth: SHIFT_W, maxWidth: SHIFT_W, borderTop: showGroupDivider ? '3px solid var(--border-strong, var(--border))' : undefined }}>
+                      <td rowSpan={roles.length} style={{ ...S.sticky, right: 0, padding: '12px 8px', textAlign: 'center', fontSize: 13, color: m.color, background: `color-mix(in srgb, ${m.color} 16%, var(--surface))`, verticalAlign: 'middle', width: SHIFT_W, minWidth: SHIFT_W, maxWidth: SHIFT_W, borderTop: showGroupDivider ? '3px solid var(--border-strong, var(--border))' : undefined }}>
                         <div style={{ fontWeight: 800, whiteSpace: 'nowrap', fontSize: 13 }}>{m.name}</div>
                         <div style={{ fontSize: 11, color: 'var(--text-2)', fontWeight: 600, marginTop: 3 }}>{m.time}</div>
                       </td>
                     )}
-                    <td style={{ ...S.sticky, right: SHIFT_W, padding: '10px 8px', fontSize: 12.5, color: rm?.color ?? 'var(--text)', whiteSpace: 'nowrap', background: rm ? rm.soft : 'var(--surface-2)', width: ROLE_W, minWidth: ROLE_W, maxWidth: ROLE_W }}>
+                    <td style={{ ...S.sticky, right: SHIFT_W, padding: '10px 8px', fontSize: 12.5, color: rm?.color ?? 'var(--text)', whiteSpace: 'nowrap', background: rm ? `color-mix(in srgb, ${rm.color} 16%, var(--surface))` : 'var(--surface-2)', width: ROLE_W, minWidth: ROLE_W, maxWidth: ROLE_W }}>
                       {role?.name ?? roleId}
                     </td>
                     {days.map((d) => (
