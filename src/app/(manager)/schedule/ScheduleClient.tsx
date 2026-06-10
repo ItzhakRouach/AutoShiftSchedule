@@ -41,6 +41,7 @@ export function ScheduleClient({ view, editMeta }: Props) {
   const [suggestions, setSuggestions] = useState<TwelveHourSuggestion[]>([])
   const [overriddenOff, setOverriddenOff] = useState<OverriddenOff[]>([])
   const [uncovered, setUncovered] = useState<Warning[]>([])
+  const [showIssues, setShowIssues] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [published, setPublished] = useState(view.status === 'published')
   const [slot, setSlot] = useState<SlotCtx | null>(null)
@@ -61,8 +62,11 @@ export function ScheduleClient({ view, editMeta }: Props) {
       if (!res.ok) { setError(res.error ?? 'שגיאה'); return }
       setCoverage(res.coverage ?? null)
       setSuggestions(res.twelveHourSuggestions ?? [])
-      setOverriddenOff(res.overriddenOff ?? [])
-      setUncovered(res.uncovered ?? [])
+      const ov = res.overriddenOff ?? []
+      const un = res.uncovered ?? []
+      setOverriddenOff(ov)
+      setUncovered(un)
+      setShowIssues(ov.length > 0 || un.length > 0)
       router.refresh()
     })
   }
@@ -120,7 +124,7 @@ export function ScheduleClient({ view, editMeta }: Props) {
 
       <FeasibilityBanner feasibility={view.feasibility} />
 
-      <CoverageIssues overridden={overriddenOff} uncovered={uncovered} view={view} />
+      <CoverageIssues open={showIssues} overridden={overriddenOff} uncovered={uncovered} view={view} onClose={() => setShowIssues(false)} />
 
       {error && (
         <div style={{

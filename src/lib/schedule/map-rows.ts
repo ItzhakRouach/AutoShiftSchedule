@@ -183,13 +183,15 @@ export function mapToEngineInput(rows: MapInput): MapResult {
       const preferred = (row?.preferred_shift_ids ?? [])
         .map((id) => idToKey[id])
         .filter((k): k is ShiftKey => Boolean(k))
-      // Hard off (never overridden by coverage-rescue): vacation or רענון.
+      // Soft off = a plain worker off-request (overridable to rescue coverage).
+      const offSoft = row?.is_off ?? false
+      // Hard off (never overridden by coverage-rescue): vacation, רענון, OR a
+      // MUST-ACCEPT worker's off-request — their requests are honored absolutely,
+      // so an off-day they asked for is guaranteed no matter the coverage cost.
       const date = rows.weekDates[d]
       const onVacation = !!date && (vacByEmp[e.id] ?? []).some((v) => dateInRange(date, v.date_from, v.date_to))
       const onRefresher = refresherByEmp[e.id]?.has(d) ?? false
-      const offHard = onVacation || onRefresher
-      // Soft off = a plain worker off-request (overridable to rescue coverage).
-      const offSoft = row?.is_off ?? false
+      const offHard = onVacation || onRefresher || (offSoft && (e.must_accept ?? false))
       perDay[d] = { off: offHard || offSoft, offHard, preferred }
     }
     requests[e.id] = perDay

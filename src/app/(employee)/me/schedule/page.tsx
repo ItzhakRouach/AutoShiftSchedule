@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getPublishedScheduleView } from '@/lib/schedule/published-view'
 import { countMyRoles } from '@/lib/stats/my-role-counts'
-import { WeekTable } from '@/app/(manager)/schedule/WeekTable'
+import { ScheduleGrids } from '@/app/(manager)/schedule/ScheduleGrids'
 import { MyRoleCounts } from './MyRoleCounts'
 import { Card } from '@/components/ui/Card'
 
@@ -85,7 +85,9 @@ export default async function MeSchedulePage() {
       {view ? (
         <>
           <div style={{ height: 14 }} />
-          <WeekTable view={view} />
+          {/* Read-only, responsive: week table on desktop, per-day cards on
+              mobile (no sideways scroll, so role labels never disappear). */}
+          <ScheduleGrids view={view} />
         </>
       ) : (
         <div className="schedule-controls">
