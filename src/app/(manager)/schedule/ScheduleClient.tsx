@@ -1,15 +1,13 @@
 'use client'
 
-import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 import { Btn } from '@/components/ui/Btn'
 import { Card } from '@/components/ui/Card'
 import { Segmented } from '@/components/ui/Segmented'
 import { Spinner } from '@/components/ui/Spinner'
 import type { ScheduleView } from '@/lib/schedule/view-data'
 import type { EditMeta } from '@/lib/schedule/edit-meta'
-import type { Coverage, TwelveHourSuggestion, OverriddenOff, Warning } from '@/lib/scheduling/types'
-import { runSchedule, publishSchedule, hasManualAssignments } from './actions'
+import { useScheduleActions } from './useScheduleActions'
 import { FeasibilityBanner } from './FeasibilityBanner'
 import { CoverageIssues } from './CoverageIssues'
 import { ScheduleGrids } from './ScheduleGrids'
@@ -18,11 +16,12 @@ import { SwapEditor, type SlotCtx } from './SwapEditor'
 import { TwelvePairEditor } from './TwelvePairEditor'
 import { DayNoteEditor } from './DayNoteEditor'
 import { DayNotesSummary } from './DayNotesSummary'
-import { TwelveHourList, Generating } from './parts'
+import { Generating } from './parts'
 import { RegenerateConfirm } from './RegenerateConfirm'
-import { ShareButton } from './ShareButton'
-import { UnpublishButton } from './UnpublishButton'
-import { DeleteScheduleButton } from './DeleteScheduleButton'
+import { PublishControls } from './PublishControls'
+import { WorkerPalette } from './WorkerPalette'
+import { AssignToast } from './AssignToast'
+import { useCellAssign } from './useCellAssign'
 
 interface Props {
   view: ScheduleView
@@ -37,59 +36,19 @@ const VIEW_OPTIONS = [
 ]
 
 export function ScheduleClient({ view, editMeta }: Props) {
-  const router = useRouter()
-  const [coverage, setCoverage] = useState<Coverage | null>(null)
-  const [suggestions, setSuggestions] = useState<TwelveHourSuggestion[]>([])
-  const [overriddenOff, setOverriddenOff] = useState<OverriddenOff[]>([])
-  const [uncovered, setUncovered] = useState<Warning[]>([])
-  const [showIssues, setShowIssues] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [published, setPublished] = useState(view.status === 'published')
+  const a = useScheduleActions(view)
   const [slot, setSlot] = useState<SlotCtx | null>(null)
   const [pairDay, setPairDay] = useState<number | null>(null)
   const [showDayNotes, setShowDayNotes] = useState(false)
-  const [showConfirm, setShowConfirm] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('schedule')
-  const [running, startRun] = useTransition()
-  const [publishing, startPublish] = useTransition()
-  // Pre-generate check (server round-trip) — give the button instant feedback.
-  const [checking, startCheck] = useTransition()
+  // Fast drag / tap-to-assign (edit mode only).
+  const assign = useCellAssign(view)
 
-  const hasResult = view.hasAssignments || coverage !== null
-
-  async function triggerGenerate(replaceManual: boolean) {
-    setShowConfirm(false)
-    setError(null)
-    startRun(async () => {
-      const res = await runSchedule(view.periodId, { replaceManual })
-      if (!res.ok) { setError(res.error ?? 'שגיאה'); return }
-      setCoverage(res.coverage ?? null)
-      setSuggestions(res.twelveHourSuggestions ?? [])
-      const ov = res.overriddenOff ?? []
-      const un = res.uncovered ?? []
-      setOverriddenOff(ov)
-      setUncovered(un)
-      setShowIssues(ov.length > 0 || un.length > 0)
-      router.refresh()
-    })
-  }
-
-  function handleGenerateClick() {
-    startCheck(async () => {
-      const manual = view.hasAssignments ? await hasManualAssignments(view.periodId) : false
-      if (manual) { setShowConfirm(true) } else { await triggerGenerate(false) }
-    })
-  }
-
-  function publish() {
-    setError(null)
-    startPublish(async () => {
-      const res = await publishSchedule(view.periodId)
-      if (!res.ok) { setError(res.error ?? 'שגיאה'); return }
-      setPublished(true)
-      router.refresh()
-    })
-  }
+  const {
+    coverage, suggestions, overriddenOff, uncovered, showIssues, setShowIssues,
+    error, published, publishing, checking, running, hasResult, showConfirm, setShowConfirm,
+    triggerGenerate, handleGenerateClick, publish, resetAfterDelete,
+  } = a
 
   if (running) return <Generating />
 
@@ -184,35 +143,25 @@ export function ScheduleClient({ view, editMeta }: Props) {
 
       {viewMode === 'schedule' && hasResult && (
         <>
-          <ScheduleGrids view={view} onSlot={editMeta ? setSlot : undefined} onDayPair={editMeta ? setPairDay : undefined} />
+          {editMeta && (
+            <WorkerPalette employees={view.employees} heldId={assign.heldId} onHold={assign.hold} />
+          )}
+          <ScheduleGrids
+            view={view}
+            onSlot={editMeta ? setSlot : undefined}
+            onDayPair={editMeta ? setPairDay : undefined}
+            assign={editMeta ? assign : undefined}
+          />
           <DayNotesSummary view={view} />
-          <div className="schedule-controls">
-          <TwelveHourList suggestions={suggestions} roles={view.roles} />
-          <div style={{ height: 14 }} />
-          <Btn
-            variant={published ? 'soft' : 'primary'}
-            size="md"
-            icon="check"
-            style={{ width: '100%' }}
-            disabled={publishing}
-            onClick={publish}
-          >
-            {published ? 'פורסם ✓' : publishing ? 'מפרסם…' : 'פרסם סידור'}
-          </Btn>
-          {published && (
-            <>
-              <div style={{ height: 10 }} />
-              <ShareButton periodId={view.periodId} weekLabel={view.days[0]?.date ?? ''} shareUrl={view.imageShareUrl ?? null} />
-              <UnpublishButton periodId={view.periodId} onDone={() => setPublished(false)} />
-            </>
-          )}
-          {hasResult && (
-            <DeleteScheduleButton
-              periodId={view.periodId}
-              onDone={() => { setPublished(false); setCoverage(null); setSuggestions([]) }}
-            />
-          )}
-          </div>{/* schedule-controls */}
+          <PublishControls
+            view={view}
+            suggestions={suggestions}
+            published={published}
+            publishing={publishing}
+            onPublish={publish}
+            onUnpublished={() => a.setPublished(false)}
+            onDeleted={resetAfterDelete}
+          />
         </>
       )}
 
@@ -221,6 +170,7 @@ export function ScheduleClient({ view, editMeta }: Props) {
           <SwapEditor slot={slot} onClose={() => setSlot(null)} view={view} meta={editMeta} />
           <TwelvePairEditor day={pairDay} onClose={() => setPairDay(null)} view={view} meta={editMeta} />
           <DayNoteEditor open={showDayNotes} onClose={() => setShowDayNotes(false)} view={view} />
+          <AssignToast toast={assign.toast} onDismiss={assign.dismissToast} />
         </>
       )}
     </div>

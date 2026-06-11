@@ -55,6 +55,7 @@ function makeView(overrides: Partial<ScheduleView> = {}): ScheduleView {
     requirements: {},
     grid: { 0: { morning: { r1: ['e1'] } } },
     twelve: [],
+    temps: [],
     shiftTypeIdByKey: { morning: 'st-morning', noon: 'st-noon', night: 'st-night' },
     hasAssignments: true,
     feasibility: null,

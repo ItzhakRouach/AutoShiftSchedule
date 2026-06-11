@@ -67,7 +67,7 @@ export async function buildAndUploadScheduleImage(
 
   const [assignsResult, reqResult] = await Promise.all([
     admin.from('assignments')
-      .select('day_of_week, shift_type_id, employees(name), shift_types(key)')
+      .select('day_of_week, shift_type_id, temp_name, employees(name), shift_types(key)')
       .eq('period_id', periodId),
     admin.from('shift_requirements')
       .select('day_of_week, count, shift_types(key)')
@@ -77,7 +77,7 @@ export async function buildAndUploadScheduleImage(
   const assignments: RawAssignment[] = (assignsResult.data ?? []).map((a) => ({
     day_of_week: a.day_of_week as number,
     shift_type_key: one(a.shift_types as { key: string } | { key: string }[] | null)?.key ?? '',
-    employee_name: one(a.employees as Named | Named[])?.name ?? '',
+    employee_name: one(a.employees as Named | Named[])?.name ?? (a.temp_name as string | null) ?? '',
   }))
 
   const required: Record<number, Record<string, number>> = {}

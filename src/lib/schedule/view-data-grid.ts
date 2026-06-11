@@ -3,7 +3,7 @@
 import { formatHebDate } from '@/lib/dates/week'
 import type { ShiftId } from '@/lib/domain/constants'
 import type { ShiftKey } from '@/lib/scheduling/types'
-import type { DayInfo, ViewGrid, ViewTwelve } from './view-data'
+import type { DayInfo, ViewGrid, ViewTwelve, ViewTempEntry } from './view-data'
 
 const DAY_SHORTS = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳']
 
@@ -17,7 +17,9 @@ export function buildDayInfos(weekDates: string[]): DayInfo[] {
 }
 
 export interface AssignmentRaw {
-  employee_id: string
+  id?: string
+  employee_id: string | null
+  temp_name?: string | null
   day_of_week: number
   shift_type_id: string
   role_id: string
@@ -26,6 +28,8 @@ export interface AssignmentRaw {
 export interface GridSplit {
   grid: ViewGrid
   twelve: ViewTwelve[]
+  /** Ad-hoc free-text "temp" worker rows (no employee_id). */
+  temps: ViewTempEntry[]
   /** Per-day list of (employeeId, shiftKey) tuples — any role, any variant. */
   byDay: Map<number, Array<{ employeeId: string; shiftKey: ShiftId }>>
 }
@@ -34,7 +38,9 @@ const BASE_KEYS = new Set(['morning', 'noon', 'night'])
 
 /**
  * One pass over the assignments query result: builds the base-shift grid, the
- * separate 12h list, and the per-day index used by night-before detection.
+ * separate 12h list, the temp-name list, and the per-day index used by
+ * night-before detection. Temp rows (employee_id NULL) never enter the employee
+ * grid or byDay index — they carry no employee identity.
  */
 export function splitAssignments(
   assigns: AssignmentRaw[],
@@ -42,22 +48,30 @@ export function splitAssignments(
 ): GridSplit {
   const grid: ViewGrid = {}
   const twelve: ViewTwelve[] = []
+  const temps: ViewTempEntry[] = []
   const byDay = new Map<number, Array<{ employeeId: string; shiftKey: ShiftId }>>()
   for (const a of assigns) {
     const anyKey = idToAnyKey[a.shift_type_id] as ShiftId | undefined
-    if (anyKey) {
-      let list = byDay.get(a.day_of_week)
-      if (!list) { list = []; byDay.set(a.day_of_week, list) }
-      list.push({ employeeId: a.employee_id, shiftKey: anyKey })
+    if (!anyKey) continue
+
+    // Temp (ad-hoc name) rows: surface separately, skip the employee grid/index.
+    if (a.temp_name && !a.employee_id) {
+      temps.push({ day: a.day_of_week, shiftKey: anyKey, roleId: a.role_id, assignmentId: a.id ?? '', name: a.temp_name })
+      continue
     }
-    if (anyKey && !BASE_KEYS.has(anyKey)) {
+    if (!a.employee_id) continue
+
+    let list = byDay.get(a.day_of_week)
+    if (!list) { list = []; byDay.set(a.day_of_week, list) }
+    list.push({ employeeId: a.employee_id, shiftKey: anyKey })
+
+    if (!BASE_KEYS.has(anyKey)) {
       twelve.push({ day: a.day_of_week, variant: anyKey, roleId: a.role_id, employeeId: a.employee_id })
       continue
     }
-    if (!anyKey) continue
     const day = (grid[a.day_of_week] ??= {})
     const byShift = (day[anyKey as ShiftKey] ??= {})
     ;(byShift[a.role_id] ??= []).push(a.employee_id)
   }
-  return { grid, twelve, byDay }
+  return { grid, twelve, temps, byDay }
 }

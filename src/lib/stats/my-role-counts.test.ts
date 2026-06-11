@@ -17,6 +17,7 @@ function view(over: Partial<ScheduleView> = {}): ScheduleView {
     requirements: {},
     grid: {},
     twelve: [],
+    temps: [],
     shiftTypeIdByKey: {},
     shiftMeta: {},
     hasAssignments: true,

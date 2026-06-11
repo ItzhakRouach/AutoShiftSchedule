@@ -2,6 +2,7 @@
 
 import { memo } from 'react'
 import { SHIFT_META, type ShiftId } from '@/lib/domain/constants'
+import { TempChip } from './TempChip'
 
 const S = {
   base: {
@@ -25,6 +26,10 @@ export interface CellEntry {
   requested: boolean
   /** 12h variant key — for the hour-range label (present only when is12h). */
   variant?: string
+  /** Ad-hoc temp worker display name (no roster employee). */
+  tempName?: string
+  /** Assignment row id — present for temp entries so they can be removed by id. */
+  assignmentId?: string
 }
 
 export interface WeekTableCellProps {
@@ -37,7 +42,17 @@ export interface WeekTableCellProps {
   onClick?: () => void
   onSelectEmp: (id: string) => void
   showUnfilled: boolean
+  /** True when this cell is the pending target for click-to-assign. */
+  isPending?: boolean
+  /** A worker chip was dragged onto this cell (employeeId from dataTransfer). */
+  onDropEmployee?: (employeeId: string) => void
+  /** Begin dragging an already-assigned worker out of this cell. */
+  onDragEmployee?: (employeeId: string) => void
+  /** Remove an ad-hoc temp entry by its assignment id. */
+  onRemoveTemp?: (assignmentId: string) => void
 }
+
+const DND_MIME = 'application/x-employee-id'
 
 /**
  * Single day×shift×role cell. Memoized so that mutating ONE cell in the table
@@ -47,25 +62,38 @@ export interface WeekTableCellProps {
  */
 function WeekTableCellImpl(props: WeekTableCellProps) {
   const { entries, empById, isFilled, covered, selectedId, onClick, onSelectEmp, showUnfilled } = props
+  const { isPending, onDropEmployee, onDragEmployee, onRemoveTemp } = props
   const hasSelected = selectedId !== null
   const cellHasSelected = hasSelected && entries.some((e) => e.employeeId === selectedId)
   const bg = entries.length === 0 && !isFilled && !covered && showUnfilled ? 'rgba(235,106,78,0.06)' : 'var(--surface)'
   const dimCell = hasSelected && !cellHasSelected
-  const highlightCell = cellHasSelected
+  const highlightCell = cellHasSelected || isPending
 
   const cellStyle: React.CSSProperties = {
     ...S.base,
-    background: bg,
+    background: isPending ? 'var(--accent-soft)' : bg,
     cursor: onClick ? 'pointer' : 'default',
     opacity: dimCell ? 0.4 : 1,
     outline: highlightCell ? '2px solid var(--accent, #13A98E)' : undefined,
     outlineOffset: highlightCell ? '-2px' : undefined,
-    transition: 'opacity 0.15s, outline 0.15s',
+    transition: 'opacity 0.15s, outline 0.15s, background 0.15s',
   }
+
+  // Drop target: accept a worker chip dragged from the palette or another cell.
+  const dropProps = onDropEmployee
+    ? {
+        onDragOver: (e: React.DragEvent) => { e.preventDefault() },
+        onDrop: (e: React.DragEvent) => {
+          e.preventDefault()
+          const id = e.dataTransfer.getData(DND_MIME)
+          if (id) onDropEmployee(id)
+        },
+      }
+    : {}
 
   if (entries.length === 0) {
     return (
-      <td style={cellStyle} onClick={onClick}>
+      <td style={cellStyle} onClick={onClick} {...dropProps}>
         {covered ? (
           <span title="מאויש ע״י משמרת 12 שעות" style={{ color: 'var(--text-3)', fontWeight: 700, fontSize: 11 }}>12ש׳</span>
         ) : (
@@ -75,9 +103,13 @@ function WeekTableCellImpl(props: WeekTableCellProps) {
     )
   }
   return (
-    <td style={cellStyle} onClick={onClick}>
+    <td style={cellStyle} onClick={onClick} {...dropProps}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {entries.map((en, i) => {
+          // Ad-hoc temp worker: distinct dashed chip + remove (×).
+          if (en.tempName != null) {
+            return <TempChip key={i} name={en.tempName} assignmentId={en.assignmentId ?? ''} onRemove={onRemoveTemp} variant="plain" />
+          }
           const emp = empById.get(en.employeeId)
           const isSelected = selectedId === en.employeeId
           return (
@@ -85,13 +117,15 @@ function WeekTableCellImpl(props: WeekTableCellProps) {
               key={i}
               role="button"
               aria-pressed={isSelected}
+              draggable={!!onDragEmployee}
+              onDragStart={onDragEmployee ? (ev) => { ev.dataTransfer.setData(DND_MIME, en.employeeId); ev.dataTransfer.effectAllowed = 'move'; onDragEmployee(en.employeeId) } : undefined}
               title={isSelected ? 'לחץ לביטול הסימון' : 'לחץ לסימון עובד'}
               onClick={(ev) => { ev.stopPropagation(); onSelectEmp(en.employeeId) }}
               style={{
                 display: 'inline-flex', alignItems: 'center',
                 color: emp?.color ?? 'var(--text)', fontWeight: 700,
                 whiteSpace: 'nowrap', fontSize: 13, lineHeight: 1.4,
-                cursor: 'pointer',
+                cursor: onDragEmployee ? 'grab' : 'pointer',
                 opacity: hasSelected && !isSelected ? 0.35 : 1,
                 textDecoration: isSelected ? 'underline' : undefined,
                 transition: 'opacity 0.15s',

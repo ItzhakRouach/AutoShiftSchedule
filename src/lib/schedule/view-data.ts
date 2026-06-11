@@ -27,6 +27,15 @@ export interface ViewTwelve {
   employeeId: string
 }
 
+/** An ad-hoc free-text "temp" worker placed in a cell (no roster employee). */
+export interface ViewTempEntry {
+  day: number
+  shiftKey: string // base ShiftKey the temp fills
+  roleId: string
+  assignmentId: string
+  name: string
+}
+
 /** One employee's request for a single day. */
 export interface ViewRequest {
   employeeId: string
@@ -60,6 +69,8 @@ export interface ScheduleView {
   requirements: ViewReq
   grid: ViewGrid
   twelve: ViewTwelve[]
+  /** Ad-hoc free-text temp workers placed in cells (no roster employee). */
+  temps: ViewTempEntry[]
   /** base shiftKey → shift_type_id (for opening the editor on a base slot). */
   shiftTypeIdByKey: Record<string, string>
   /** base shiftKey → display meta (name/time/color) from the workplace's DB rows. */
@@ -140,7 +151,7 @@ export async function getScheduleView(
     supabase.from('employees').select('id, name, color').eq('workplace_id', workplaceId).order('name'),
     supabase
       .from('assignments')
-      .select('employee_id, day_of_week, shift_type_id, role_id')
+      .select('id, employee_id, temp_name, day_of_week, shift_type_id, role_id')
       .eq('period_id', periodId),
     supabase
       .from('shift_requirements')
@@ -173,8 +184,8 @@ export async function getScheduleView(
     shiftMeta[st.key] = shiftMetaFromRow(st)
   }
 
-  // Grid (base shifts) + separate 12h list + per-day index (one pass).
-  const { grid, twelve, byDay } = splitAssignments(assignsRaw ?? [], idToAnyKey)
+  // Grid (base shifts) + separate 12h list + temp list + per-day index (one pass).
+  const { grid, twelve, temps, byDay } = splitAssignments(assignsRaw ?? [], idToAnyKey)
 
   // Requirements keyed by role UUID (view uses UUIDs; engine input uses names).
   const requirements: ViewReq = {}
@@ -230,6 +241,7 @@ export async function getScheduleView(
     requirements,
     grid,
     twelve,
+    temps,
     shiftTypeIdByKey,
     shiftMeta,
     hasAssignments: (assignsRaw ?? []).length > 0,

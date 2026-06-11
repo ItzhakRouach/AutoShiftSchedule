@@ -173,7 +173,8 @@ describe('slotAtCapacity', () => {
     expect(slotAtCapacity(3, 2)).toBe(true)
   })
 
-  it('admits no one to a slot with zero requirement', () => {
-    expect(slotAtCapacity(0, 0)).toBe(true)
+  it('never caps a slot with zero requirement (manager override fills freely)', () => {
+    expect(slotAtCapacity(0, 0)).toBe(false)
+    expect(slotAtCapacity(3, 0)).toBe(false)
   })
 })

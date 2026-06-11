@@ -5,12 +5,15 @@ import { useRouter } from 'next/navigation'
 import { Sheet } from '@/components/ui/Sheet'
 import { Avatar } from '@/components/ui/Avatar'
 import { Btn } from '@/components/ui/Btn'
-import { SHIFT_META, FALLBACK_12H_ORDER, type ShiftId } from '@/lib/domain/constants'
+import { SHIFT_META, type ShiftId } from '@/lib/domain/constants'
 import { candidateStatus } from '@/lib/schedule/candidate-status'
 import { slotAtCapacity } from '@/lib/schedule/validate-edit-core'
 import type { EditMeta } from '@/lib/schedule/edit-meta'
 import type { ScheduleView } from '@/lib/schedule/view-data'
-import { assignSlot, unassignSlot, assignTwelveHour } from './edit-actions'
+import { assignSlot, unassignSlot } from './edit-actions'
+import { assignTempName } from './temp-actions'
+import { TempNamePrompt } from './TempNamePrompt'
+import { TwelveHourAssign } from './TwelveHourAssign'
 
 export interface SlotCtx {
   day: number
@@ -35,7 +38,6 @@ export function SwapEditor({ slot, onClose, view, meta }: Props) {
   const [, start] = useTransition()
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
-  const [variant, setVariant] = useState<ShiftId | null>(null)
 
   if (!slot) return null
   const empById = new Map(view.employees.map((e) => [e.id, e]))
@@ -55,16 +57,22 @@ export function SwapEditor({ slot, onClose, view, meta }: Props) {
           setMsg(res.error ?? 'שגיאה')
           return
         }
-        if (res.warning) setMsg(res.warning)
         start(() => router.refresh())
-        if (!res.warning) onClose()
+        // Always confirm success so an assignment never reads as "nothing
+        // happened". A 12h warning stays up for the manager to read; a plain
+        // success shows "שובץ ✓" briefly, then closes.
+        if (res.warning) {
+          setMsg(res.warning)
+        } else {
+          setMsg('שובץ ✓')
+          window.setTimeout(onClose, 800)
+        }
       } finally {
         setBusy(false)
       }
     })()
   }
 
-  const twelveId = variant ? meta.keyToShiftTypeId[variant] : null
 
   return (
     <Sheet open onClose={onClose} title={`${SHIFT_META[slot.shiftKey].name} · ${slot.roleName}`}>
@@ -110,11 +118,18 @@ export function SwapEditor({ slot, onClose, view, meta }: Props) {
             dayMeta: slot.dayMeta,
           })
           const blocked = cand.disabled || atCapacity
+          const assignOrConfirm = () => {
+            // The DB keeps one shift per employee per day, so assigning someone
+            // already scheduled that day MOVES them. Confirm so the silent swap
+            // is intentional (otherwise it reads as "nothing happened" elsewhere).
+            if (cand.status === 'assigned_other' && !window.confirm('עובד זה כבר משובץ במשמרת אחרת ביום זה — להעביר אותו לכאן?')) return
+            run(() => assignSlot(view.periodId, slot.day, slot.shiftTypeId, slot.roleId, e.id))
+          }
           return (
             <button
               key={e.id}
               disabled={blocked || busy}
-              onClick={() => run(() => assignSlot(view.periodId, slot.day, slot.shiftTypeId, slot.roleId, e.id))}
+              onClick={assignOrConfirm}
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
                 padding: '8px 11px', borderRadius: 12, border: '1px solid var(--border)',
@@ -134,61 +149,12 @@ export function SwapEditor({ slot, onClose, view, meta }: Props) {
         })}
       </div>
 
-      <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-2)', margin: '16px 0 8px' }}>החל משמרת 12 שעות</div>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-        {FALLBACK_12H_ORDER.map((v) => (
-          <button
-            key={v}
-            onClick={() => setVariant(v)}
-            style={{
-              padding: '6px 12px', borderRadius: 99, fontSize: 12.5, fontWeight: 600, fontFamily: 'var(--font)',
-              cursor: 'pointer',
-              border: `1px solid ${variant === v ? 'var(--accent)' : 'var(--border)'}`,
-              background: variant === v ? 'var(--accent-soft)' : 'var(--surface)',
-              color: variant === v ? 'var(--accent)' : 'var(--text)',
-            }}
-          >
-            {SHIFT_META[v].name}
-          </button>
-        ))}
-      </div>
-      {variant && twelveId && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {view.employees.map((e) => {
-            const em = meta.employees[e.id]
-            if (!em) return null
-            const cand = candidateStatus({
-              emp: em,
-              day: slot.day,
-              shiftKey: variant,
-              roleId: slot.roleId,
-              minRestHours: meta.minRestHours,
-              dayMeta: slot.dayMeta,
-            })
-            return (
-              <button
-                key={e.id}
-                disabled={cand.disabled || busy}
-                onClick={() => run(() => assignTwelveHour(view.periodId, slot.day, twelveId, slot.roleId, e.id))}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
-                  padding: '8px 11px', borderRadius: 12, border: '1px solid var(--border)',
-                  background: 'var(--surface)', cursor: cand.disabled ? 'default' : 'pointer',
-                  opacity: cand.disabled ? 0.5 : 1, fontFamily: 'var(--font)',
-                }}
-              >
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                  <Avatar name={e.name} color={e.color} size={26} />
-                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{e.name}</span>
-                </span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: cand.disabled ? '#EB6A4E' : 'var(--accent)' }}>
-                  {cand.disabled ? cand.label : `${e.name} — 12ש׳`}
-                </span>
-              </button>
-            )
-          })}
-        </div>
-      )}
+      <TwelveHourAssign slot={slot} view={view} meta={meta} busy={busy} run={run} />
+
+      <TempNamePrompt
+        busy={busy}
+        onSubmit={(name) => run(() => assignTempName(view.periodId, slot.day, slot.shiftTypeId, slot.roleId, name))}
+      />
     </Sheet>
   )
 }

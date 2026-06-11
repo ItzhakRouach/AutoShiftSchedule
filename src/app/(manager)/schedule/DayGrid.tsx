@@ -7,12 +7,16 @@ import { RoleChip } from '@/components/ui/RoleChip'
 import { SHIFT_META, type ShiftId } from '@/lib/domain/constants'
 import type { ScheduleView } from '@/lib/schedule/view-data'
 import type { SlotCtx } from './SwapEditor'
+import type { CellAssign } from './useCellAssign'
 import type { ShiftKey } from '@/lib/scheduling/types'
+import { TempChip } from './TempChip'
 
 interface Props {
   view: ScheduleView
   selDay: number
   onSlot?: (slot: SlotCtx) => void
+  /** Fast tap-to-assign (held worker → slot) in edit mode. */
+  assign?: CellAssign
   /** When set (employee viewing their own schedule), that employee's chips pop. */
   selfId?: string
 }
@@ -20,14 +24,17 @@ interface Props {
 /** Per-shift cards for the selected day, showing each role's required count
  *  and assigned employees, with red markers for unfilled slots. Slots open the
  *  SwapEditor via onSlot when provided. */
-export function DayGrid({ view, selDay, onSlot, selfId }: Props) {
+export function DayGrid({ view, selDay, onSlot, assign, selfId }: Props) {
   const empById = new Map(view.employees.map((e) => [e.id, e]))
   const roleById = new Map(view.roles.map((r) => [r.id, r]))
   const open = (shift: ShiftKey, roleId: string, assignedIds: string[]) => {
     if (!onSlot) return
     const shiftTypeId = view.shiftTypeIdByKey[shift]
     if (!shiftTypeId) return
-    onSlot({ day: selDay, shiftKey: shift as ShiftId, shiftTypeId, roleId, roleName: roleById.get(roleId)?.name ?? '', assignedIds })
+    const slot: SlotCtx = { day: selDay, shiftKey: shift as ShiftId, shiftTypeId, roleId, roleName: roleById.get(roleId)?.name ?? '', assignedIds }
+    // A held worker (palette tap) assigns straight here; otherwise open the modal.
+    if (assign?.assignTo(slot)) return
+    onSlot(slot)
   }
 
   return (
@@ -116,6 +123,11 @@ export function DayGrid({ view, selDay, onSlot, selfId }: Props) {
                           </span>
                         )
                       })}
+                      {(view.temps ?? [])
+                        .filter((t) => t.day === selDay && t.shiftKey === shift && t.roleId === roleId)
+                        .map((t) => (
+                          <TempChip key={t.assignmentId} name={t.name} assignmentId={t.assignmentId} onRemove={assign?.removeTemp} variant="pill" />
+                        ))}
                       {Array.from({ length: missing }).map((_, k) => (
                         <span
                           key={'e' + k}

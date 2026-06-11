@@ -9,7 +9,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { formatHebDate } from '@/lib/dates/week'
 import { weekDatesFrom } from './map-rows'
 import { shiftMetaFromRow, type ShiftDisplay } from '@/lib/domain/meta'
-import { buildRequestedSet, type ScheduleView, type ViewGrid, type ViewTwelve, type ViewRequest } from './view-data'
+import { buildRequestedSet, type ScheduleView, type ViewGrid, type ViewTwelve, type ViewTempEntry, type ViewRequest } from './view-data'
 import type { ShiftKey } from '@/lib/scheduling/types'
 
 const DAY_SHORTS = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳']
@@ -69,7 +69,7 @@ export async function getPublishedScheduleView(
     supabase.rpc('workplace_roster', { wp: workplaceId }),
     supabase
       .from('assignments')
-      .select('employee_id, day_of_week, shift_type_id, role_id')
+      .select('id, employee_id, temp_name, day_of_week, shift_type_id, role_id')
       .eq('period_id', period.id),
     supabase.from('shift_types').select('id, key, name, color, start_hour, hours').eq('workplace_id', workplaceId),
     supabase
@@ -93,9 +93,15 @@ export async function getPublishedScheduleView(
 
   const grid: ViewGrid = {}
   const twelve: ViewTwelve[] = []
+  const temps: ViewTempEntry[] = []
   for (const a of assignsRaw ?? []) {
     const key = idToKey[a.shift_type_id]
     if (!key) continue
+    if (a.temp_name && !a.employee_id) {
+      temps.push({ day: a.day_of_week, shiftKey: key, roleId: a.role_id, assignmentId: a.id ?? '', name: a.temp_name })
+      continue
+    }
+    if (!a.employee_id) continue
     if (!BASE_KEYS.has(key)) {
       twelve.push({ day: a.day_of_week, variant: key, roleId: a.role_id, employeeId: a.employee_id })
       continue
@@ -134,6 +140,7 @@ export async function getPublishedScheduleView(
     requirements: {},
     grid,
     twelve,
+    temps,
     shiftTypeIdByKey,
     shiftMeta,
     hasAssignments: (assignsRaw ?? []).length > 0,

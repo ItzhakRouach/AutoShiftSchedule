@@ -40,10 +40,11 @@ export { shiftInterval } from '@/lib/schedule/rest-util'
  * headcount, so no further employee may be added. Prevents over-filling a role
  * box — e.g. placing 2 people where the requirement is 1. `currentCount` should
  * EXCLUDE the employee being (re)assigned, so swapping a person within the same
- * slot is never blocked. A slot with `requiredCount` 0 admits no one.
+ * slot is never blocked. A slot with `requiredCount` 0 is UNCONFIGURED for this
+ * day → no upper cap, so the manager can still fill the empty cell (override).
  */
 export function slotAtCapacity(currentCount: number, requiredCount: number): boolean {
-  return currentCount >= requiredCount
+  return requiredCount > 0 && currentCount >= requiredCount
 }
 
 export interface ValidateCoreArgs {

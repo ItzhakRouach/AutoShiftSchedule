@@ -6,6 +6,7 @@ import { shiftMetaFromRow, roleMetaFromRow } from '@/lib/domain/meta'
 import { buildWeekGrid, buildEmpTotals, coveredByTwelve } from '@/lib/schedule/week-table-data'
 import type { ScheduleView } from '@/lib/schedule/view-data'
 import type { SlotCtx } from './SwapEditor'
+import type { CellAssign } from './useCellAssign'
 import type { ShiftKey } from '@/lib/scheduling/types'
 import { EmpTotalsBar } from './EmpTotalsBar'
 import { WeekTableCell } from './WeekTableCell'
@@ -14,6 +15,8 @@ interface Props {
   view: ScheduleView
   onSlot?: (slot: SlotCtx) => void
   onDayPair?: (day: number) => void
+  /** Fast drag / tap-to-assign interactions (edit mode only). */
+  assign?: CellAssign
   /** Pre-select an employee so their cells are highlighted on first render. */
   initialSelectedId?: string
   /** When false, empty cells render blank instead of "לא מאויש" (read-only views
@@ -42,7 +45,7 @@ const S = {
   layer: { display: 'block', WebkitTransform: 'translateZ(0)', transform: 'translateZ(0)' } as React.CSSProperties,
 }
 
-export function WeekTable({ view, onSlot, onDayPair, initialSelectedId, showUnfilled = true }: Props) {
+export function WeekTable({ view, onSlot, onDayPair, assign, initialSelectedId, showUnfilled = true }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId ?? null)
 
   // Heavy derived data — recompute only when `view` actually changes. Without
@@ -57,12 +60,25 @@ export function WeekTable({ view, onSlot, onDayPair, initialSelectedId, showUnfi
   const orderedRoleIds = view.roles.map((r) => r.id)
   const days = view.days
   const toggleSelect = (id: string) => setSelectedId((cur) => (cur === id ? null : id))
+  const editable = !!onSlot
+  function buildSlot(day: number, shift: ShiftKey, roleId: string): SlotCtx | null {
+    const shiftTypeId = view.shiftTypeIdByKey[shift]
+    if (!shiftTypeId) return null
+    const role = roleById.get(roleId)
+    return { day, shiftKey: shift as ShiftId, shiftTypeId, roleId, roleName: role?.name ?? '', assignedIds: (weekGrid[day]?.[shift]?.[roleId] ?? []).map((e) => e.employeeId) }
+  }
   function handleCellClick(day: number, shift: ShiftKey, roleId: string) {
     if (!onSlot) return
-    const shiftTypeId = view.shiftTypeIdByKey[shift]
-    if (!shiftTypeId) return
-    const role = roleById.get(roleId)
-    onSlot({ day, shiftKey: shift as ShiftId, shiftTypeId, roleId, roleName: role?.name ?? '', assignedIds: (weekGrid[day]?.[shift]?.[roleId] ?? []).map((e) => e.employeeId) })
+    const slot = buildSlot(day, shift, roleId)
+    if (!slot) return
+    // A held worker (palette tap) assigns straight to this cell; otherwise open
+    // the full modal editor.
+    if (assign?.assignTo(slot)) return
+    onSlot(slot)
+  }
+  function handleDrop(day: number, shift: ShiftKey, roleId: string, employeeId: string) {
+    const slot = buildSlot(day, shift, roleId)
+    if (slot) assign?.dropOn(slot, employeeId)
   }
 
   return (
@@ -120,9 +136,12 @@ export function WeekTable({ view, onSlot, onDayPair, initialSelectedId, showUnfi
                         isFilled={(weekGrid[d.index]?.[shift]?.[roleId] ?? []).length >= (view.requirements[d.index]?.[shift]?.[roleId] ?? 0) && (view.requirements[d.index]?.[shift]?.[roleId] ?? 0) > 0}
                         covered={coveredSet.has(`${d.index}:${shift}:${roleId}`)}
                         selectedId={selectedId}
-                        onClick={onSlot ? () => handleCellClick(d.index, shift, roleId) : undefined}
+                        onClick={editable ? () => handleCellClick(d.index, shift, roleId) : undefined}
                         onSelectEmp={toggleSelect}
                         showUnfilled={showUnfilled}
+                        onDropEmployee={assign ? (id) => handleDrop(d.index, shift, roleId, id) : undefined}
+                        onDragEmployee={assign ? assign.clearHeld : undefined}
+                        onRemoveTemp={assign ? assign.removeTemp : undefined}
                       />
                     ))}
                   </tr>

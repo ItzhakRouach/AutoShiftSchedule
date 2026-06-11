@@ -30,6 +30,10 @@ export interface CellEntry {
   requested: boolean
   /** 12h variant key (for the hour-range label), present only when is12h. */
   variant?: string
+  /** Set for ad-hoc temp workers (no roster employee); the free-text display name. */
+  tempName?: string
+  /** Assignment row id — present for temp entries so they can be removed by id. */
+  assignmentId?: string
 }
 
 /** weekGrid[day][shiftKey][roleId] = CellEntry[] */
@@ -78,6 +82,14 @@ export function buildWeekGrid(view: ScheduleView): WeekGrid {
     const d = (grid[t.day] ??= {})
     const s = (d[anchor] ??= {})
     ;(s[t.roleId] ??= []).push({ employeeId: t.employeeId, is12h: true, requested, variant: t.variant })
+  }
+
+  // Ad-hoc temp workers — placed in their exact (day, shift, role) cell. They
+  // carry no employeeId; the cell renderer shows `tempName` with a remove (×).
+  for (const t of view.temps ?? []) {
+    const d = (grid[t.day] ??= {})
+    const s = (d[t.shiftKey] ??= {})
+    ;(s[t.roleId] ??= []).push({ employeeId: '', is12h: false, requested: false, tempName: t.name, assignmentId: t.assignmentId })
   }
 
   return grid

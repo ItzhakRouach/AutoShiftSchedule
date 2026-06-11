@@ -33,6 +33,7 @@ function makeView(overrides: Partial<ScheduleView> = {}): ScheduleView {
       },
     },
     twelve: [],
+    temps: [],
     shiftTypeIdByKey: { morning: 'st1', noon: 'st2', night: 'st3' },
     hasAssignments: true,
     feasibility: null,
@@ -54,6 +55,17 @@ describe('buildWeekGrid — base assignments', () => {
     const view = makeView()
     const grid = buildWeekGrid(view)
     expect(grid[0]?.night?.['r-achm'] ?? []).toHaveLength(0)
+  })
+
+  it('places a temp worker in its exact cell with name + assignmentId', () => {
+    const view = makeView({
+      grid: {},
+      temps: [{ day: 2, shiftKey: 'night', roleId: 'r-guard', assignmentId: 'a9', name: 'דני זמני' }],
+    })
+    const grid = buildWeekGrid(view)
+    expect(grid[2]?.night?.['r-guard']).toEqual([
+      { employeeId: '', is12h: false, requested: false, tempName: 'דני זמני', assignmentId: 'a9' },
+    ])
   })
 })
 
