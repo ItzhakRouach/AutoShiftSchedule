@@ -3,6 +3,7 @@ import { Assistant } from "next/font/google";
 import "./globals.css";
 import "@/styles/theme.css";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import SwRegister from "./sw-register";
 
 const assistant = Assistant({
@@ -56,6 +57,7 @@ export default function RootLayout({
         {children}
         <SwRegister />
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
