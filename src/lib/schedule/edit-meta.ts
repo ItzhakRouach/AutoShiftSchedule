@@ -1,6 +1,7 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { ShiftId } from '@/lib/domain/constants'
+import { expandRolesByRank } from './role-rank'
 
 /** Client-side data needed to drive the SwapEditor (candidate statuses + 12h). */
 export interface EmployeeEditMeta {
@@ -39,11 +40,14 @@ export async function getEditMeta(
   if (!emps) return null
   const ids = emps.map((e) => e.id)
 
-  const [{ data: shiftTypes }, { data: settings }, { data: roles }, { data: avail }, { data: reqs }, { data: assigns }] =
+  const [{ data: shiftTypes }, { data: settings }, { data: roles }, { data: workplaceRoles }, { data: avail }, { data: reqs }, { data: assigns }] =
     await Promise.all([
       supabase.from('shift_types').select('id, key').eq('workplace_id', workplaceId),
       supabase.from('workplace_settings').select('min_rest_hours').eq('workplace_id', workplaceId).maybeSingle(),
       ids.length ? supabase.from('employee_roles').select('employee_id, role_id').in('employee_id', ids) : Promise.resolve({ data: [] }),
+      // Workplace roles WITH rank → expand each employee's held roles so a senior
+      // (e.g. אחמ״ש) qualifies for every lower-ranked role, matching the engine.
+      supabase.from('roles').select('id, rank').eq('workplace_id', workplaceId),
       ids.length ? supabase.from('employee_availability').select('employee_id, day_of_week, shift_type_id').in('employee_id', ids) : Promise.resolve({ data: [] }),
       supabase.from('requests').select('employee_id, day_of_week, is_off, preferred_shift_ids').eq('period_id', periodId),
       supabase.from('assignments').select('employee_id, day_of_week, shift_type_id').eq('period_id', periodId),
@@ -70,6 +74,13 @@ export async function getEditMeta(
     }
   }
   for (const r of roles ?? []) employees[r.employee_id]?.roleIds.push(r.role_id)
+  // Expand held roles by rank (senior auto-qualifies for lower roles) so the
+  // candidate list lets the manager place e.g. an אחמ״ש into a מאבטח slot.
+  const rolesWithRank = (workplaceRoles ?? []).map((r) => ({ id: r.id as string, rank: r.rank as number | null }))
+  for (const e of emps) {
+    const m = employees[e.id]
+    if (m) m.roleIds = expandRolesByRank(m.roleIds, rolesWithRank)
+  }
   for (const a of avail ?? []) {
     const m = employees[a.employee_id]
     const key = idToKey[a.shift_type_id]

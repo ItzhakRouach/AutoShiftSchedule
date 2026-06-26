@@ -108,7 +108,7 @@ export function ScheduleClient({ view, editMeta }: Props) {
         <Card style={{ textAlign: 'center', padding: '24px 20px', marginBottom: 14 }}>
           <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)' }}>בונים את הסידור עבורכם</div>
           <div style={{ fontSize: 13.5, color: 'var(--text-2)', marginTop: 6, lineHeight: 1.5 }}>
-            המערכת תשבץ את העובדים לפי הבקשות, התפקידים הנדרשים וזמני המנוחה.
+            צרו סידור אוטומטי לפי הבקשות והתפקידים — או בנו אותו ידנית בטבלה למטה, תא אחר תא.
           </div>
         </Card>
       )}
@@ -141,7 +141,9 @@ export function ScheduleClient({ view, editMeta }: Props) {
         <RequestsOverview view={view} />
       )}
 
-      {viewMode === 'schedule' && hasResult && (
+      {/* Managers can open the grid to build by hand even before the auto-run
+          (empty cells are fillable via drag/tap/temp workers). */}
+      {viewMode === 'schedule' && (hasResult || !!editMeta) && (
         <>
           {editMeta && (
             <WorkerPalette employees={view.employees} heldId={assign.heldId} onHold={assign.hold} />
@@ -153,15 +155,17 @@ export function ScheduleClient({ view, editMeta }: Props) {
             assign={editMeta ? assign : undefined}
           />
           <DayNotesSummary view={view} />
-          <PublishControls
-            view={view}
-            suggestions={suggestions}
-            published={published}
-            publishing={publishing}
-            onPublish={publish}
-            onUnpublished={() => a.setPublished(false)}
-            onDeleted={resetAfterDelete}
-          />
+          {hasResult && (
+            <PublishControls
+              view={view}
+              suggestions={suggestions}
+              published={published}
+              publishing={publishing}
+              onPublish={publish}
+              onUnpublished={() => a.setPublished(false)}
+              onDeleted={resetAfterDelete}
+            />
+          )}
         </>
       )}
 

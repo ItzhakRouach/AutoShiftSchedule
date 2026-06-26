@@ -5,7 +5,6 @@ import type { ShiftId } from '@/lib/domain/constants'
 import {
   availabilityAllows,
   holdsRole,
-  isOff,
   underMax,
   worksThatDay,
 } from '@/lib/scheduling/constraints'
@@ -70,24 +69,37 @@ export interface ValidateCoreArgs {
 export function validateAssignmentCore(args: ValidateCoreArgs): Verdict {
   const { emp, meta, shiftKey, roleId, request, others, settings } = args
 
-  if (!holdsRole(emp, roleId))
-    return { ok: false, severity: 'hard', reason: 'העובד אינו מתאים לתפקיד זה' }
+  // MANAGER AUTHORITY: in manual editing, role-qualification and availability are
+  // OVERRIDABLE — the manager may place a worker they judge capable, and we just
+  // WARN. Hard blocks remain only for approved time-off (vacation/רענון/
+  // must-accept), Shabbat/holiday for an observer, and the legal rest gap.
+  const warnings: string[] = []
 
-  if (isOff(request))
-    return { ok: false, severity: 'hard', reason: 'העובד ביקש יום חופש ביום זה' }
+  if (!holdsRole(emp, roleId)) warnings.push('העובד אינו מחזיק בתפקיד זה')
+
+  // Off handling MIRRORS the auto-engine (isAssignable): a MIXED request
+  // (off + preferred shifts) keeps the worker available for a preferred shift;
+  // a SOFT off (a plain worker off-request — NOT vacation/רענון/must-accept) is
+  // overridable and surfaced as a warning. Only a HARD off blocks.
+  const ruledOutByOff = request.off && !request.preferred.includes(shiftKey as ShiftKey)
+  if (ruledOutByOff) {
+    if (request.offHard)
+      return { ok: false, severity: 'hard', reason: 'העובד בחופשה מאושרת / רענון ביום זה' }
+    warnings.push('העובד ביקש חופש ביום זה')
+  }
 
   if (!args.isTwelveHour) {
-    // Base-shift checks: availability and Shabbat/holiday per single shift.
+    // Base-shift: availability is overridable (warn); Shabbat/holiday stays hard.
     if (!availabilityAllows(emp, meta.index, shiftKey as ShiftKey))
-      return { ok: false, severity: 'hard', reason: 'העובד אינו זמין במשמרת זו' }
+      warnings.push('מחוץ לזמינות שהעובד ציין')
     if (isSacredBlocked(emp, meta, shiftKey as ShiftKey))
       return { ok: false, severity: 'hard', reason: 'חסום עקב שבת או חג' }
   } else {
-    // 12h checks: validate EVERY covered base shift for Shabbat/holiday and
-    // availability. A 12h variant spans two adjacent base shifts; if either is
-    // blocked the whole block must be rejected.
+    // 12h spans two adjacent base shifts. Shabbat/holiday on EITHER window stays
+    // hard; availability is overridable (warn at most once).
     const covered = TWELVE_HOUR_COVERS[shiftKey as keyof typeof TWELVE_HOUR_COVERS]
     if (covered) {
+      let availWarned = false
       for (const baseShift of covered) {
         if (isSacredBlocked(emp, meta, baseShift as ShiftKey))
           return {
@@ -95,12 +107,10 @@ export function validateAssignmentCore(args: ValidateCoreArgs): Verdict {
             severity: 'hard',
             reason: 'משמרת 12 שעות חופפת לשבת/חג של העובד',
           }
-        if (emp.availability !== null && !availabilityAllows(emp, meta.index, baseShift as ShiftKey))
-          return {
-            ok: false,
-            severity: 'hard',
-            reason: 'העובד אינו זמין במשמרת 12 שעות זו',
-          }
+        if (!availWarned && !availabilityAllows(emp, meta.index, baseShift as ShiftKey)) {
+          warnings.push('מחוץ לזמינות שהעובד ציין (משמרת 12 שעות)')
+          availWarned = true
+        }
       }
     }
   }
@@ -136,7 +146,11 @@ export function validateAssignmentCore(args: ValidateCoreArgs): Verdict {
     }
   }
 
-  // Legal. Mark soft if it wasn't explicitly requested (a warning hint).
+  // Legal. Surface any override warnings (role / availability / soft-off) so the
+  // manager sees what they overrode.
+  if (warnings.length > 0)
+    return { ok: true, severity: 'soft', reason: `${warnings.join(' · ')} — שובץ בכל זאת` }
+  // Mark soft if it wasn't explicitly requested (a warning hint).
   const requested = request.preferred.includes(shiftKey as ShiftKey)
   return requested ? { ok: true } : { ok: true, severity: 'soft' }
 }

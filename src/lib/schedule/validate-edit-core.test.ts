@@ -38,22 +38,43 @@ describe('validateAssignmentCore', () => {
     expect(v).toEqual({ ok: true })
   })
 
-  it('rejects wrong role', () => {
+  it('allows overriding an unheld role, with a warning (manager authority)', () => {
     const v = validateAssignmentCore(args({ roleId: 'מוקדן' }))
-    expect(v.ok).toBe(false)
-    if (!v.ok) expect(v.reason).toContain('תפקיד')
+    expect(v.ok).toBe(true)
+    if (v.ok) {
+      expect(v.severity).toBe('soft')
+      expect(v.reason).toContain('תפקיד')
+    }
   })
 
-  it('rejects when off', () => {
-    const v = validateAssignmentCore(args({ request: { off: true, preferred: [] } }))
-    expect(v.ok).toBe(false)
+  it('allows overriding a SOFT off-request, with a warning', () => {
+    const v = validateAssignmentCore(args({ request: { off: true, offHard: false, preferred: [] } }))
+    expect(v.ok).toBe(true)
+    if (v.ok) {
+      expect(v.severity).toBe('soft')
+      expect(v.reason).toContain('חופש')
+    }
   })
 
-  it('rejects when unavailable (restricted profile)', () => {
+  it('still blocks a HARD off (vacation/רענון/must-accept)', () => {
+    const v = validateAssignmentCore(args({ request: { off: true, offHard: true, preferred: [] } }))
+    expect(v.ok).toBe(false)
+    if (!v.ok) expect(v.severity).toBe('hard')
+  })
+
+  it('treats a mixed request (off + preferred) as a normal pick for the preferred shift', () => {
+    const v = validateAssignmentCore(args({ request: { off: true, preferred: ['morning'] } }))
+    expect(v).toEqual({ ok: true })
+  })
+
+  it('allows overriding availability, with a warning (manager authority)', () => {
     const restricted: Employee = { ...emp, availability: { 2: ['night'] } }
     const v = validateAssignmentCore(args({ emp: restricted, shiftKey: 'morning' }))
-    expect(v.ok).toBe(false)
-    if (!v.ok) expect(v.reason).toContain('זמין')
+    expect(v.ok).toBe(true)
+    if (v.ok) {
+      expect(v.severity).toBe('soft')
+      expect(v.reason).toContain('זמינות')
+    }
   })
 
   it('rejects one-shift-per-day (other slot same day)', () => {
@@ -119,14 +140,17 @@ describe('validateAssignmentCore', () => {
     expect(v.ok).toBe(true)
   })
 
-  it('blocks availability-restricted employee on 12h whose covered shifts are not allowed', () => {
-    // Employee allowed only night on day 3; m12_day covers morning+noon → blocked.
+  it('warns (overridable) for availability-restricted employee on 12h whose covered shifts are not allowed', () => {
+    // Employee allowed only night on day 3; m12_day covers morning+noon → override-warn.
     const restricted: Employee = { ...emp, availability: { 3: ['night'] } }
     const v = validateAssignmentCore(
       args({ emp: restricted, meta: wedMeta, shiftKey: 'm12_day', isTwelveHour: true }),
     )
-    expect(v.ok).toBe(false)
-    if (!v.ok) expect(v.reason).toContain('זמין')
+    expect(v.ok).toBe(true)
+    if (v.ok) {
+      expect(v.severity).toBe('soft')
+      expect(v.reason).toContain('זמינות')
+    }
   })
 
   it('allows availability-restricted employee on 12h when all covered shifts are permitted', () => {

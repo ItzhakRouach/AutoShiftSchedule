@@ -10,8 +10,11 @@ export type CandStatus =
   | 'requested' // ✓ ביקש
   | 'available' // זמין
   | 'assigned_other' // משובץ במשמרת אחרת
+  | 'off_soft' // ביקש חופש (overridable — clickable)
+  | 'role_override' // לא בתפקיד (overridable — clickable)
+  | 'avail_override' // מחוץ לזמינות (overridable — clickable)
   | 'rest' // מפר מנוחה
-  | 'unavailable' // לא זמין
+  | 'unavailable' // לא זמין (Shabbat/holiday — hard)
   | 'role' // אינו מתאים לתפקיד
 
 export interface CandResult {
@@ -25,6 +28,9 @@ const LABELS: Record<CandStatus, string> = {
   requested: '✓ ביקש',
   available: 'זמין',
   assigned_other: 'משובץ במשמרת אחרת',
+  off_soft: 'ביקש חופש',
+  role_override: 'לא בתפקיד',
+  avail_override: 'מחוץ לזמינות',
   rest: 'מפר מנוחה',
   unavailable: 'לא זמין',
   role: 'אינו מתאים לתפקיד',
@@ -47,22 +53,22 @@ export function candidateStatus(args: CandArgs): CandResult {
   const { emp, day, shiftKey, roleId, minRestHours } = args
   const out = (s: CandStatus, disabled: boolean): CandResult => ({ status: s, label: LABELS[s], disabled })
 
-  if (!emp.roleIds.includes(roleId)) return out('role', true)
-  if (emp.offDays.includes(day)) return out('unavailable', true)
+  // MANAGER AUTHORITY: role-mismatch, availability, and soft off-requests are all
+  // OVERRIDABLE — the row stays CLICKABLE with a hint, mirroring the server. Only
+  // Shabbat/holiday (observer) and rest/max remain hard-disabled below.
+  const roleOverride = !emp.roleIds.includes(roleId)
+  const softOff = emp.offDays.includes(day) && !(args.requestedPreferred ?? []).includes(shiftKey)
 
   // Already assigned a DIFFERENT shift the same day → assigning here REPLACES it.
-  // We still must validate the proposed shift's own availability/sacred/rest/max
-  // (against OTHER days) before surfacing the soft "replaces" label, otherwise an
-  // actually-illegal pick (e.g. a 12h that under-rests an adjacent day) would look
-  // selectable. We defer the label and only emit it if nothing harder fails.
   const sameDay = emp.committed[day]
   const sameDayOther = sameDay != null && sameDay !== shiftKey
 
+  let availOverride = false
   const isTwelve = !BASE.has(shiftKey)
   if (!isTwelve) {
     if (emp.availability) {
       const allowed = emp.availability[day]
-      if (!allowed || !allowed.includes(shiftKey)) return out('unavailable', true)
+      if (!allowed || !allowed.includes(shiftKey)) availOverride = true
     }
     if (emp.observesShabbat && shabbatBlocks(day, shiftKey as 'morning' | 'noon' | 'night'))
       return out('unavailable', true)
@@ -72,7 +78,7 @@ export function candidateStatus(args: CandArgs): CandResult {
         return out('unavailable', true)
     }
   } else {
-    // 12h: check every covered base shift for Shabbat/availability.
+    // 12h: Shabbat/holiday on any covered window stays hard; availability warns.
     const covered = TWELVE_HOUR_COVERS[shiftKey as keyof typeof TWELVE_HOUR_COVERS]
     if (covered) {
       for (const baseShift of covered) {
@@ -85,7 +91,7 @@ export function candidateStatus(args: CandArgs): CandResult {
         }
         if (emp.availability) {
           const allowed = emp.availability[day]
-          if (!allowed || !allowed.includes(baseShift as ShiftId)) return out('unavailable', true)
+          if (!allowed || !allowed.includes(baseShift as ShiftId)) availOverride = true
         }
       }
     }
@@ -100,8 +106,12 @@ export function candidateStatus(args: CandArgs): CandResult {
     if (gapBetween(mine, shiftInterval(Number(d), key as ShiftId)) < minRestHours) return out('rest', true)
   }
 
-  // Legal. If it replaces a different same-day shift, surface that (soft) label.
+  // Legal / overridable. Surface one representative hint (the server shows the
+  // full combined warning on assign). All are clickable.
   if (sameDayOther) return out('assigned_other', false)
   if ((args.requestedPreferred ?? []).includes(shiftKey)) return out('requested', false)
+  if (roleOverride) return out('role_override', false)
+  if (availOverride) return out('avail_override', false)
+  if (softOff) return out('off_soft', false)
   return out('available', false)
 }

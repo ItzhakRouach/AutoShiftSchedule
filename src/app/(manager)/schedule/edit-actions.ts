@@ -33,6 +33,9 @@ export async function assignSlot(
     roleId,
   })
   if (!verdict.ok) return { ok: false, error: verdict.reason }
+  // A legal-but-soft verdict (e.g. overriding a soft off-request) carries a
+  // Hebrew note to surface to the manager.
+  const warning = verdict.severity === 'soft' ? verdict.reason : undefined
 
   // Capacity: never exceed the role box's required headcount. Count current
   // occupants of this exact slot EXCLUDING this employee (so re-assigning the
@@ -62,7 +65,7 @@ export async function assignSlot(
   if (!data || data.length === 0) return { ok: false, error: GENERIC_ERROR }
 
   revalidatePath('/schedule')
-  return { ok: true }
+  return { ok: true, warning }
 }
 
 /** Delete the employee's assignment on a given day. */
@@ -113,6 +116,7 @@ export async function assignTwelveHour(
     roleId,
   })
   if (!verdict.ok) return { ok: false, error: verdict.reason }
+  const offNote = verdict.severity === 'soft' ? verdict.reason : undefined
 
   // unique(period,employee,day) enforces one row/day; the 12h replaces any base.
   const { error } = await supabase
@@ -131,5 +135,5 @@ export async function assignTwelveHour(
   if (error) return { ok: false, error: GENERIC_ERROR }
 
   revalidatePath('/schedule')
-  return { ok: true, warning: TWELVE_H_WARNING }
+  return { ok: true, warning: offNote ? `${offNote}\n${TWELVE_H_WARNING}` : TWELVE_H_WARNING }
 }
