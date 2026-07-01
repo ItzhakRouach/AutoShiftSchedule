@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { type ShiftId } from '@/lib/domain/constants'
 import { shiftMetaFromRow, roleMetaFromRow } from '@/lib/domain/meta'
-import { buildWeekGrid, buildEmpTotals, coveredByTwelve } from '@/lib/schedule/week-table-data'
+import { buildWeekGrid, buildEmpTotals, coveredByTwelve, cellCapacity } from '@/lib/schedule/week-table-data'
 import type { ScheduleView } from '@/lib/schedule/view-data'
 import type { SlotCtx } from './SwapEditor'
 import type { CellAssign } from './useCellAssign'
@@ -129,20 +129,37 @@ export function WeekTable({ view, onSlot, onDayPair, assign, initialSelectedId, 
                     <td style={{ ...S.sticky, right: SHIFT_W, padding: '10px 8px', fontSize: 12.5, color: rm?.color ?? 'var(--text)', whiteSpace: 'nowrap', background: rm ? `color-mix(in srgb, ${rm.color} 16%, var(--surface))` : 'var(--surface-2)', width: ROLE_W, minWidth: ROLE_W, maxWidth: ROLE_W }}>
                       <span style={S.layer}>{role?.name ?? roleId}</span>
                     </td>
-                    {days.map((d) => (
-                      <WeekTableCell key={d.index}
-                        entries={weekGrid[d.index]?.[shift]?.[roleId] ?? []}
-                        empById={empById}
-                        isFilled={(weekGrid[d.index]?.[shift]?.[roleId] ?? []).length >= (view.requirements[d.index]?.[shift]?.[roleId] ?? 0) && (view.requirements[d.index]?.[shift]?.[roleId] ?? 0) > 0}
-                        covered={coveredSet.has(`${d.index}:${shift}:${roleId}`)}
-                        selectedId={selectedId}
-                        onClick={editable ? () => handleCellClick(d.index, shift, roleId) : undefined}
-                        showUnfilled={showUnfilled}
-                        onDropEmployee={assign ? (id) => handleDrop(d.index, shift, roleId, id) : undefined}
-                        onDragEmployee={assign ? assign.clearHeld : undefined}
-                        onRemoveTemp={assign ? assign.removeTemp : undefined}
-                      />
-                    ))}
+                    {days.map((d) => {
+                      const requiredCount = view.requirements[d.index]?.[shift]?.[roleId] ?? 0
+                      const cellEntries = weekGrid[d.index]?.[shift]?.[roleId] ?? []
+                      const covered = coveredSet.has(`${d.index}:${shift}:${roleId}`)
+                      // A 12h shift covering this slot counts as 1 occupant even
+                      // though its NAME renders in a different (anchor) cell —
+                      // stay consistent with the "12ש׳" chip / isFilled treatment.
+                      const assignedCount = cellEntries.length + (covered ? 1 : 0)
+                      const capacity = cellCapacity(assignedCount, requiredCount)
+                      const isBusy = !!assign?.pendingSlot
+                        && assign.pendingSlot.day === d.index
+                        && assign.pendingSlot.shiftKey === shift
+                        && assign.pendingSlot.roleId === roleId
+                      return (
+                        <WeekTableCell key={d.index}
+                          entries={cellEntries}
+                          empById={empById}
+                          isFilled={assignedCount >= requiredCount && requiredCount > 0}
+                          covered={covered}
+                          selectedId={selectedId}
+                          onClick={editable ? () => handleCellClick(d.index, shift, roleId) : undefined}
+                          showUnfilled={showUnfilled}
+                          isBusy={isBusy}
+                          onDropEmployee={assign ? (id) => handleDrop(d.index, shift, roleId, id) : undefined}
+                          onDragEmployee={assign ? assign.clearHeld : undefined}
+                          onRemoveTemp={assign ? assign.removeTemp : undefined}
+                          capacityLabel={editable ? capacity.label : ''}
+                          capacityStatus={editable ? capacity.status : 'unconfigured'}
+                        />
+                      )
+                    })}
                   </tr>
                 )
               })

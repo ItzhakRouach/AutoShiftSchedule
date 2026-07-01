@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildWeekGrid, buildEmpTotals, coveredByTwelve } from './week-table-data'
+import { buildWeekGrid, buildEmpTotals, coveredByTwelve, cellCapacity } from './week-table-data'
 import type { ScheduleView } from './view-data'
 
 function makeView(overrides: Partial<ScheduleView> = {}): ScheduleView {
@@ -152,5 +152,31 @@ describe('buildEmpTotals', () => {
     })
     const totals = buildEmpTotals(view, view.employees)
     expect(totals['e1']).toBe(2)
+  })
+})
+
+describe('cellCapacity', () => {
+  it('requirement 0 (unconfigured) → blank label, unconfigured status', () => {
+    expect(cellCapacity(0, 0)).toEqual({ label: '', status: 'unconfigured' })
+  })
+
+  it('negative requirement is also treated as unconfigured', () => {
+    expect(cellCapacity(0, -1)).toEqual({ label: '', status: 'unconfigured' })
+  })
+
+  it('0/2 → under', () => {
+    expect(cellCapacity(0, 2)).toEqual({ label: '0/2', status: 'under' })
+  })
+
+  it('1/2 → under', () => {
+    expect(cellCapacity(1, 2)).toEqual({ label: '1/2', status: 'under' })
+  })
+
+  it('2/2 → full', () => {
+    expect(cellCapacity(2, 2)).toEqual({ label: '2/2', status: 'full' })
+  })
+
+  it('3/2 (over-staffed) → full', () => {
+    expect(cellCapacity(3, 2)).toEqual({ label: '3/2', status: 'full' })
   })
 })

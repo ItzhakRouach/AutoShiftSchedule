@@ -151,3 +151,20 @@ export function buildEmpTotals(view: ScheduleView, employees: ViewEmployee[]): E
 
   return totals
 }
+
+export interface CellCapacity {
+  /** `"X/Y"` — blank when the slot has no configured requirement. */
+  label: string
+  status: 'under' | 'full' | 'unconfigured'
+}
+
+/**
+ * Manager-facing capacity readout for a single (day, shift, role) cell.
+ * `requiredCount <= 0` means the slot has no staffing target for this day —
+ * distinct from `under`, which means a real target isn't met yet.
+ */
+export function cellCapacity(assignedCount: number, requiredCount: number): CellCapacity {
+  if (requiredCount <= 0) return { label: '', status: 'unconfigured' }
+  const label = `${assignedCount}/${requiredCount}`
+  return { label, status: assignedCount >= requiredCount ? 'full' : 'under' }
+}

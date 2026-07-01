@@ -76,6 +76,10 @@ export function DayGrid({ view, selDay, onSlot, assign, selfId }: Props) {
                 const filled = gridForShift[roleId] ?? []
                 const role = roleById.get(roleId)
                 const missing = Math.max(0, need - filled.length)
+                const busy = !!assign?.pendingSlot
+                  && assign.pendingSlot.day === selDay
+                  && assign.pendingSlot.shiftKey === shift
+                  && assign.pendingSlot.roleId === roleId
                 return (
                   <div key={roleId} style={{ padding: '9px 0', borderBottom: '1px solid var(--border)' }}>
                     <div
@@ -104,7 +108,7 @@ export function DayGrid({ view, selDay, onSlot, assign, selfId }: Props) {
                         return (
                           <span
                             key={eid}
-                            onClick={() => open(shift, roleId, filled)}
+                            onClick={busy ? undefined : () => open(shift, roleId, filled)}
                             style={{
                               display: 'inline-flex',
                               alignItems: 'center',
@@ -113,7 +117,8 @@ export function DayGrid({ view, selDay, onSlot, assign, selfId }: Props) {
                               borderRadius: 99,
                               border: `1.5px solid ${isSelf ? 'var(--accent)' : 'var(--border)'}`,
                               background: isSelf ? 'var(--accent-soft)' : 'var(--surface-2)',
-                              cursor: onSlot ? 'pointer' : 'default',
+                              cursor: onSlot && !busy ? 'pointer' : 'default',
+                              opacity: busy ? 0.55 : 1,
                             }}
                           >
                             <Avatar name={e?.name ?? '?'} color={e?.color ?? '#888'} size={24} />
@@ -126,12 +131,13 @@ export function DayGrid({ view, selDay, onSlot, assign, selfId }: Props) {
                       {(view.temps ?? [])
                         .filter((t) => t.day === selDay && t.shiftKey === shift && t.roleId === roleId)
                         .map((t) => (
-                          <TempChip key={t.assignmentId} name={t.name} assignmentId={t.assignmentId} onRemove={assign?.removeTemp} variant="pill" />
+                          <TempChip key={t.assignmentId} name={t.name} assignmentId={t.assignmentId} onRemove={busy ? undefined : assign?.removeTemp} variant="pill" />
                         ))}
                       {Array.from({ length: missing }).map((_, k) => (
                         <span
                           key={'e' + k}
-                          onClick={() => open(shift, roleId, filled)}
+                          onClick={busy ? undefined : () => open(shift, roleId, filled)}
+                          aria-busy={busy || undefined}
                           style={{
                             display: 'inline-flex',
                             alignItems: 'center',
@@ -143,7 +149,8 @@ export function DayGrid({ view, selDay, onSlot, assign, selfId }: Props) {
                             color: '#EB6A4E',
                             fontSize: 13,
                             fontWeight: 600,
-                            cursor: onSlot ? 'pointer' : 'default',
+                            cursor: onSlot && !busy ? 'pointer' : 'default',
+                            opacity: busy ? 0.55 : 1,
                           }}
                         >
                           <Icon name="plus" size={15} stroke={2.2} /> לא מאויש
