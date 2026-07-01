@@ -188,6 +188,90 @@ test('assigning an employee already scheduled elsewhere that day requires in-she
   await expect(morningDay0).toHaveText('לא מאויש')
 })
 
+test('tap-to-assign toast offers בטל, and clicking it reverts the cell to empty', async ({ page }) => {
+  test.setTimeout(120_000)
+  await signupAndOnboard(page)
+
+  await page.goto('/team')
+  await expect(page).toHaveURL(/\/team/, { timeout: 10000 })
+  await addEmployee(page, 'דנה כהן')
+
+  // Empty, pre-generation grid: the WorkerPalette is available and every cell
+  // starts unfilled, so the tap-worker→tap-cell fast path is deterministic.
+  await page.goto('/schedule')
+  await expect(page.getByRole('heading', { name: 'סידור עבודה' })).toBeVisible({ timeout: 10000 })
+
+  const weekTable = page.getByTestId('week-table')
+  const morningRow = weekTable.locator('tr', { hasText: 'בוקר' }).first()
+  const morningDay0 = morningRow.locator('td').nth(2)
+  await expect(morningDay0).toHaveText('לא מאויש')
+
+  // Hold דנה כהן in the palette (draggable chip, tap-to-hold), then tap the
+  // empty cell — this resolves through useCellAssign's dispatch/assignTo path.
+  await page.locator('button[draggable]', { hasText: 'דנה כהן' }).first().click()
+  await morningDay0.click()
+
+  // The shared AssignToast appears with a בטל button (assert on the button
+  // itself, never on any timer — the toast's own auto-dismiss is 6s here).
+  await expect(page.getByText('שובץ ✓')).toBeVisible({ timeout: 5000 })
+  const undoBtn = page.getByRole('button', { name: 'בטל' })
+  await expect(undoBtn).toBeVisible({ timeout: 5000 })
+  await expect(morningDay0).toContainText('דנה כהן')
+
+  await undoBtn.click()
+
+  // בוטל ✓ confirms the reversal, and the cell is empty again.
+  await expect(page.getByText('בוטל ✓')).toBeVisible({ timeout: 5000 })
+  await expect(morningDay0).toHaveText('לא מאויש', { timeout: 8000 })
+})
+
+test('undo after a sheet-confirmed move restores the original shift', async ({ page }) => {
+  test.setTimeout(120_000)
+  await signupAndOnboard(page)
+
+  await page.goto('/team')
+  await expect(page).toHaveURL(/\/team/, { timeout: 10000 })
+  await addEmployee(page, 'דנה כהן')
+  await addEmployee(page, 'יוסי לוי')
+
+  await page.goto('/schedule')
+  await expect(page.getByRole('heading', { name: 'סידור עבודה' })).toBeVisible({ timeout: 10000 })
+
+  const weekTable = page.getByTestId('week-table')
+  const morningRow = weekTable.locator('tr', { hasText: 'בוקר' }).first()
+  const noonRow = weekTable.locator('tr', { hasText: 'צהריים' }).first()
+  const morningDay0 = morningRow.locator('td').nth(2)
+  const noonDay0 = noonRow.locator('td').nth(2)
+
+  // Shift A (בוקר, day 0): assign דנה כהן from the sheet's candidate list.
+  await morningDay0.click()
+  await expect(page.getByText('עובדים זמינים')).toBeVisible({ timeout: 8000 })
+  await page.locator('button:not([draggable])', { hasText: 'דנה כהן' }).first().click()
+  await expect(page.getByText('עובדים זמינים')).toBeHidden({ timeout: 8000 })
+  await expect(morningDay0).toContainText('דנה כהן')
+
+  // Shift B (צהריים, day 0, same role): confirm the move via העבר — the sheet
+  // path (SwapEditor.onDone) must offer the same בטל toast as the fast paths.
+  await noonDay0.click()
+  await expect(page.getByText('עובדים זמינים')).toBeVisible({ timeout: 8000 })
+  await page.locator('button', { hasText: 'משובץ במשמרת אחרת' }).first().click()
+  await expect(page.getByText('עובד זה כבר משובץ במשמרת אחרת ביום זה')).toBeVisible({ timeout: 5000 })
+  await page.getByRole('button', { name: 'העבר' }).click()
+  await expect(page.getByText('עובדים זמינים')).toBeHidden({ timeout: 8000 })
+  await expect(noonDay0).toContainText('דנה כהן')
+  await expect(morningDay0).toHaveText('לא מאויש')
+
+  const undoBtn = page.getByRole('button', { name: 'בטל' })
+  await expect(undoBtn).toBeVisible({ timeout: 5000 })
+  await undoBtn.click()
+
+  // Undo reverses the move: דנה כהן is back on the morning shift (her prior
+  // row, restored with its original source) and the noon slot is empty again.
+  await expect(page.getByText('בוטל ✓')).toBeVisible({ timeout: 5000 })
+  await expect(morningDay0).toContainText('דנה כהן', { timeout: 8000 })
+  await expect(noonDay0).toHaveText('לא מאויש', { timeout: 8000 })
+})
+
 test('clicking a worker chip opens the editor; highlight lives only in the totals bar', async ({ page }) => {
   test.setTimeout(120_000)
   await signupAndOnboard(page)

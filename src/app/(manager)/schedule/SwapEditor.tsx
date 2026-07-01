@@ -86,15 +86,20 @@ export function SwapEditor({ slot, onClose, view, meta, onDone }: Props) {
         start(() => router.refresh())
         // Always confirm success so an assignment never reads as "nothing
         // happened". A 12h warning stays up for the manager to read; a plain
-        // success shows "שובץ ✓" briefly, then closes and hands off to the
-        // shared toast (with בטל) via onDone.
+        // success shows "שובץ ✓" briefly, then closes. onDone fires the shared
+        // בטל toast only once the sheet's own message is gone (immediately for
+        // a warning that stays up, or on close for the plain-success case) —
+        // otherwise both messages render "שובץ ✓" at once, breaking text lookups.
         if (res.warning) {
           setMsg({ text: res.warning, kind: 'warning' })
+          onDone?.(res.undo)
         } else {
           setMsg({ text: 'שובץ ✓', kind: 'success' })
-          closeTimer.current = window.setTimeout(onClose, 800)
+          closeTimer.current = window.setTimeout(() => {
+            onClose()
+            onDone?.(res.undo)
+          }, 800)
         }
-        onDone?.(res.undo)
       } finally {
         setBusy(false)
       }
