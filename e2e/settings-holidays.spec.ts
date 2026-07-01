@@ -28,8 +28,11 @@ test('manager loads Israeli holidays for a year → at least one row appears', a
   await signupAndOnboard(page)
   await page.goto('/settings')
 
-  // Set year to 2025 and load
-  const yearInput = page.getByRole('spinbutton')
+  // Set year to 2025 and load. Scoped to the הגדרות "לוח חגים" section — a
+  // "מקסימום חופשים ליום" spinbutton was added elsewhere on the page, so an
+  // unscoped getByRole('spinbutton') now matches 2 elements (strict-mode violation).
+  const holidaysSection = page.locator('section', { has: page.getByRole('heading', { name: 'לוח חגים' }) })
+  const yearInput = holidaysSection.getByRole('spinbutton')
   await yearInput.fill('2025')
   await page.getByRole('button', { name: /טען חגי ישראל לשנה/ }).click()
 
@@ -53,7 +56,10 @@ test('manager adds custom holiday → appears; remove → gone', async ({ page }
   // Fill in date + name
   await page.getByRole('textbox', { name: /date|תאריך/i }).or(page.locator('input[type="date"]')).fill('2025-12-25')
   await page.getByPlaceholder('שם החג').fill('חג בדיקה')
-  await page.getByRole('button', { name: 'הוסף' }).click()
+  // Scoped to the <details> (implicit role="group") that wraps the add-custom
+  // form — an unscoped getByRole('button', { name: 'הוסף' }) now also matches
+  // the disabled "add role" button in the roles section (strict-mode violation).
+  await page.getByRole('group').getByRole('button', { name: 'הוסף' }).click()
 
   await expect(page.getByText('חג בדיקה')).toBeVisible({ timeout: 10000 })
 

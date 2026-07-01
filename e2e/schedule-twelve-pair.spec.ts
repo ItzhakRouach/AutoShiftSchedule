@@ -50,7 +50,7 @@ async function seedStaffAndSchedule(page: Page) {
   for (let i = 0; i < 10; i++) await addEmployee(page, `עובד ${i + 1}`)
 
   await page.goto('/schedule')
-  await expect(page.getByRole('heading', { name: 'שיבוץ אוטומטי' })).toBeVisible({ timeout: 10000 })
+  await expect(page.getByRole('heading', { name: 'סידור עבודה' })).toBeVisible({ timeout: 10000 })
   await page.getByRole('button', { name: 'צור סידור אוטומטי' }).click()
   await expect(page.getByTestId('coverage')).toBeVisible({ timeout: 30000 })
 }
@@ -75,7 +75,7 @@ test('12h pair offers only the day\'s assigned staff and applies', async ({ page
 
   await page.mouse.click(5, 5)
   await page.reload()
-  await expect(page.getByRole('heading', { name: 'שיבוץ אוטומטי' })).toBeVisible({ timeout: 10000 })
+  await expect(page.getByRole('heading', { name: 'סידור עבודה' })).toBeVisible({ timeout: 10000 })
   const twelveMarker = page.getByTestId('week-table').locator('text=-12').first()
   expect(await twelveMarker.count()).toBeGreaterThan(0)
 })

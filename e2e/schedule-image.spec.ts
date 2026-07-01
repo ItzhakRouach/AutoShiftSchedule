@@ -42,7 +42,7 @@ test('schedule image route returns a valid PNG for a published period', async ({
 
   // Generate schedule
   await page.goto('/schedule')
-  await expect(page.getByRole('heading', { name: 'שיבוץ אוטומטי' })).toBeVisible({ timeout: 10000 })
+  await expect(page.getByRole('heading', { name: 'סידור עבודה' })).toBeVisible({ timeout: 10000 })
   await page.getByRole('button', { name: 'צור סידור אוטומטי' }).click()
   await expect(page.getByTestId('coverage')).toBeVisible({ timeout: 30000 })
 

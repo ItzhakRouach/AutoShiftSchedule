@@ -29,10 +29,17 @@ async function addEmployee(page: Page, name: string) {
   await expect(page.getByRole('heading', { name: 'עובד חדש' })).toBeHidden({ timeout: 10000 })
 }
 
-test('dashboard KPI cards render after fresh onboarding (empty state)', async ({ page }) => {
+test('dashboard shows onboarding steps instead of KPI cards before any employees exist (empty state)', async ({ page }) => {
   await signupAndOnboard(page)
   await expect(page).toHaveURL(/\/dashboard/)
-  await expect(page.getByText('אין נתונים להצגה עדיין')).toBeVisible({ timeout: 10000 })
+  // With zero active employees the dashboard renders the onboarding checklist
+  // (3 steps) in place of the KPI grid.
+  await expect(page.getByText('ברוכים הבאים 👋 בואו נתחיל')).toBeVisible({ timeout: 10000 })
+  await expect(page.getByRole('link', { name: /הוספת עובדים/ })).toBeVisible()
+  await expect(page.getByRole('link', { name: /הגדרת תפקידים ומשמרות/ })).toBeVisible()
+  await expect(page.getByRole('link', { name: /יצירת הסידור הראשון/ })).toBeVisible()
+  // KPI grid must NOT render yet.
+  await expect(page.getByText('משבצות לא מאוישות')).not.toBeVisible()
 })
 
 test('dashboard shows new KPIs after schedule is published', async ({ page }) => {
@@ -48,7 +55,7 @@ test('dashboard shows new KPIs after schedule is published', async ({ page }) =>
 
   // Generate + publish schedule
   await page.goto('/schedule')
-  await expect(page.getByRole('heading', { name: 'שיבוץ אוטומטי' })).toBeVisible({ timeout: 10000 })
+  await expect(page.getByRole('heading', { name: 'סידור עבודה' })).toBeVisible({ timeout: 10000 })
   await page.getByRole('button', { name: 'צור סידור אוטומטי' }).click()
   const coverage = page.getByTestId('coverage')
   await expect(coverage).toBeVisible({ timeout: 30000 })

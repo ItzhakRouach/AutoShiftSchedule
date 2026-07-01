@@ -36,7 +36,7 @@ test('manager manually edits a slot and applies a 12h shift', async ({ page }) =
   await addEmployee(page, 'מאיה בר')
 
   await page.goto('/schedule')
-  await expect(page.getByRole('heading', { name: 'שיבוץ אוטומטי' })).toBeVisible({ timeout: 10000 })
+  await expect(page.getByRole('heading', { name: 'סידור עבודה' })).toBeVisible({ timeout: 10000 })
   await page.getByRole('button', { name: 'צור סידור אוטומטי' }).click()
   await expect(page.getByTestId('coverage')).toBeVisible({ timeout: 30000 })
 
@@ -80,7 +80,7 @@ test('manager manually edits a slot and applies a 12h shift', async ({ page }) =
   // Reload to read the freshly persisted state, then find a -12 marker in the
   // week table (the WeekTable renders 12h cells with a "-12" suffix).
   await page.reload()
-  await expect(page.getByRole('heading', { name: 'שיבוץ אוטומטי' })).toBeVisible({ timeout: 10000 })
+  await expect(page.getByRole('heading', { name: 'סידור עבודה' })).toBeVisible({ timeout: 10000 })
   // The -12 suffix appears inside cells that hold a 12h assignment.
   // It may be rendered after reload once the grid shows the persisted assignment.
   const twelveMarker = page.getByTestId('week-table').locator('text=-12').first()
@@ -101,7 +101,7 @@ test('assigning an employee already scheduled elsewhere that day requires in-she
   // scheduler involved, so both "an empty slot" and "someone already booked
   // elsewhere that day" are guaranteed rather than hoped-for.
   await page.goto('/schedule')
-  await expect(page.getByRole('heading', { name: 'שיבוץ אוטומטי' })).toBeVisible({ timeout: 10000 })
+  await expect(page.getByRole('heading', { name: 'סידור עבודה' })).toBeVisible({ timeout: 10000 })
 
   const weekTable = page.getByTestId('week-table')
   // First row of each shift group carries both the shift name and the role
@@ -163,7 +163,7 @@ test('clicking a worker chip opens the editor; highlight lives only in the total
   await addEmployee(page, 'יוסי לוי')
 
   await page.goto('/schedule')
-  await expect(page.getByRole('heading', { name: 'שיבוץ אוטומטי' })).toBeVisible({ timeout: 10000 })
+  await expect(page.getByRole('heading', { name: 'סידור עבודה' })).toBeVisible({ timeout: 10000 })
   await page.getByRole('button', { name: 'צור סידור אוטומטי' }).click()
   await expect(page.getByTestId('coverage')).toBeVisible({ timeout: 30000 })
 

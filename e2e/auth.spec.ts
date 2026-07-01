@@ -130,9 +130,11 @@ test('authenticated user with org is redirected away from /login and /onboarding
   await expect(page.getByRole('heading', { name: workplaceName })).toBeVisible()
 })
 
-// ── Logout in top-nav expandable menu ──────────────────────────────────────
+// ── Top nav: desktop-width persistent bar (hamburger dropdown is mobile-only,
+// hidden via CSS `display: none !important` at Playwright's default ≥1024px
+// viewport) — tabs and logout are both visible immediately, no menu needed. ──
 
-test('logged-in manager opens top-nav menu, sees "התנתקות", and clicking it lands on /login', async ({
+test('logged-in manager sees "התנתקות" in the persistent top nav, and clicking it lands on /login', async ({
   page,
 }) => {
   const uuid = crypto.randomUUID().replace(/-/g, '').slice(0, 12)
@@ -153,19 +155,18 @@ test('logged-in manager opens top-nav menu, sees "התנתקות", and clicking 
   await page.getByRole('button', { name: 'יצירת מקום עבודה' }).click()
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 })
 
-  // Logout lives inside the expandable top-nav menu — collapsed by default.
-  await expect(page.getByRole('button', { name: 'התנתקות' })).not.toBeVisible()
-
-  // Open the menu, then the logout button is visible.
-  await page.getByRole('button', { name: 'תפריט' }).click()
-  await expect(page.getByRole('button', { name: 'התנתקות' })).toBeVisible()
+  // Desktop viewport: logout is a persistent icon button in the top bar —
+  // no menu to open. (The hamburger + dropdown only render at mobile widths.)
+  await expect(page.getByRole('button', { name: 'תפריט' })).toBeHidden()
+  const logoutBtn = page.getByRole('button', { name: 'התנתקות' })
+  await expect(logoutBtn).toBeVisible()
 
   // Click logout → lands on /login
-  await page.getByRole('button', { name: 'התנתקות' }).click()
+  await logoutBtn.click()
   await expect(page).toHaveURL(/\/login/, { timeout: 10000 })
 })
 
-test('top-nav menu expands and navigates to a tab', async ({ page }) => {
+test('persistent top-nav tab bar navigates to a tab', async ({ page }) => {
   const uuid = crypto.randomUUID().replace(/-/g, '').slice(0, 12)
   const email = `test+nav+${uuid}@example.com`
   const password = 'TestPass123!'
@@ -180,9 +181,11 @@ test('top-nav menu expands and navigates to a tab', async ({ page }) => {
   await page.getByRole('button', { name: 'יצירת מקום עבודה' }).click()
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 })
 
-  // Tabs are hidden until the menu is opened.
-  await expect(page.getByRole('link', { name: 'עובדים' })).not.toBeVisible()
-  await page.getByRole('button', { name: 'תפריט' }).click()
-  await page.getByRole('link', { name: 'עובדים' }).click()
+  // Desktop viewport: tabs are inline in the top bar already — no menu to
+  // open. Scope to the nav landmark since "עובדים" also substring-matches the
+  // onboarding checklist's "הוספת עובדים" link on the dashboard.
+  const nav = page.getByRole('navigation', { name: 'ניווט' })
+  await expect(nav.getByRole('link', { name: 'עובדים', exact: true })).toBeVisible()
+  await nav.getByRole('link', { name: 'עובדים', exact: true }).click()
   await expect(page).toHaveURL(/\/team/, { timeout: 10000 })
 })

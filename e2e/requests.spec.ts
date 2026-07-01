@@ -104,14 +104,18 @@ test('employee requests: full flow (mark day-off, preferred shift, vacation)', a
   await expect(empPage.locator('span').filter({ hasText: 'בוקר' })).toBeVisible()
 
   // ── 8. Add a vacation range ──────────────────────────────────────────────
+  // VacationSection renders ranges as "יום <weekday> <d.m> — יום <weekday> <d.m>"
+  // (see src/app/(employee)/me/requests/VacationSection.tsx), not raw ISO —
+  // 2026-07-01 is a Wednesday (רביעי), 2026-07-07 is a Tuesday (שלישי).
+  const vacationRangeText = 'יום רביעי 1.7 — יום שלישי 7.7'
   await empPage.getByLabel('תאריך התחלה').fill('2026-07-01')
   await empPage.getByLabel('תאריך סיום').fill('2026-07-07')
   await empPage.getByRole('button', { name: 'הוסף חופשה' }).click()
-  await expect(empPage.getByText('2026-07-01 – 2026-07-07')).toBeVisible({ timeout: 8000 })
+  await expect(empPage.getByText(vacationRangeText)).toBeVisible({ timeout: 8000 })
 
   // Reload and assert vacation persists
   await empPage.reload()
-  await expect(empPage.getByText('2026-07-01 – 2026-07-07')).toBeVisible({ timeout: 10000 })
+  await expect(empPage.getByText(vacationRangeText)).toBeVisible({ timeout: 10000 })
 
   // ── 9. Save & submit requests; confirmation persists across reload ───────
   await empPage.getByRole('button', { name: 'שמירה והגשה של הבקשות' }).click()

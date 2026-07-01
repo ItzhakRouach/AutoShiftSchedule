@@ -45,7 +45,7 @@ test('manager generates an auto schedule and sees coverage + assignments', async
 
   // Navigate to /schedule.
   await page.goto('/schedule')
-  await expect(page.getByRole('heading', { name: 'שיבוץ אוטומטי' })).toBeVisible({ timeout: 10000 })
+  await expect(page.getByRole('heading', { name: 'סידור עבודה' })).toBeVisible({ timeout: 10000 })
 
   // Generate the schedule.
   await page.getByRole('button', { name: 'צור סידור אוטומטי' }).click()

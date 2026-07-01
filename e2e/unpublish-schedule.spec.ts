@@ -41,7 +41,7 @@ test('manager can publish, unpublish, and see the publish button return', async 
 
   // Generate.
   await page.goto('/schedule')
-  await expect(page.getByRole('heading', { name: 'שיבוץ אוטומטי' })).toBeVisible({ timeout: 10000 })
+  await expect(page.getByRole('heading', { name: 'סידור עבודה' })).toBeVisible({ timeout: 10000 })
   await page.getByRole('button', { name: 'צור סידור אוטומטי' }).click()
   await expect(page.getByTestId('coverage')).toBeVisible({ timeout: 30000 })
 
