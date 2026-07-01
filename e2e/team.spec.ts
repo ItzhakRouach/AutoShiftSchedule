@@ -32,6 +32,7 @@ test('add an employee, verify they appear in the team list', async ({ page }) =>
 
   // Fill name
   await page.getByLabel('שם מלא').fill('ישראל ישראלי')
+  await page.getByLabel('טלפון').fill(`05${Math.floor(10000000 + Math.random() * 90000000)}`)
 
   // Select first role (אחמ״ש) – first switch
   const firstRoleSwitch = page.getByRole('switch').first()
@@ -66,6 +67,7 @@ test('create employee with student type, max shifts, and custom availability', a
 
   // Fill name
   await page.getByLabel('שם מלא').fill(empName)
+  await page.getByLabel('טלפון').fill(`05${Math.floor(10000000 + Math.random() * 90000000)}`)
 
   // Select first role
   const firstRoleSwitch = page.getByRole('switch').first()
@@ -114,6 +116,7 @@ test('edit employee — toggle availability ON, mark a cell, save, reload and ve
   await page.getByRole('button', { name: 'הוסף עובד' }).click()
   await expect(page.getByRole('heading', { name: 'עובד חדש' })).toBeVisible({ timeout: 5000 })
   await page.getByLabel('שם מלא').fill(empName)
+  await page.getByLabel('טלפון').fill(`05${Math.floor(10000000 + Math.random() * 90000000)}`)
   const firstRoleSwitch = page.getByRole('switch').first()
   await firstRoleSwitch.click()
   await page.getByRole('button', { name: 'הוספת עובד' }).click()

@@ -17,6 +17,7 @@ async function addEmployee(page: Page, name: string) {
   await page.getByRole('button', { name: 'הוסף עובד' }).click()
   await expect(page.getByRole('heading', { name: 'עובד חדש' })).toBeVisible({ timeout: 5000 })
   await page.getByLabel('שם מלא').fill(name)
+  await page.getByLabel('טלפון').fill(`05${Math.floor(10000000 + Math.random() * 90000000)}`)
   await page.getByRole('switch').first().click()
   await page.getByRole('button', { name: 'הוספת עובד' }).click()
   await expect(page.getByRole('heading', { name: 'עובד חדש' })).toBeHidden({ timeout: 10000 })

@@ -23,6 +23,7 @@ async function addEmployee(page: Page, name: string) {
   await page.getByRole('button', { name: 'הוסף עובד' }).click()
   await expect(page.getByRole('heading', { name: 'עובד חדש' })).toBeVisible({ timeout: 5000 })
   await page.getByLabel('שם מלא').fill(name)
+  await page.getByLabel('טלפון').fill(`05${Math.floor(10000000 + Math.random() * 90000000)}`)
   // Select the most-senior role (אחמ״ש, rank 3). Via the role-rank hierarchy this
   // auto-qualifies the employee for the two lower roles too, so they can fill any.
   await page.getByRole('switch').first().click()
