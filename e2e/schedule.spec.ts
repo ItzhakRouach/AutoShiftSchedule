@@ -31,6 +31,19 @@ async function addEmployee(page: Page, name: string) {
   await expect(page.getByRole('heading', { name: 'עובד חדש' })).toBeHidden({ timeout: 10000 })
 }
 
+/** CoverageIssues is a fullscreen popup that auto-opens after generation
+ *  whenever slots were left uncovered or off-requests overridden — nearly
+ *  always with small e2e seeds. Its scrim swallows clicks, so dismiss it
+ *  (if it appeared) before interacting with anything underneath. */
+async function dismissCoverageIssues(page: Page) {
+  const dismiss = page.getByRole('button', { name: 'הבנתי' })
+  const appeared = await dismiss.waitFor({ state: 'visible', timeout: 4000 }).then(() => true, () => false)
+  if (appeared) {
+    await dismiss.click()
+    await expect(dismiss).toBeHidden({ timeout: 5000 })
+  }
+}
+
 test('manager generates an auto schedule and sees coverage + assignments', async ({ page }) => {
   test.setTimeout(120_000)
   await signupAndOnboard(page)
@@ -54,6 +67,7 @@ test('manager generates an auto schedule and sees coverage + assignments', async
   const coverage = page.getByTestId('coverage')
   await expect(coverage).toBeVisible({ timeout: 30000 })
   await expect(coverage).toHaveText(/\d+%/)
+  await dismissCoverageIssues(page)
 
   // The week table should be visible (default view is "סידור").
   await expect(page.getByTestId('week-table')).toBeVisible({ timeout: 15000 })

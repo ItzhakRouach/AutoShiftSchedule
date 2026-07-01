@@ -63,9 +63,11 @@ test('manager adds custom holiday → appears; remove → gone', async ({ page }
 
   await expect(page.getByText('חג בדיקה')).toBeVisible({ timeout: 10000 })
 
-  // Remove the custom holiday
-  const removeBtn = page.getByRole('button', { name: 'הסר' }).first()
-  await removeBtn.click()
+  // Remove the custom holiday. Must be scoped to the "לוח חגים" section: the
+  // roles section higher on the page also has "הסר" buttons, so a page-wide
+  // .first() clicks a role-remove instead and the holiday survives.
+  const holidaysSection = page.locator('section', { has: page.getByRole('heading', { name: 'לוח חגים' }) })
+  await holidaysSection.getByRole('button', { name: 'הסר' }).first().click()
 
   // After removal the item should be gone
   await expect(page.getByText('חג בדיקה')).toBeHidden({ timeout: 10000 })

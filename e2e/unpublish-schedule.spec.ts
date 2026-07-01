@@ -28,6 +28,19 @@ async function addEmployee(page: Page, name: string) {
   await expect(page.getByRole('heading', { name: 'עובד חדש' })).toBeHidden({ timeout: 10000 })
 }
 
+/** CoverageIssues is a fullscreen popup that auto-opens after generation
+ *  whenever slots were left uncovered or off-requests overridden — nearly
+ *  always with small e2e seeds. Its scrim swallows clicks, so dismiss it
+ *  (if it appeared) before interacting with anything underneath. */
+async function dismissCoverageIssues(page: Page) {
+  const dismiss = page.getByRole('button', { name: 'הבנתי' })
+  const appeared = await dismiss.waitFor({ state: 'visible', timeout: 4000 }).then(() => true, () => false)
+  if (appeared) {
+    await dismiss.click()
+    await expect(dismiss).toBeHidden({ timeout: 5000 })
+  }
+}
+
 test('manager can publish, unpublish, and see the publish button return', async ({ page }) => {
   test.setTimeout(180_000)
   await signupAndOnboard(page)
@@ -44,6 +57,7 @@ test('manager can publish, unpublish, and see the publish button return', async 
   await expect(page.getByRole('heading', { name: 'סידור עבודה' })).toBeVisible({ timeout: 10000 })
   await page.getByRole('button', { name: 'צור סידור אוטומטי' }).click()
   await expect(page.getByTestId('coverage')).toBeVisible({ timeout: 30000 })
+  await dismissCoverageIssues(page)
 
   // Publish. We only wait for "פורסם ✓" to appear — the surrounding publish
   // useTransition can stay pending for an extended time (the publish server

@@ -29,6 +29,19 @@ async function addEmployee(page: Page, name: string) {
   await expect(page.getByRole('heading', { name: 'עובד חדש' })).toBeHidden({ timeout: 10000 })
 }
 
+/** CoverageIssues is a fullscreen popup that auto-opens after generation
+ *  whenever slots were left uncovered or off-requests overridden — nearly
+ *  always with small e2e seeds. Its scrim swallows clicks, so dismiss it
+ *  (if it appeared) before interacting with anything underneath. */
+async function dismissCoverageIssues(page: Page) {
+  const dismiss = page.getByRole('button', { name: 'הבנתי' })
+  const appeared = await dismiss.waitFor({ state: 'visible', timeout: 4000 }).then(() => true, () => false)
+  if (appeared) {
+    await dismiss.click()
+    await expect(dismiss).toBeHidden({ timeout: 5000 })
+  }
+}
+
 test('dashboard shows onboarding steps instead of KPI cards before any employees exist (empty state)', async ({ page }) => {
   await signupAndOnboard(page)
   await expect(page).toHaveURL(/\/dashboard/)
@@ -59,6 +72,7 @@ test('dashboard shows new KPIs after schedule is published', async ({ page }) =>
   await page.getByRole('button', { name: 'צור סידור אוטומטי' }).click()
   const coverage = page.getByTestId('coverage')
   await expect(coverage).toBeVisible({ timeout: 30000 })
+  await dismissCoverageIssues(page)
   await page.getByRole('button', { name: 'פרסם סידור' }).click()
   await expect(page.getByRole('button', { name: /פורסם/ })).toBeVisible({ timeout: 10000 })
 

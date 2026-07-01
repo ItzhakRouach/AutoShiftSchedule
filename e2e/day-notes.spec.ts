@@ -23,6 +23,19 @@ async function addEmployee(page: Page, name: string) {
   await expect(page.getByRole('heading', { name: 'עובד חדש' })).toBeHidden({ timeout: 10000 })
 }
 
+/** CoverageIssues is a fullscreen popup that auto-opens after generation
+ *  whenever slots were left uncovered or off-requests overridden — nearly
+ *  always with small e2e seeds. Its scrim swallows clicks, so dismiss it
+ *  (if it appeared) before interacting with anything underneath. */
+async function dismissCoverageIssues(page: Page) {
+  const dismiss = page.getByRole('button', { name: 'הבנתי' })
+  const appeared = await dismiss.waitFor({ state: 'visible', timeout: 4000 }).then(() => true, () => false)
+  if (appeared) {
+    await dismiss.click()
+    await expect(dismiss).toBeHidden({ timeout: 5000 })
+  }
+}
+
 test('manager assigns a רענון day note to an employee', async ({ page }) => {
   test.setTimeout(120_000)
   await signupAndOnboard(page)
@@ -34,6 +47,7 @@ test('manager assigns a רענון day note to an employee', async ({ page }) =>
   await page.goto('/schedule')
   await page.getByRole('button', { name: 'צור סידור אוטומטי' }).click()
   await expect(page.getByTestId('coverage')).toBeVisible({ timeout: 30000 })
+  await dismissCoverageIssues(page)
 
   // Open the day-note editor (trigger button's label now spells out that it
   // also covers pre-generation temp-worker saving), assign יצחק a רענון on

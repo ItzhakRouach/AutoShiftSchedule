@@ -25,6 +25,19 @@ async function addEmployee(page: Page, name: string) {
   await expect(page.getByRole('heading', { name: 'עובד חדש' })).toBeHidden({ timeout: 10000 })
 }
 
+/** CoverageIssues is a fullscreen popup that auto-opens after generation
+ *  whenever slots were left uncovered or off-requests overridden — nearly
+ *  always with small e2e seeds. Its scrim swallows clicks, so dismiss it
+ *  (if it appeared) before interacting with anything underneath. */
+async function dismissCoverageIssues(page: Page) {
+  const dismiss = page.getByRole('button', { name: 'הבנתי' })
+  const appeared = await dismiss.waitFor({ state: 'visible', timeout: 4000 }).then(() => true, () => false)
+  if (appeared) {
+    await dismiss.click()
+    await expect(dismiss).toBeHidden({ timeout: 5000 })
+  }
+}
+
 test('manager manually edits a slot and applies a 12h shift', async ({ page }) => {
   test.setTimeout(120_000)
   await signupAndOnboard(page)
@@ -39,6 +52,7 @@ test('manager manually edits a slot and applies a 12h shift', async ({ page }) =
   await expect(page.getByRole('heading', { name: 'סידור עבודה' })).toBeVisible({ timeout: 10000 })
   await page.getByRole('button', { name: 'צור סידור אוטומטי' }).click()
   await expect(page.getByTestId('coverage')).toBeVisible({ timeout: 30000 })
+  await dismissCoverageIssues(page)
 
   // Open a slot (either an assigned chip or an empty "לא מאויש" slot) on day 0.
   const slot = page.getByText('לא מאויש').first()
@@ -77,13 +91,14 @@ test('manager manually edits a slot and applies a 12h shift', async ({ page }) =
   await page.mouse.click(5, 5)
   await expect(page.getByText('החל משמרת 12 שעות')).toBeHidden({ timeout: 8000 })
 
-  // Reload to read the freshly persisted state, then find a -12 marker in the
-  // week table (the WeekTable renders 12h cells with a "-12" suffix).
+  // Reload to read the freshly persisted state. WeekTableCell renders a 12h
+  // assignment as the worker's name plus the variant's hour range — for the
+  // "יום 12ש׳" (m12_day) variant applied above that range is 07:00–19:00.
+  // (The old "-12" suffix no longer exists; the bare "12ש׳" text is NOT a safe
+  // marker because the header day-pair buttons also contain it.)
   await page.reload()
   await expect(page.getByRole('heading', { name: 'סידור עבודה' })).toBeVisible({ timeout: 10000 })
-  // The -12 suffix appears inside cells that hold a 12h assignment.
-  // It may be rendered after reload once the grid shows the persisted assignment.
-  const twelveMarker = page.getByTestId('week-table').locator('text=-12').first()
+  const twelveMarker = page.getByTestId('week-table').getByText('07:00–19:00').first()
   const found = (await twelveMarker.count()) > 0
   expect(found).toBe(true)
 })
@@ -112,9 +127,13 @@ test('assigning an employee already scheduled elsewhere that day requires in-she
   const noonDay0 = noonRow.locator('td').nth(2)
 
   // Shift A (בוקר, day 0): assign דנה כהן directly from the candidate list.
+  // The WorkerPalette above the grid also renders a (draggable) button with
+  // her name; behind the open sheet it would win `.first()` and the sheet's
+  // scrim would swallow the click. The in-sheet candidate row is the only
+  // non-draggable button carrying the full name — target that.
   await morningDay0.click()
   await expect(page.getByText('עובדים זמינים')).toBeVisible({ timeout: 8000 })
-  await page.locator('button', { hasText: 'דנה כהן' }).first().click()
+  await page.locator('button:not([draggable])', { hasText: 'דנה כהן' }).first().click()
   await expect(page.getByText('שובץ ✓')).toBeVisible({ timeout: 5000 })
   await expect(page.getByText('עובדים זמינים')).toBeHidden({ timeout: 8000 })
   await expect(morningDay0).toContainText('דנה כהן')
@@ -166,6 +185,7 @@ test('clicking a worker chip opens the editor; highlight lives only in the total
   await expect(page.getByRole('heading', { name: 'סידור עבודה' })).toBeVisible({ timeout: 10000 })
   await page.getByRole('button', { name: 'צור סידור אוטומטי' }).click()
   await expect(page.getByTestId('coverage')).toBeVisible({ timeout: 30000 })
+  await dismissCoverageIssues(page)
 
   // Clicking an assigned worker's name INSIDE a grid cell must open the
   // SwapEditor (not toggle a highlight) — this is the bug being fixed.

@@ -24,6 +24,19 @@ async function addEmployee(page: Page, name: string) {
   await expect(page.getByRole('heading', { name: 'עובד חדש' })).toBeHidden({ timeout: 10000 })
 }
 
+/** CoverageIssues is a fullscreen popup that auto-opens after generation
+ *  whenever slots were left uncovered or off-requests overridden. With the
+ *  10-employee seed coverage is usually full so it rarely appears — dismiss
+ *  it defensively since its scrim swallows clicks when it does. */
+async function dismissCoverageIssues(page: Page) {
+  const dismiss = page.getByRole('button', { name: 'הבנתי' })
+  const appeared = await dismiss.waitFor({ state: 'visible', timeout: 4000 }).then(() => true, () => false)
+  if (appeared) {
+    await dismiss.click()
+    await expect(dismiss).toBeHidden({ timeout: 5000 })
+  }
+}
+
 /**
  * Open the 12h-pair wizard on the first day that can actually form a pair (a role
  * with both a morning and a night assignee). Returns true and leaves the sheet
@@ -53,6 +66,7 @@ async function seedStaffAndSchedule(page: Page) {
   await expect(page.getByRole('heading', { name: 'סידור עבודה' })).toBeVisible({ timeout: 10000 })
   await page.getByRole('button', { name: 'צור סידור אוטומטי' }).click()
   await expect(page.getByTestId('coverage')).toBeVisible({ timeout: 30000 })
+  await dismissCoverageIssues(page)
 }
 
 test('12h pair offers only the day\'s assigned staff and applies', async ({ page }) => {
@@ -76,8 +90,14 @@ test('12h pair offers only the day\'s assigned staff and applies', async ({ page
   await page.mouse.click(5, 5)
   await page.reload()
   await expect(page.getByRole('heading', { name: 'סידור עבודה' })).toBeVisible({ timeout: 10000 })
-  const twelveMarker = page.getByTestId('week-table').locator('text=-12').first()
-  expect(await twelveMarker.count()).toBeGreaterThan(0)
+  // WeekTableCell renders a 12h assignment as the worker's name plus the
+  // variant's hour range: the applied pair puts the morning worker on m12_day
+  // (07:00–19:00) and the night worker on m12_night (19:00–07:00). (The old
+  // "-12" suffix no longer exists; the bare "12ש׳" text is NOT a safe marker
+  // because the header day-pair buttons also contain it.)
+  const weekTable = page.getByTestId('week-table')
+  expect(await weekTable.getByText('07:00–19:00').count()).toBeGreaterThan(0)
+  expect(await weekTable.getByText('19:00–07:00').count()).toBeGreaterThan(0)
 })
 
 test('apply is gated until both morning and night are chosen', async ({ page }) => {
