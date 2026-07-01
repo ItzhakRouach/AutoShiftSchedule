@@ -7,38 +7,13 @@ import {
   weekDatesFrom,
   type MapInput,
 } from './map-rows'
-import { computePriorWeekTail } from './prior-tail'
-import { findPriorPublishedPeriod, findAdjacentPeriod } from './prior-period'
-import { computePriorMetrics } from './prior-metrics'
-import { computeNextWeekHead } from './next-head'
+import { fetchWorkplaceScoped, fetchEmployeeScoped } from './fetch-stages'
 
 export interface PeriodInfo {
   id: string
   workplace_id: string
   week_start_date: string
   status: string
-}
-
-/**
- * Fetch employee↔role links WITH per-role seniority. `is_senior` is an additive
- * column (migration 20260608000002); if it isn't present yet (code deployed
- * ahead of the migration, or an older DB), fall back to the seniority-free
- * select so scheduling keeps working — everyone is treated as a regular holder.
- */
-async function fetchEmployeeRoles(
-  supabase: SupabaseClient,
-  employeeIds: string[],
-): Promise<{ data: { employee_id: string; role_id: string; is_senior?: boolean }[] | null }> {
-  const withSenior = await supabase
-    .from('employee_roles')
-    .select('employee_id, role_id, is_senior')
-    .in('employee_id', employeeIds)
-  if (!withSenior.error) return { data: withSenior.data }
-  const base = await supabase
-    .from('employee_roles')
-    .select('employee_id, role_id')
-    .in('employee_id', employeeIds)
-  return { data: base.data }
 }
 
 export interface BuiltInput {
@@ -73,40 +48,10 @@ export async function buildEngineInput(
 
   if (!period) return null
   const wp = period.workplace_id as string
+  const weekStart = period.week_start_date as string
 
-  const [
-    { data: shiftTypes },
-    { data: roles },
-    { data: employees },
-    { data: requirements },
-    { data: settings },
-    { data: requests },
-  ] = await Promise.all([
-    supabase.from('shift_types').select('id, key, is_fallback').eq('workplace_id', wp),
-    supabase.from('roles').select('id, name, rank').eq('workplace_id', wp),
-    supabase
-      .from('employees')
-      .select(
-        'id, employment_type, min_shifts_per_week, max_shifts_per_week, observes_shabbat, observes_holidays, must_accept',
-      )
-      .eq('workplace_id', wp),
-    supabase
-      .from('shift_requirements')
-      .select('day_of_week, shift_type_id, role_id, count')
-      .eq('workplace_id', wp),
-    supabase
-      .from('workplace_settings')
-      .select('min_rest_hours, ideal_rest_hours, allow_12h_fallback')
-      .eq('workplace_id', wp)
-      .maybeSingle(),
-    supabase
-      .from('requests')
-      .select('employee_id, day_of_week, is_off, preferred_shift_ids')
-      .eq('period_id', periodId),
-  ])
-
-  const employeeIds = (employees ?? []).map((e) => e.id)
   // For holiday-eve detection on the last day we need the day after the week ends.
+  // Depends only on stage-1's week_start_date, so it's ready before stage 2 fires.
   const weekDatesArr = weekDatesFrom(period.week_start_date)
   const lastDate = weekDatesArr[6]
   const [y, m, d] = lastDate.split('-').map(Number)
@@ -114,55 +59,40 @@ export async function buildEngineInput(
   dayAfter.setUTCDate(dayAfter.getUTCDate() + 1)
   const dayAfterISO = `${dayAfter.getUTCFullYear()}-${String(dayAfter.getUTCMonth() + 1).padStart(2, '0')}-${String(dayAfter.getUTCDate()).padStart(2, '0')}`
 
-  const [
-    [{ data: employeeRoles }, { data: availability }, { data: vacations }],
-    { data: holidayRows },
-    { data: dayNotesRaw },
-  ] = await Promise.all([
-    employeeIds.length > 0
-      ? Promise.all([
-          fetchEmployeeRoles(supabase, employeeIds),
-          supabase
-            .from('employee_availability')
-            .select('employee_id, day_of_week, shift_type_id')
-            .in('employee_id', employeeIds),
-          supabase
-            .from('employee_vacations')
-            .select('employee_id, date_from, date_to')
-            .in('employee_id', employeeIds)
-            .eq('status', 'approved'), // only manager-approved vacations are time off
-        ])
-      : Promise.resolve([{ data: [] as never[] }, { data: [] as never[] }, { data: [] as never[] }]),
-    supabase
-      .from('holidays')
-      .select('date')
-      .eq('workplace_id', wp)
-      .gte('date', weekDatesArr[0])
-      .lte('date', dayAfterISO),
-    // רענון / day notes for this period → reserve those employees (hard off).
-    supabase
-      .from('day_notes')
-      .select('employee_id, day_of_week')
-      .eq('period_id', period.id),
-  ])
+  // Stage 2: everything needing only workplace_id/week_start_date/period_id —
+  // including the prior/adjacent period lookups, which filter by workplace_id
+  // + a computed date and never touch the employee list.
+  const {
+    shiftTypes,
+    roles,
+    employees,
+    requirements,
+    settings,
+    requests,
+    holidayRows,
+    dayNotesRaw,
+    prior,
+    priorAdjacent,
+    nextAdjacent,
+  } = await fetchWorkplaceScoped(supabase, wp, periodId, weekStart, weekDatesArr, dayAfterISO)
 
+  const employeeIds = (employees ?? []).map((e) => e.id)
   const holidayDates = new Set<string>((holidayRows ?? []).map((h: { date: string }) => h.date))
 
-  // Fairness (deficit/extras) must count only PUBLISHED reality; rest
-  // protection must hold against BOTH adjacent weeks' REAL assignments even if
-  // they haven't been published yet — so these resolve to different periods,
-  // all three lookups running in parallel before their downstream computations.
-  const weekStart = period.week_start_date as string
-  const [prior, priorAdjacent, nextAdjacent] = await Promise.all([
-    findPriorPublishedPeriod(supabase, wp, weekStart),
-    findAdjacentPeriod(supabase, wp, weekStart, -7),
-    findAdjacentPeriod(supabase, wp, weekStart, 7),
-  ])
-  const [{ deficit: priorDeficit, extras: priorExtras }, priorWeekTail, nextWeekHead] = await Promise.all([
-    computePriorMetrics(supabase, prior, employees ?? []),
-    computePriorWeekTail(supabase, wp, priorAdjacent, weekStart),
-    computeNextWeekHead(supabase, wp, nextAdjacent, weekStart),
-  ])
+  // Stage 3: depends on stage-2 results — the employee id list (for the
+  // `.in('employee_id', …)` filters) and the resolved prior/adjacent period
+  // rows (for the cross-week metric/tail/head computations).
+  const { employeeRoles, availability, vacations, priorDeficit, priorExtras, priorWeekTail, nextWeekHead } =
+    await fetchEmployeeScoped(
+      supabase,
+      wp,
+      employeeIds,
+      employees ?? [],
+      prior,
+      priorAdjacent,
+      nextAdjacent,
+      weekStart,
+    )
 
   const rows: MapInput = {
     weekDates: weekDatesArr,

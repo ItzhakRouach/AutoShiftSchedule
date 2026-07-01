@@ -27,6 +27,15 @@ interface ValidateArgs {
  * assignments (excluding the day we're editing — a same-day shift is replaced),
  * and re-validates a proposed manual assignment with the pure engine core.
  * Returns a Hebrew verdict. Null-safe: unknown period → generic hard reason.
+ *
+ * Decision: no slimmer validation-only loader. This calls the SAME
+ * `buildEngineInput` adapter `runSchedule` uses (now internally 3 parallel
+ * fetch stages, see build-input.ts / fetch-stages.ts) rather than a
+ * hand-trimmed query set for the single-cell case. Validation is
+ * safety-critical — a cheaper path that fetches a subset of fields/rows could
+ * silently diverge from the generation adapter (e.g. missing a cross-week
+ * rest input) and let an invalid manual edit through. Correctness beats the
+ * marginal latency of the few queries a single edit doesn't strictly need.
  */
 export async function validateManualAssignment(
   args: ValidateArgs,
