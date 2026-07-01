@@ -3,9 +3,13 @@
 import React, { useState, useTransition } from 'react'
 import { Card } from '@/components/ui/Card'
 import { Btn } from '@/components/ui/Btn'
+import { InlineAlert } from '@/components/ui/InlineAlert'
 import { formatHebDate, hebrewDayName } from '@/lib/dates/week'
+import { rangesOverlap } from '@/lib/dates/ranges'
 import type { VacationRow, VacationStatus } from '@/lib/requests/context'
-import { addVacation, removeVacation } from './actions'
+import { addVacation, removeVacation } from './vacation-actions'
+
+const OVERLAP_MSG = 'טווח החופשה חופף לחופשה קיימת'
 
 const STATUS_META: Record<VacationStatus, { label: string; color: string; soft: string }> = {
   pending: { label: 'ממתין לאישור', color: 'var(--warning)', soft: 'var(--warning-soft)' },
@@ -40,6 +44,16 @@ export function VacationSection({ employeeId, vacations, isReadOnly }: VacationS
 
   function handleAdd() {
     setAddError(null)
+    // Cheap client-side pre-check against the already-rendered vacation list
+    // (pending + approved both block, same as the server) — skips a round-trip
+    // for the common case of picking dates that visibly overlap.
+    const clientOverlap = vacations.some(
+      (v) => v.status !== 'rejected' && rangesOverlap(dateFrom, dateTo, v.date_from, v.date_to),
+    )
+    if (clientOverlap) {
+      setAddError(OVERLAP_MSG)
+      return
+    }
     startTransition(async () => {
       const result = await addVacation({ employeeId, dateFrom, dateTo })
       if ('error' in result) {
@@ -123,7 +137,7 @@ export function VacationSection({ employeeId, vacations, isReadOnly }: VacationS
                   style={{
                     border: 'none',
                     background: 'transparent',
-                    color: '#D8423B',
+                    color: 'var(--danger)',
                     cursor: 'pointer',
                     fontSize: 13,
                     fontWeight: 600,
@@ -168,11 +182,7 @@ export function VacationSection({ employeeId, vacations, isReadOnly }: VacationS
               aria-label="תאריך סיום"
             />
           </div>
-          {addError && (
-            <div style={{ marginBottom: 10, fontSize: 13, color: '#D8423B', fontWeight: 600 }}>
-              {addError}
-            </div>
-          )}
+          {addError && <InlineAlert kind="error">{addError}</InlineAlert>}
           <Btn
             variant="soft"
             size="md"

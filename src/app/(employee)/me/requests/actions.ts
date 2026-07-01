@@ -2,39 +2,8 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { saveDayRequestSchema, addVacationSchema } from '@/lib/validation/request'
-
-export type ActionResult = { ok: true } | { error: string }
-
-/** Resolves the employee row (id + workplace) for the authenticated user. */
-async function resolveEmployee(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string,
-) {
-  const { data } = await supabase
-    .from('employees')
-    .select('id, workplace_id')
-    .eq('user_id', userId)
-    .limit(1)
-    .maybeSingle()
-  return data
-}
-
-/** True if the period exists AND belongs to the employee's workplace. Guards
- *  against acting on another workplace's period via a crafted periodId. */
-async function periodInWorkplace(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  periodId: string,
-  workplaceId: string,
-): Promise<{ status: string } | null> {
-  const { data } = await supabase
-    .from('schedule_periods')
-    .select('status')
-    .eq('id', periodId)
-    .eq('workplace_id', workplaceId)
-    .maybeSingle()
-  return data ?? null
-}
+import { saveDayRequestSchema } from '@/lib/validation/request'
+import { resolveEmployee, periodInWorkplace, type ActionResult } from './request-helpers'
 
 export async function saveDayRequest(input: unknown): Promise<ActionResult> {
   const parsed = saveDayRequestSchema.safeParse(input)
@@ -138,34 +107,6 @@ export async function submitRequests(periodId: string): Promise<ActionResult> {
   return { ok: true }
 }
 
-export async function addVacation(input: unknown): Promise<ActionResult> {
-  const parsed = addVacationSchema.safeParse(input)
-  if (!parsed.success) {
-    const first = parsed.error.issues[0]
-    return { error: first?.message ?? 'נתונים לא תקינים' }
-  }
-  const { employeeId, dateFrom, dateTo } = parsed.data
-
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'אין הרשאה' }
-
-  const employee = await resolveEmployee(supabase, user.id)
-  if (!employee || employee.id !== employeeId) return { error: 'אין הרשאה' }
-
-  const { error } = await supabase.from('employee_vacations').insert({
-    employee_id: employeeId,
-    date_from: dateFrom,
-    date_to: dateTo,
-    status: 'pending', // explicit — awaits manager approval before it counts
-  })
-
-  if (error) return { error: 'שגיאה בהוספת חופשה' }
-
-  revalidatePath('/me/requests')
-  return { ok: true }
-}
-
 /**
  * Wipe ALL of the authenticated employee's per-day requests for a period AND
  * clear their submission marker (so the next visit is a clean slate they can
@@ -200,31 +141,6 @@ export async function clearAllRequests(periodId: string): Promise<ActionResult> 
     .delete()
     .eq('period_id', periodId)
     .eq('employee_id', employee.id)
-
-  revalidatePath('/me/requests')
-  return { ok: true }
-}
-
-export async function removeVacation(id: string): Promise<ActionResult> {
-  if (!id) return { error: 'מזהה חופשה חסר' }
-
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'אין הרשאה' }
-  const employee = await resolveEmployee(supabase, user.id)
-  if (!employee) return { error: 'אין הרשאה' }
-
-  // Scope to the caller's own vacations (defense-in-depth beyond RLS).
-  const { data, error } = await supabase
-    .from('employee_vacations')
-    .delete()
-    .eq('id', id)
-    .eq('employee_id', employee.id)
-    .select('id')
-
-  if (error || !data || data.length === 0) {
-    return { error: 'שגיאה במחיקת חופשה' }
-  }
 
   revalidatePath('/me/requests')
   return { ok: true }
