@@ -76,7 +76,7 @@ function WeekTableCellImpl(props: WeekTableCellProps) {
   // Fully-empty cells keep the existing red "unfilled" tint; a non-empty cell
   // that's still under its required headcount gets a softer warning tint.
   const bg = empty && showUnfilled
-    ? 'rgba(235,106,78,0.06)'
+    ? 'color-mix(in srgb, var(--danger) 6%, transparent)'
     : capacityStatus === 'under'
       ? 'var(--warning-soft)'
       : 'var(--surface)'
@@ -88,7 +88,7 @@ function WeekTableCellImpl(props: WeekTableCellProps) {
     background: isPending ? 'var(--accent-soft)' : bg,
     cursor: onClick ? 'pointer' : 'default',
     opacity: isBusy ? 0.55 : dimCell ? 0.4 : 1,
-    outline: highlightCell ? '2px solid var(--accent, #13A98E)' : undefined,
+    outline: highlightCell ? '2px solid var(--accent)' : undefined,
     outlineOffset: highlightCell ? '-2px' : undefined,
     transition: 'opacity 0.15s, outline 0.15s, background 0.15s',
   }
@@ -119,7 +119,7 @@ function WeekTableCellImpl(props: WeekTableCellProps) {
         {covered ? (
           <span title="מאויש ע״י משמרת 12 שעות" style={{ color: 'var(--text-3)', fontWeight: 700, fontSize: 11 }}>12ש׳</span>
         ) : (
-          showUnfilled && <span style={{ color: '#EB6A4E', fontWeight: 600, fontSize: 12 }}>לא מאויש</span>
+          showUnfilled && <span style={{ color: 'var(--danger)', fontWeight: 600, fontSize: 12 }}>לא מאויש</span>
         )}
       </td>
     )

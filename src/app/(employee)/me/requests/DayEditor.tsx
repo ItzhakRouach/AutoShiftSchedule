@@ -2,9 +2,11 @@
 
 import React, { useState, useTransition } from 'react'
 import { Btn } from '@/components/ui/Btn'
+import { InlineAlert } from '@/components/ui/InlineAlert'
 import { SHIFT_META } from '@/lib/domain/constants'
 import type { ShiftTypeRow, RequestRow } from '@/lib/requests/context'
-import { saveDayRequest, type ActionResult } from './actions'
+import { saveDayRequest } from './actions'
+import type { ActionResult } from './request-helpers'
 
 interface DayEditorProps {
   shiftTypes: ShiftTypeRow[]
@@ -103,13 +105,13 @@ export function DayEditor({ shiftTypes, request, periodId, employeeId, dayOfWeek
         display: 'flex', alignItems: 'center', gap: 13, padding: '12px 14px', width: '100%',
         textAlign: 'start', borderRadius: 'var(--r-md)',
         cursor: offDisabled ? 'not-allowed' : 'pointer',
-        fontFamily: 'var(--font)', border: `1.5px solid ${isOff ? '#C0598F' : 'var(--border)'}`,
-        background: isOff ? 'rgba(192,89,143,0.1)' : 'var(--surface)',
+        fontFamily: 'var(--font)', border: `1.5px solid ${isOff ? 'var(--vacation)' : 'var(--border)'}`,
+        background: isOff ? 'var(--vacation-soft)' : 'var(--surface)',
         opacity: offDisabled ? 0.45 : 1, transition: 'all .12s ease',
       }}>
         <div style={{
-          width: 42, height: 42, borderRadius: 'var(--r-sm)', background: 'rgba(192,89,143,0.13)',
-          color: '#C0598F', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          width: 42, height: 42, borderRadius: 'var(--r-sm)', background: 'var(--vacation-soft)',
+          color: 'var(--vacation)', display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>✈</div>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>יום חופש / לא זמין</div>
@@ -117,17 +119,10 @@ export function DayEditor({ shiftTypes, request, periodId, employeeId, dayOfWeek
             {offDisabled ? 'הגעת למקסימום ימי חופש לשבוע' : 'לא אשובץ ביום זה'}
           </div>
         </div>
-        <span style={circle(isOff, '#C0598F')}>{isOff && '✓'}</span>
+        <span style={circle(isOff, 'var(--vacation)')}>{isOff && '✓'}</span>
       </button>
 
-      {error && (
-        <div style={{
-          marginTop: 12, padding: '10px 14px', borderRadius: 'var(--r-md)',
-          background: 'rgba(220,70,70,0.1)', color: '#D8423B', fontSize: 14, fontWeight: 600,
-        }}>
-          {error}
-        </div>
-      )}
+      {error && <InlineAlert kind="error" style={{ marginTop: 12, marginBottom: 0 }}>{error}</InlineAlert>}
 
       <div style={{ height: 18 }} />
       <Btn

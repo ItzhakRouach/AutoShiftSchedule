@@ -60,7 +60,7 @@ export function DayList({
         >
           ימי חופש בשבוע זה: <b>{currentOffDayCount}</b> מתוך <b>{maxOffDaysPerWeek}</b>
           {currentOffDayCount >= maxOffDaysPerWeek && (
-            <span style={{ marginInlineStart: 8, color: '#9A6500' }}>· הגעת למקסימום</span>
+            <span style={{ marginInlineStart: 8, color: 'var(--warning)' }}>· הגעת למקסימום</span>
           )}
         </div>
       )}
@@ -107,8 +107,8 @@ export function DayList({
                         gap: 6,
                         fontSize: 13.5,
                         fontWeight: 700,
-                        color: '#5B61D6',
-                        background: 'rgba(91,97,214,0.12)',
+                        color: 'var(--vacation)',
+                        background: 'var(--vacation-soft)',
                         padding: '6px 12px',
                         borderRadius: 99,
                       }}

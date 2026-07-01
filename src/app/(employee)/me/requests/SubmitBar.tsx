@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { Btn } from '@/components/ui/Btn'
 import { Icon } from '@/components/ui/Icon'
+import { InlineAlert } from '@/components/ui/InlineAlert'
 import { submitRequests } from './actions'
 
 interface Props {
@@ -31,15 +32,15 @@ export function SubmitBar({ periodId, initialSubmittedAt, deadlineLabel }: Props
         marginTop: 8,
         padding: '16px 18px',
         borderRadius: 'var(--r-lg)',
-        border: `1px solid ${submitted ? 'rgba(19,169,142,0.35)' : 'var(--border)'}`,
-        background: submitted ? 'rgba(19,169,142,0.08)' : 'var(--surface)',
+        border: `1px solid ${submitted ? 'var(--success)' : 'var(--border)'}`,
+        background: submitted ? 'var(--success-soft)' : 'var(--surface)',
         boxShadow: 'var(--shadow)',
       }}
     >
       {submitted && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-          <Icon name="checkCircle" size={20} color="#13A98E" />
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#13A98E' }}>הבקשות הוגשו</div>
+          <Icon name="checkCircle" size={20} color="var(--success)" />
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--success)' }}>הבקשות הוגשו</div>
         </div>
       )}
 
@@ -50,11 +51,7 @@ export function SubmitBar({ periodId, initialSubmittedAt, deadlineLabel }: Props
         {deadlineLabel ? `עד ${deadlineLabel}.` : 'עד סגירת חלון ההגשה.'}
       </p>
 
-      {error && (
-        <div style={{ marginBottom: 12, padding: '10px 14px', borderRadius: 'var(--r-md)', background: 'rgba(220,70,70,0.1)', color: '#D8423B', fontSize: 14, fontWeight: 600 }}>
-          {error}
-        </div>
-      )}
+      {error && <InlineAlert kind="error">{error}</InlineAlert>}
 
       <Btn variant="primary" size="lg" style={{ width: '100%' }} onClick={handleSubmit} disabled={isPending}>
         {isPending ? 'מגיש…' : submitted ? 'עדכון והגשה מחדש' : 'שמירה והגשה של הבקשות'}
