@@ -38,11 +38,12 @@ function buildCellLabel(
   roleName: string,
   entries: { employeeId: string; tempName?: string }[],
   empById: Map<string, { name: string }>,
+  covered: boolean,
 ): string {
   const names = entries
     .map((e) => e.tempName ?? empById.get(e.employeeId)?.name)
     .filter((n): n is string => !!n)
-  const who = names.length > 0 ? names.join(', ') : 'לא מאויש'
+  const who = names.length > 0 ? names.join(', ') : covered ? 'מאויש ע״י משמרת 12 שעות' : 'לא מאויש'
   return `${DAY_NAMES_FULL[dayIndex] ?? ''}, ${shiftName}, ${roleName}: ${who}`
 }
 
@@ -162,7 +163,7 @@ export function WeekTable({ view, onSlot, onDayPair, assign, initialSelectedId, 
                         && assign.pendingSlot.day === d.index
                         && assign.pendingSlot.shiftKey === shift
                         && assign.pendingSlot.roleId === roleId
-                      const cellLabel = buildCellLabel(d.index, m.name, role?.name ?? roleId, cellEntries, empById)
+                      const cellLabel = buildCellLabel(d.index, m.name, role?.name ?? roleId, cellEntries, empById, covered)
                       return (
                         <WeekTableCell key={d.index}
                           entries={cellEntries}
