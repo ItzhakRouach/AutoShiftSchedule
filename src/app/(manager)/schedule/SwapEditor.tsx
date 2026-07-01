@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Sheet } from '@/components/ui/Sheet'
 import { Avatar } from '@/components/ui/Avatar'
@@ -42,6 +42,16 @@ export function SwapEditor({ slot, onClose, view, meta }: Props) {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<Msg>(null)
   const [confirmMove, setConfirmMove] = useState<string | null>(null)
+  const closeTimer = useRef<number | null>(null)
+
+  // Guard against a pending auto-close timer from a previous open outliving
+  // this component instance (belt-and-suspenders alongside the keyed remount
+  // in ScheduleClient, which already gives each slot open a fresh instance).
+  useEffect(() => {
+    return () => {
+      if (closeTimer.current !== null) window.clearTimeout(closeTimer.current)
+    }
+  }, [])
 
   if (!slot) return null
   const empById = new Map(view.employees.map((e) => [e.id, e]))
@@ -75,7 +85,7 @@ export function SwapEditor({ slot, onClose, view, meta }: Props) {
           setMsg({ text: res.warning, kind: 'warning' })
         } else {
           setMsg({ text: 'שובץ ✓', kind: 'success' })
-          window.setTimeout(onClose, 800)
+          closeTimer.current = window.setTimeout(onClose, 800)
         }
       } finally {
         setBusy(false)

@@ -171,7 +171,13 @@ export function ScheduleClient({ view, editMeta }: Props) {
 
       {editMeta && (
         <>
-          <SwapEditor slot={slot} onClose={() => setSlot(null)} view={view} meta={editMeta} />
+          <SwapEditor
+            key={slot ? `${slot.day}-${slot.shiftTypeId}-${slot.roleId}` : 'closed'}
+            slot={slot}
+            onClose={() => setSlot(null)}
+            view={view}
+            meta={editMeta}
+          />
           <TwelvePairEditor day={pairDay} onClose={() => setPairDay(null)} view={view} meta={editMeta} />
           <DayNoteEditor open={showDayNotes} onClose={() => setShowDayNotes(false)} view={view} />
           <AssignToast toast={assign.toast} onDismiss={assign.dismissToast} />
