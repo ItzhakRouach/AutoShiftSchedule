@@ -22,6 +22,8 @@ export interface FillState {
   twelve?: TwelveHourAssignment[]
   /** soft off-requests reclaimed by the coverage-rescue pass to staff a day. */
   overriddenOff?: import('./types').OverriddenOff[]
+  /** dev-only opt-in pass timings (ms), keyed by pass name — see fill.ts. */
+  timings?: Record<string, number>
 }
 
 function reqOf(input: EngineInput, empId: string, day: number) {

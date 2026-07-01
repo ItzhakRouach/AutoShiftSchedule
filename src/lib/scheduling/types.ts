@@ -13,10 +13,9 @@ export interface Employee {
   roleIds: string[]
   /**
    * Subset of `roleIds` for which this employee is a SENIOR (priority) holder.
-   * Within a role, senior holders are favored for that role's shifts over regular
-   * holders (soft objective only — see scoring.compareCandidates and the role
-   * balance term in diversity.ts). Empty/undefined ⇒ regular for every role, so
-   * the role splits evenly across all holders. Never overrides hard constraints.
+   * Senior holders are favored for that role's shifts over regular holders
+   * (soft objective only — scoring.compareCandidates + diversity.ts role
+   * balance). Empty/undefined ⇒ regular for every role. Never hard-overrides.
    */
   seniorRoleIds?: string[]
   employmentType: EmploymentType
@@ -27,21 +26,17 @@ export interface Employee {
   mustAccept: boolean
   availability: Record<number, ShiftKey[]> | null
   /**
-   * Cross-week fairness carry-over: how many shifts SHORT of their minimum this
-   * employee was in the most-recent PUBLISHED prior period (max(0, minShifts −
-   * shiftsThen)). 0 (default) when there is no prior published period. A higher
-   * value boosts reach-minimum priority THIS week (soft objective only — see
-   * scoring.reachMinRank). Never overrides hard constraints or coverage.
+   * Cross-week fairness carry-over: shifts SHORT of minimum last PUBLISHED
+   * period (max(0, minShifts − shiftsThen)); 0 = no prior period. Boosts
+   * reach-minimum priority THIS week (soft — scoring.reachMinRank). Never
+   * overrides hard constraints or coverage.
    */
   priorDeficit?: number
   /**
-   * Cross-week extras carry-over: how many shifts ABOVE this employee's minimum
-   * they worked in the most-recent PUBLISHED prior period (max(0, shiftsThen −
-   * minShifts)). 0 (default) when there is no prior published period. Used as a
-   * SOFT signal in `fairnessScore` to spread "extra" shifts across full-timers
-   * across weeks (the person who already worked 6 last week with min 5 should
-   * be picked LESS often for extras this week). Never overrides hard
-   * constraints, never reduces coverage, never overrides `must_accept`.
+   * Cross-week extras carry-over: shifts ABOVE minimum last PUBLISHED period
+   * (max(0, shiftsThen − minShifts)); 0 = no prior period. SOFT signal in
+   * `fairnessScore` to spread "extra" shifts across full-timers across weeks.
+   * Never overrides hard constraints, coverage, or `must_accept`.
    */
   priorExtras?: number
 }
@@ -100,6 +95,8 @@ export interface EngineInput {
    * night when minRestHours ≥ 1. {} = no adjacent next week.
    */
   nextWeekHead?: Record<string, number[]>
+  /** Dev-only opt-in: measure each fill pass's wall time into `EngineResult.timings` (pure; never affects decisions/determinism). Default off. */
+  collectTimings?: boolean
 }
 
 /** A concrete assignment of an employee to a day/shift/role. */
@@ -188,6 +185,8 @@ export interface EngineResult {
   /** Soft off-requests the coverage-rescue pass overrode to staff a day, so the
    *  manager can be told who was pulled in despite requesting off. */
   overriddenOff: OverriddenOff[]
+  /** Present only when `EngineInput.collectTimings` is true: wall ms per fill pass (see runFill in fill.ts). */
+  timings?: Record<string, number>
 }
 
 /** A soft off-request reclaimed by coverage-rescue (see coverage-rescue.ts). */

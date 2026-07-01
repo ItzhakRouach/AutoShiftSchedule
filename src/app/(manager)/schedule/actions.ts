@@ -35,10 +35,13 @@ export interface RunOptions {
   replaceManual?: boolean
 }
 
+const isDev = process.env.NODE_ENV === 'development'
+
 export async function runSchedule(
   periodId: string,
   opts: RunOptions = {},
 ): Promise<RunResult> {
+  const actionStart = isDev ? performance.now() : 0
   const { replaceManual = false } = opts
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -47,7 +50,9 @@ export async function runSchedule(
   const workplace = await getActiveWorkplace(supabase)
   if (!workplace) return { ok: false, error: 'לא נמצא מקום עבודה.' }
 
+  const buildStart = isDev ? performance.now() : 0
   const built = await buildEngineInput(supabase, periodId)
+  const buildMs = isDev ? performance.now() - buildStart : 0
   if (!built || built.period.workplace_id !== workplace.id)
     return { ok: false, error: GENERIC_ERROR }
 
@@ -64,7 +69,11 @@ export async function runSchedule(
 
   let result
   try {
-    result = generateSchedule(built.input)
+    const engineStart = isDev ? performance.now() : 0
+    result = generateSchedule({ ...built.input, collectTimings: isDev })
+    if (isDev) {
+      console.debug('[engine timings]', result.timings, 'engine ms', performance.now() - engineStart)
+    }
   } catch {
     return { ok: false, error: GENERIC_ERROR }
   }
@@ -145,6 +154,9 @@ export async function runSchedule(
   }
 
   revalidatePath('/schedule')
+  if (isDev) {
+    console.debug('[engine timings] buildEngineInput ms', buildMs, 'total action ms', performance.now() - actionStart)
+  }
   return {
     ok: true,
     coverage: result.coverage,

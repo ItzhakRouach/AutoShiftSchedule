@@ -155,3 +155,34 @@ describe('validateAssignment helper', () => {
     expect(ok).toBe(false)
   })
 })
+
+describe('dev-only pass timings (collectTimings)', () => {
+  const employees = Array.from({ length: 3 }, (_, i) => emp(`g${i}`))
+  const requirements = reqFor(allDays, 'morning', GUARD, 1)
+
+  it('is absent by default', () => {
+    const res = generateSchedule(input({ employees, requirements }))
+    expect(res.timings).toBeUndefined()
+  })
+
+  it('is present with the expected pass keys when opted in', () => {
+    const res = generateSchedule(input({ employees, requirements, collectTimings: true }))
+    expect(res.timings).toBeDefined()
+    const keys = Object.keys(res.timings!)
+    expect(keys).toEqual(
+      expect.arrayContaining([
+        'must-accept',
+        'requests',
+        'carry-over',
+        'general-fill',
+        'night-unload',
+        'diversity',
+        'senior-swaps',
+        'night-then-off',
+        'coverage-rescue',
+        'twelve-fill',
+      ]),
+    )
+    for (const k of keys) expect(typeof res.timings![k]).toBe('number')
+  })
+})
