@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
+import type { UndoSnapshot } from '@/lib/schedule/undo-core'
 import { authedWorkplace, slotCapacityError, GENERIC_ERROR, type EditResult } from './edit-actions-helpers'
 
 const tempNameSchema = z.string().trim().min(1).max(40)
@@ -46,7 +47,8 @@ export async function assignTempName(
   if (!data || data.length === 0) return { ok: false, error: GENERIC_ERROR }
 
   revalidatePath('/schedule')
-  return { ok: true }
+  const undo: UndoSnapshot = { kind: 'temp-add', assignmentId: data[0].id }
+  return { ok: true, undo }
 }
 
 /** Delete a single assignment by id (used for temp rows, which have no
@@ -64,10 +66,26 @@ export async function removeAssignmentById(
     .delete()
     .eq('id', assignmentId)
     .eq('period_id', periodId)
-    .select('id')
+    .select('id, temp_name, day_of_week, shift_type_id, role_id, source')
   if (error) return { ok: false, error: GENERIC_ERROR }
   if (!data || data.length === 0) return { ok: false, error: GENERIC_ERROR }
 
+  const deleted = data[0]
   revalidatePath('/schedule')
-  return { ok: true }
+  // Only temp rows (no employee_id) are reversible this way; a null temp_name
+  // means the id belonged to a regular row, which removeAssignmentById is not
+  // used for in practice — skip attaching undo rather than mis-model it.
+  const undo: UndoSnapshot | undefined = deleted.temp_name
+    ? {
+        kind: 'temp-remove',
+        day: deleted.day_of_week,
+        row: {
+          tempName: deleted.temp_name,
+          shiftTypeId: deleted.shift_type_id,
+          roleId: deleted.role_id,
+          source: deleted.source,
+        },
+      }
+    : undefined
+  return { ok: true, undo }
 }

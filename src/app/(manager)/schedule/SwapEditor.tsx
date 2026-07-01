@@ -10,6 +10,7 @@ import { SHIFT_META, type ShiftId } from '@/lib/domain/constants'
 import { slotAtCapacity } from '@/lib/schedule/validate-edit-core'
 import type { EditMeta } from '@/lib/schedule/edit-meta'
 import type { ScheduleView } from '@/lib/schedule/view-data'
+import type { UndoSnapshot } from '@/lib/schedule/undo-core'
 import { assignSlot, unassignSlot } from './edit-actions'
 import { assignTempName } from './temp-actions'
 import { CandidateList } from './CandidateList'
@@ -32,11 +33,16 @@ interface Props {
   onClose: () => void
   view: ScheduleView
   meta: EditMeta
+  /** Invoked after a successful assign/unassign/temp-add, carrying the undo
+   *  snapshot when the action is reversible (assignTwelveHour has none — the
+   *  12h pair wizard owns its own snapshot/restore). Lets the owner (ScheduleClient)
+   *  surface the same בטל toast used for the fast tap/drag paths. */
+  onDone?: (undo?: UndoSnapshot) => void
 }
 
 type Msg = { text: string; kind: 'success' | 'warning' | 'error' } | null
 
-export function SwapEditor({ slot, onClose, view, meta }: Props) {
+export function SwapEditor({ slot, onClose, view, meta, onDone }: Props) {
   const router = useRouter()
   const [, start] = useTransition()
   const [busy, setBusy] = useState(false)
@@ -66,7 +72,7 @@ export function SwapEditor({ slot, onClose, view, meta }: Props) {
   const requiredCount = view.requirements[slot.day]?.[slot.shiftKey]?.[slot.roleId] ?? 0
   const atCapacity = slotAtCapacity(slot.assignedIds.length, requiredCount)
 
-  function run(fn: () => Promise<{ ok: boolean; error?: string; warning?: string }>) {
+  function run(fn: () => Promise<{ ok: boolean; error?: string; warning?: string; undo?: UndoSnapshot }>) {
     setMsg(null)
     setConfirmMove(null)
     setBusy(true)
@@ -80,13 +86,15 @@ export function SwapEditor({ slot, onClose, view, meta }: Props) {
         start(() => router.refresh())
         // Always confirm success so an assignment never reads as "nothing
         // happened". A 12h warning stays up for the manager to read; a plain
-        // success shows "שובץ ✓" briefly, then closes.
+        // success shows "שובץ ✓" briefly, then closes and hands off to the
+        // shared toast (with בטל) via onDone.
         if (res.warning) {
           setMsg({ text: res.warning, kind: 'warning' })
         } else {
           setMsg({ text: 'שובץ ✓', kind: 'success' })
           closeTimer.current = window.setTimeout(onClose, 800)
         }
+        onDone?.(res.undo)
       } finally {
         setBusy(false)
       }

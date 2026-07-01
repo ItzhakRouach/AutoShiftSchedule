@@ -4,11 +4,13 @@ import { useState, useTransition, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import type { ShiftId } from '@/lib/domain/constants'
 import type { ScheduleView } from '@/lib/schedule/view-data'
+import type { UndoSnapshot } from '@/lib/schedule/undo-core'
 import type { SlotCtx } from './SwapEditor'
 import { assignSlot } from './edit-actions'
 import { removeAssignmentById } from './temp-actions'
+import { undoEdit } from './undo-actions'
 
-export interface AssignToastState { text: string; kind: 'ok' | 'err' }
+export interface AssignToastState { text: string; kind: 'ok' | 'err'; onUndo?: () => void }
 
 /**
  * The single in-flight operation, if any. A (day, shift, role) slot for an
@@ -34,6 +36,28 @@ export function useCellAssign(view: ScheduleView) {
   const [toast, setToast] = useState<AssignToastState | null>(null)
   const [pendingSlot, setPendingSlot] = useState<PendingSlot | null>(null)
 
+  /** Reverse a prior edit via its snapshot. Reuses the pendingSlot guard (keyed
+   *  as a synthetic "undo" slot) so the toast's בטל button can't be double-tapped
+   *  while the reversal is in flight. Single-step only — no stack, so once this
+   *  runs the toast has nothing left to undo. */
+  const runUndo = useCallback(
+    (undo: UndoSnapshot) => {
+      if (pendingSlot) return
+      setPendingSlot({ assignmentId: '__undo__' })
+      void (async () => {
+        try {
+          const res = await undoEdit(view.periodId, undo)
+          if (!res.ok) { setToast({ text: res.error ?? 'שגיאה', kind: 'err' }); return }
+          setToast({ text: 'בוטל ✓', kind: 'ok' })
+          start(() => router.refresh())
+        } finally {
+          setPendingSlot(null)
+        }
+      })()
+    },
+    [view.periodId, router, pendingSlot],
+  )
+
   const dispatch = useCallback(
     (slot: SlotCtx, employeeId: string) => {
       if (pendingSlot) return // double-tap guard: one in-flight dispatch at a time
@@ -46,14 +70,15 @@ export function useCellAssign(view: ScheduleView) {
             setToast({ text: res.error ?? 'שגיאה', kind: 'err' })
             return
           }
-          setToast({ text: 'שובץ ✓', kind: 'ok' })
+          const undo = res.undo
+          setToast({ text: 'שובץ ✓', kind: 'ok', onUndo: undo ? () => runUndo(undo) : undefined })
           start(() => router.refresh())
         } finally {
           setPendingSlot(null)
         }
       })()
     },
-    [view.periodId, router, pendingSlot],
+    [view.periodId, router, pendingSlot, runUndo],
   )
 
   const hold = useCallback((id: string) => setHeldId((cur) => (cur === id ? null : id)), [])
@@ -70,14 +95,15 @@ export function useCellAssign(view: ScheduleView) {
         try {
           const res = await removeAssignmentById(view.periodId, assignmentId)
           if (!res.ok) { setToast({ text: res.error ?? 'שגיאה', kind: 'err' }); return }
-          setToast({ text: 'הוסר ✓', kind: 'ok' })
+          const undo = res.undo
+          setToast({ text: 'הוסר ✓', kind: 'ok', onUndo: undo ? () => runUndo(undo) : undefined })
           start(() => router.refresh())
         } finally {
           setPendingSlot(null)
         }
       })()
     },
-    [view.periodId, router, pendingSlot],
+    [view.periodId, router, pendingSlot, runUndo],
   )
 
   /** Tap-on-cell with a held worker → assign. Returns true if it consumed the tap. */
@@ -100,7 +126,7 @@ export function useCellAssign(view: ScheduleView) {
     [dispatch],
   )
 
-  return { heldId, toast, pendingSlot, hold, clearHeld, assignTo, dropOn, removeTemp, dismissToast }
+  return { heldId, toast, pendingSlot, hold, clearHeld, assignTo, dropOn, removeTemp, dismissToast, runUndo, setToast }
 }
 
 export type CellAssign = ReturnType<typeof useCellAssign>

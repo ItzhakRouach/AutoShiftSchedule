@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { validateManualAssignment } from '@/lib/schedule/validate-edit'
 import { resolveShiftKey } from '@/lib/schedule/shift-types-cache'
+import type { UndoSnapshot } from '@/lib/schedule/undo-core'
 import { authedWorkplace, slotCapacityError, GENERIC_ERROR, type EditResult } from './edit-actions-helpers'
 
 const TWELVE_H_WARNING =
@@ -45,6 +46,26 @@ export async function assignSlot(
   )
   if (capError) return { ok: false, error: capError }
 
+  // Capture the employee's existing (period, day) row, if any, BEFORE the
+  // upsert replaces it — this is the undo snapshot. Race-free: the DB unique
+  // constraint (period_id, employee_id, day_of_week) means whatever this SELECT
+  // sees is exactly what the upsert below will overwrite.
+  const { data: existing } = await supabase
+    .from('assignments')
+    .select('shift_type_id, role_id, source')
+    .eq('period_id', periodId)
+    .eq('employee_id', employeeId)
+    .eq('day_of_week', dayIndex)
+    .maybeSingle()
+  const undo: UndoSnapshot = {
+    kind: 'assign',
+    employeeId,
+    day: dayIndex,
+    prev: existing
+      ? { shiftTypeId: existing.shift_type_id, roleId: existing.role_id, source: existing.source }
+      : null,
+  }
+
   const { data, error } = await supabase
     .from('assignments')
     .upsert(
@@ -65,7 +86,7 @@ export async function assignSlot(
   if (!data || data.length === 0) return { ok: false, error: GENERIC_ERROR }
 
   revalidatePath('/schedule')
-  return { ok: true, warning }
+  return { ok: true, warning, undo }
 }
 
 /** Delete the employee's assignment on a given day. */
@@ -84,12 +105,20 @@ export async function unassignSlot(
     .eq('period_id', periodId)
     .eq('employee_id', employeeId)
     .eq('day_of_week', dayIndex)
-    .select('id')
+    .select('id, shift_type_id, role_id, source')
   if (error) return { ok: false, error: GENERIC_ERROR }
   if (!data || data.length === 0) return { ok: false, error: GENERIC_ERROR }
 
+  const deleted = data[0]
+  const undo: UndoSnapshot = {
+    kind: 'unassign',
+    employeeId,
+    day: dayIndex,
+    row: { shiftTypeId: deleted.shift_type_id, roleId: deleted.role_id, source: deleted.source },
+  }
+
   revalidatePath('/schedule')
-  return { ok: true }
+  return { ok: true, undo }
 }
 
 /** Manual 12h shift: validate (with 12h hours), persist with source fallback_12h. */

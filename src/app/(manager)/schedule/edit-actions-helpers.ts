@@ -2,11 +2,14 @@ import 'server-only'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveWorkplace } from '@/lib/workplace/current'
 import { slotAtCapacity } from '@/lib/schedule/validate-edit-core'
+import type { UndoSnapshot } from '@/lib/schedule/undo-core'
 
 export interface EditResult {
   ok: boolean
   error?: string
   warning?: string
+  /** Pre-mutation snapshot for single-step undo, when the action is reversible. */
+  undo?: UndoSnapshot
 }
 
 export const GENERIC_ERROR = 'אירעה שגיאה. נסו שוב.'

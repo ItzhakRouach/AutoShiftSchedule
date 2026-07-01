@@ -177,6 +177,14 @@ export function ScheduleClient({ view, editMeta }: Props) {
             onClose={() => setSlot(null)}
             view={view}
             meta={editMeta}
+            onDone={(undo) => {
+              if (!undo) return
+              // The sheet already shows its own inline "שובץ ✓"/warning message;
+              // once it closes (or immediately, for a warning that stays up) also
+              // surface the shared בטל toast so sheet-made edits are reversible
+              // the same way fast tap/drag assigns are.
+              assign.setToast({ text: 'שובץ ✓', kind: 'ok', onUndo: () => assign.runUndo(undo) })
+            }}
           />
           <TwelvePairEditor day={pairDay} onClose={() => setPairDay(null)} view={view} meta={editMeta} />
           <DayNoteEditor open={showDayNotes} onClose={() => setShowDayNotes(false)} view={view} />
