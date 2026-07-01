@@ -36,6 +36,28 @@ export default async function MeSchedulePage({
   const myNotes = (view?.dayNotes ?? []).filter((n) => n.employeeId === employee.id)
   const myRoleCounts = view ? countMyRoles(view, employee.id) : { roles: [], total: 0 }
 
+  // No published period at all yet (not even a past one) — show a dedicated
+  // page-level empty state instead of the header + grid wrapper with an empty
+  // card buried inside. Workplaces WITH published periods keep the full
+  // header/week-nav/grid layout untouched, even if the currently selected
+  // week has no view (handled further below).
+  if (weeks.length === 0) {
+    return (
+      <main className="schedule-main" style={{ background: 'var(--bg)', direction: 'rtl' }}>
+        <div className="schedule-controls">
+          <Card style={{ textAlign: 'center', padding: 32 }}>
+            <h1 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 800, letterSpacing: '-0.5px' }}>
+              עדיין לא פורסם סידור עבודה
+            </h1>
+            <p style={{ margin: 0, fontSize: 14, color: 'var(--text-2)', lineHeight: 1.6 }}>
+              המנהל עדיין לא פרסם סידור עבודה. ברגע שיפורסם, הוא יופיע כאן.
+            </p>
+          </Card>
+        </div>
+      </main>
+    )
+  }
+
   // Layout mirrors the manager's `/schedule` page exactly so the WeekTable
   // renders at the same width on every breakpoint: outer `.schedule-main`
   // wrapper (560px mobile / 1200px desktop) with an inner `.schedule-controls`
