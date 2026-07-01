@@ -146,7 +146,7 @@ export function ScheduleClient({ view, editMeta }: Props) {
       {viewMode === 'schedule' && (hasResult || !!editMeta) && (
         <>
           {editMeta && (
-            <WorkerPalette employees={view.employees} heldId={assign.heldId} onHold={assign.hold} />
+            <WorkerPalette employees={view.employees} heldId={assign.heldId} onHold={assign.hold} disabled={!!assign.pendingSlot} />
           )}
           <ScheduleGrids
             view={view}
