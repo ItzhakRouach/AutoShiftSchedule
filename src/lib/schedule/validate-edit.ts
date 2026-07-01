@@ -3,8 +3,6 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { ShiftId } from '@/lib/domain/constants'
 import { buildEngineInput } from './build-input'
 import { getWorkplaceShiftTypes } from './shift-types-cache'
-import { findAdjacentPeriod } from './prior-period'
-import { computeNextWeekHead } from './next-head'
 import {
   validateAssignmentCore,
   type CommittedSlot,
@@ -53,22 +51,12 @@ export async function validateManualAssignment(
   const { keyById: idToKey } = await getWorkplaceShiftTypes(supabase, built.period.workplace_id)
 
   // The employee's other committed assignments this week (exclude today's slot —
-  // upsert replaces the same-day row, so it must not count against rest/one-per-day),
-  // run in parallel with resolving the next adjacent period + its head.
-  const [{ data: rows }, nextPeriod] = await Promise.all([
-    supabase
-      .from('assignments')
-      .select('day_of_week, shift_type_id, role_id')
-      .eq('period_id', periodId)
-      .eq('employee_id', employeeId),
-    findAdjacentPeriod(supabase, built.period.workplace_id, built.period.week_start_date, 7),
-  ])
-  const nextHead = await computeNextWeekHead(
-    supabase,
-    built.period.workplace_id,
-    nextPeriod,
-    built.period.week_start_date,
-  )
+  // upsert replaces the same-day row, so it must not count against rest/one-per-day).
+  const { data: rows } = await supabase
+    .from('assignments')
+    .select('day_of_week, shift_type_id, role_id')
+    .eq('period_id', periodId)
+    .eq('employee_id', employeeId)
 
   const others: CommittedSlot[] = []
   for (const r of rows ?? []) {
@@ -90,6 +78,6 @@ export async function validateManualAssignment(
     settings: built.input.settings,
     isTwelveHour: !SHIFT_KEYS.has(shiftKey),
     priorTail: built.input.priorWeekTail?.[employeeId],
-    nextHead: nextHead[employeeId],
+    nextHead: built.input.nextWeekHead?.[employeeId],
   })
 }
