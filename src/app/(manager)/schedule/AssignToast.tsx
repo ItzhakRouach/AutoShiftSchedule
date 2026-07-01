@@ -40,6 +40,7 @@ export function AssignToast({ toast, onDismiss }: Props) {
     <div
       role="status"
       aria-live="polite"
+      data-testid="assign-toast"
       onClick={onDismiss}
       style={{
         position: 'fixed', insetInlineStart: '50%', insetBlockEnd: 24, transform: 'translateX(-50%)',

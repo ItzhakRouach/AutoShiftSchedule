@@ -150,7 +150,10 @@ test('assigning an employee already scheduled elsewhere that day requires in-she
   await morningDay0.click()
   await expect(page.getByText('עובדים זמינים')).toBeVisible({ timeout: 8000 })
   await page.locator('button:not([draggable])', { hasText: 'דנה כהן' }).first().click()
-  await expect(page.getByText('שובץ ✓')).toBeVisible({ timeout: 5000 })
+  // A successful sheet assign now fires the shared בטל toast immediately
+  // alongside its own inline "שובץ ✓" — both render at once, so scope the
+  // assertion to the toast (getByTestId) to avoid a strict-mode collision.
+  await expect(page.getByTestId('assign-toast').getByText('שובץ ✓')).toBeVisible({ timeout: 5000 })
   await expect(page.getByText('עובדים זמינים')).toBeHidden({ timeout: 8000 })
   await expect(morningDay0).toContainText('דנה כהן')
 
@@ -169,7 +172,7 @@ test('assigning an employee already scheduled elsewhere that day requires in-she
   // message appears, and the target cell is still unfilled.
   await page.getByRole('button', { name: 'ביטול' }).click()
   await expect(page.getByText('עובד זה כבר משובץ במשמרת אחרת ביום זה')).toBeHidden({ timeout: 5000 })
-  await expect(page.getByText('שובץ ✓')).toBeHidden()
+  await expect(page.getByTestId('assign-toast')).toBeHidden()
   await page.mouse.click(5, 5)
   await expect(page.getByText('עובדים זמינים')).toBeHidden({ timeout: 8000 })
   await expect(noonDay0).toHaveText('לא מאויש')
@@ -182,7 +185,7 @@ test('assigning an employee already scheduled elsewhere that day requires in-she
   await page.locator('button', { hasText: 'משובץ במשמרת אחרת' }).first().click()
   await expect(page.getByText('עובד זה כבר משובץ במשמרת אחרת ביום זה')).toBeVisible({ timeout: 5000 })
   await page.getByRole('button', { name: 'העבר' }).click()
-  await expect(page.getByText('שובץ ✓')).toBeVisible({ timeout: 5000 })
+  await expect(page.getByTestId('assign-toast').getByText('שובץ ✓')).toBeVisible({ timeout: 5000 })
   await expect(page.getByText('עובדים זמינים')).toBeHidden({ timeout: 8000 })
   await expect(noonDay0).toContainText('דנה כהן')
   await expect(morningDay0).toHaveText('לא מאויש')
