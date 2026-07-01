@@ -5,13 +5,14 @@ import { useRouter } from 'next/navigation'
 import { Sheet } from '@/components/ui/Sheet'
 import { Avatar } from '@/components/ui/Avatar'
 import { Btn } from '@/components/ui/Btn'
+import { InlineAlert } from '@/components/ui/InlineAlert'
 import { SHIFT_META, type ShiftId } from '@/lib/domain/constants'
-import { candidateStatus } from '@/lib/schedule/candidate-status'
 import { slotAtCapacity } from '@/lib/schedule/validate-edit-core'
 import type { EditMeta } from '@/lib/schedule/edit-meta'
 import type { ScheduleView } from '@/lib/schedule/view-data'
 import { assignSlot, unassignSlot } from './edit-actions'
 import { assignTempName } from './temp-actions'
+import { CandidateList } from './CandidateList'
 import { TempNamePrompt } from './TempNamePrompt'
 import { TwelveHourAssign } from './TwelveHourAssign'
 
@@ -33,14 +34,22 @@ interface Props {
   meta: EditMeta
 }
 
+type Msg = { text: string; kind: 'success' | 'warning' | 'error' } | null
+
 export function SwapEditor({ slot, onClose, view, meta }: Props) {
   const router = useRouter()
   const [, start] = useTransition()
   const [busy, setBusy] = useState(false)
-  const [msg, setMsg] = useState<string | null>(null)
+  const [msg, setMsg] = useState<Msg>(null)
+  const [confirmMove, setConfirmMove] = useState<string | null>(null)
 
   if (!slot) return null
   const empById = new Map(view.employees.map((e) => [e.id, e]))
+
+  function handleClose() {
+    setConfirmMove(null)
+    onClose()
+  }
 
   // Capacity: a role box may not exceed its required headcount. Disable adding
   // base-shift candidates once full (removing/swapping stays available).
@@ -49,12 +58,13 @@ export function SwapEditor({ slot, onClose, view, meta }: Props) {
 
   function run(fn: () => Promise<{ ok: boolean; error?: string; warning?: string }>) {
     setMsg(null)
+    setConfirmMove(null)
     setBusy(true)
     void (async () => {
       try {
         const res = await fn()
         if (!res.ok) {
-          setMsg(res.error ?? 'שגיאה')
+          setMsg({ text: res.error ?? 'שגיאה', kind: 'error' })
           return
         }
         start(() => router.refresh())
@@ -62,9 +72,9 @@ export function SwapEditor({ slot, onClose, view, meta }: Props) {
         // happened". A 12h warning stays up for the manager to read; a plain
         // success shows "שובץ ✓" briefly, then closes.
         if (res.warning) {
-          setMsg(res.warning)
+          setMsg({ text: res.warning, kind: 'warning' })
         } else {
-          setMsg('שובץ ✓')
+          setMsg({ text: 'שובץ ✓', kind: 'success' })
           window.setTimeout(onClose, 800)
         }
       } finally {
@@ -73,14 +83,13 @@ export function SwapEditor({ slot, onClose, view, meta }: Props) {
     })()
   }
 
+  function pick(employeeId: string) {
+    run(() => assignSlot(view.periodId, slot!.day, slot!.shiftTypeId, slot!.roleId, employeeId))
+  }
 
   return (
-    <Sheet open onClose={onClose} title={`${SHIFT_META[slot.shiftKey].name} · ${slot.roleName}`}>
-      {msg && (
-        <div style={{ padding: '9px 12px', borderRadius: 12, background: 'var(--accent-soft)', color: 'var(--text)', fontSize: 13, marginBottom: 12 }}>
-          {msg}
-        </div>
-      )}
+    <Sheet open onClose={handleClose} title={`${SHIFT_META[slot.shiftKey].name} · ${slot.roleName}`}>
+      {msg && <InlineAlert kind={msg.kind}>{msg.text}</InlineAlert>}
 
       {slot.assignedIds.length > 0 && (
         <div style={{ marginBottom: 12 }}>
@@ -99,55 +108,19 @@ export function SwapEditor({ slot, onClose, view, meta }: Props) {
       )}
 
       <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-2)', margin: '6px 0 8px' }}>עובדים זמינים</div>
-      {atCapacity && (
-        <div style={{ padding: '9px 12px', borderRadius: 12, background: 'var(--accent-soft)', color: 'var(--text-2)', fontSize: 12.5, marginBottom: 8 }}>
-          המשמרת מאוישת במלואה לתפקיד זה. הסירו עובד כדי להחליף.
-        </div>
-      )}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: '38vh', overflowY: 'auto' }}>
-        {view.employees.map((e) => {
-          const em = meta.employees[e.id]
-          if (!em) return null
-          const cand = candidateStatus({
-            emp: em,
-            day: slot.day,
-            shiftKey: slot.shiftKey,
-            roleId: slot.roleId,
-            minRestHours: meta.minRestHours,
-            requestedPreferred: em.preferred[slot.day],
-            dayMeta: slot.dayMeta,
-          })
-          const blocked = cand.disabled || atCapacity
-          const assignOrConfirm = () => {
-            // The DB keeps one shift per employee per day, so assigning someone
-            // already scheduled that day MOVES them. Confirm so the silent swap
-            // is intentional (otherwise it reads as "nothing happened" elsewhere).
-            if (cand.status === 'assigned_other' && !window.confirm('עובד זה כבר משובץ במשמרת אחרת ביום זה — להעביר אותו לכאן?')) return
-            run(() => assignSlot(view.periodId, slot.day, slot.shiftTypeId, slot.roleId, e.id))
-          }
-          return (
-            <button
-              key={e.id}
-              disabled={blocked || busy}
-              onClick={assignOrConfirm}
-              style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
-                padding: '8px 11px', borderRadius: 12, border: '1px solid var(--border)',
-                background: 'var(--surface)', cursor: blocked ? 'default' : 'pointer',
-                opacity: blocked ? 0.5 : 1, fontFamily: 'var(--font)',
-              }}
-            >
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                <Avatar name={e.name} color={e.color} size={26} />
-                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{e.name}</span>
-              </span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: blocked ? '#EB6A4E' : 'var(--accent)' }}>
-                {cand.disabled ? cand.label : atCapacity ? 'מלא' : cand.label}
-              </span>
-            </button>
-          )
-        })}
-      </div>
+      {atCapacity && <InlineAlert kind="info">המשמרת מאוישת במלואה לתפקיד זה. הסירו עובד כדי להחליף.</InlineAlert>}
+
+      <CandidateList
+        view={view}
+        meta={meta}
+        slot={slot}
+        busy={busy}
+        atCapacity={atCapacity}
+        confirmMove={confirmMove}
+        onPick={pick}
+        onConfirmMove={setConfirmMove}
+        onCancelMove={() => setConfirmMove(null)}
+      />
 
       <TwelveHourAssign slot={slot} view={view} meta={meta} busy={busy} run={run} />
 
