@@ -38,7 +38,49 @@ async function dismissCoverageIssues(page: Page) {
   }
 }
 
-test('manager manually edits a slot and applies a 12h shift', async ({ page }) => {
+test('manager applies a 12h shift on the empty grid before generating', async ({ page }) => {
+  test.setTimeout(120_000)
+  await signupAndOnboard(page)
+
+  await page.goto('/team')
+  await expect(page).toHaveURL(/\/team/, { timeout: 10000 })
+  await addEmployee(page, 'דנה כהן')
+  await addEmployee(page, 'יוסי לוי')
+  await addEmployee(page, 'מאיה בר')
+
+  await page.goto('/schedule')
+  await expect(page.getByRole('heading', { name: 'סידור עבודה' })).toBeVisible({ timeout: 10000 })
+
+  // Apply the 12h shift on the empty, pre-generation grid — every candidate is
+  // unblocked on an empty week, so the "— 12ש׳" button is guaranteed to render
+  // (scheduler-dependent state after auto-generation is not, see prior flake).
+  const slot = page.getByText('לא מאויש').first()
+  await slot.click()
+  await expect(page.getByText('עובדים זמינים')).toBeVisible({ timeout: 8000 })
+  await expect(page.getByText('החל משמרת 12 שעות')).toBeVisible({ timeout: 8000 })
+  await page.getByRole('button', { name: 'יום 12ש׳' }).click()
+  await page.getByRole('button', { name: /— 12ש׳$/ }).first().click()
+
+  // The 12h warning should appear inline.
+  await expect(page.getByText(/משמרת 12 שעות תופסת/)).toBeVisible({ timeout: 8000 })
+
+  // Close the sheet (backdrop click) and confirm a 12ש׳ badge is in the grid.
+  await page.mouse.click(5, 5)
+  await expect(page.getByText('החל משמרת 12 שעות')).toBeHidden({ timeout: 8000 })
+
+  // Reload to read the freshly persisted state. WeekTableCell renders a 12h
+  // assignment as the worker's name plus the variant's hour range — for the
+  // "יום 12ש׳" (m12_day) variant applied above that range is 07:00–19:00.
+  // (The old "-12" suffix no longer exists; the bare "12ש׳" text is NOT a safe
+  // marker because the header day-pair buttons also contain it.)
+  await page.reload()
+  await expect(page.getByRole('heading', { name: 'סידור עבודה' })).toBeVisible({ timeout: 10000 })
+  const twelveMarker = page.getByTestId('week-table').getByText('07:00–19:00').first()
+  const found = (await twelveMarker.count()) > 0
+  expect(found).toBe(true)
+})
+
+test('manager manually edits a slot after auto-generating', async ({ page }) => {
   test.setTimeout(120_000)
   await signupAndOnboard(page)
 
@@ -75,32 +117,6 @@ test('manager manually edits a slot and applies a 12h shift', async ({ page }) =
   const sheetStillOpen = await page.getByText('עובדים זמינים').isVisible()
   if (sheetStillOpen) await page.mouse.click(5, 5)
   await expect(page.getByText('עובדים זמינים')).toBeHidden({ timeout: 8000 })
-
-  // Apply a 12h shift: reopen a slot and pick a 12h variant + employee.
-  const slot2 = page.getByText('לא מאויש').first()
-  if (await slot2.count()) await slot2.click()
-  else await page.getByText('דנה כהן').first().click()
-  await expect(page.getByText('החל משמרת 12 שעות')).toBeVisible({ timeout: 8000 })
-  await page.getByRole('button', { name: 'יום 12ש׳' }).click()
-  await page.getByRole('button', { name: /— 12ש׳$/ }).first().click()
-
-  // The 12h warning should appear inline.
-  await expect(page.getByText(/משמרת 12 שעות תופסת/)).toBeVisible({ timeout: 8000 })
-
-  // Close the sheet (backdrop click) and confirm a 12ש׳ badge is in the grid.
-  await page.mouse.click(5, 5)
-  await expect(page.getByText('החל משמרת 12 שעות')).toBeHidden({ timeout: 8000 })
-
-  // Reload to read the freshly persisted state. WeekTableCell renders a 12h
-  // assignment as the worker's name plus the variant's hour range — for the
-  // "יום 12ש׳" (m12_day) variant applied above that range is 07:00–19:00.
-  // (The old "-12" suffix no longer exists; the bare "12ש׳" text is NOT a safe
-  // marker because the header day-pair buttons also contain it.)
-  await page.reload()
-  await expect(page.getByRole('heading', { name: 'סידור עבודה' })).toBeVisible({ timeout: 10000 })
-  const twelveMarker = page.getByTestId('week-table').getByText('07:00–19:00').first()
-  const found = (await twelveMarker.count()) > 0
-  expect(found).toBe(true)
 })
 
 test('assigning an employee already scheduled elsewhere that day requires in-sheet confirm', async ({ page }) => {
