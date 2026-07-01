@@ -180,6 +180,46 @@ describe('validateAssignmentCore', () => {
     )
     expect(v.ok).toBe(true)
   })
+
+  // --- Cross-week rest (nextHead) ---
+
+  it('blocks Sat-night manual edit when next-week Sun-morning starts at abs 175', () => {
+    // Sat night (day 6) = abs [6*24+23, 6*24+23+8] = [167, 175]. Next-Sun-morning
+    // head start = (0+7)*24+7 = 175 → gap 0 < minRest 8.
+    const v = validateAssignmentCore(
+      args({ meta: satMeta, shiftKey: 'night', nextHead: [175] }),
+    )
+    expect(v.ok).toBe(false)
+    if (!v.ok) expect(v.reason).toContain('השבוע הבא')
+  })
+
+  it('allows Sat-night edit when the next-week head gap meets minRest', () => {
+    // Head start 183 → gap 183-175=8, meets default minRest 8.
+    const v = validateAssignmentCore(
+      args({ meta: satMeta, shiftKey: 'night', nextHead: [183] }),
+    )
+    expect(v.ok).toBe(true)
+  })
+
+  it('absent nextHead is a no-op (existing behavior preserved)', () => {
+    const v = validateAssignmentCore(args({ meta: satMeta, shiftKey: 'night' }))
+    expect(v.ok).toBe(true)
+  })
+
+  it('empty nextHead array is a no-op', () => {
+    const v = validateAssignmentCore(args({ meta: satMeta, shiftKey: 'night', nextHead: [] }))
+    expect(v.ok).toBe(true)
+  })
+
+  it('uses the true end hour of a 12h variant via shiftInterval', () => {
+    // m12_night on Sat (day 6) = start 19 + 12h = abs [6*24+19, 6*24+19+12] =
+    // [163, 175]. Next-Sun-morning head start 175 → gap 0 < 8 → blocked.
+    const v = validateAssignmentCore(
+      args({ meta: satMeta, shiftKey: 'm12_night', isTwelveHour: true, nextHead: [175] }),
+    )
+    expect(v.ok).toBe(false)
+    if (!v.ok) expect(v.reason).toContain('השבוע הבא')
+  })
 })
 
 describe('slotAtCapacity', () => {

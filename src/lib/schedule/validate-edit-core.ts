@@ -60,6 +60,10 @@ export interface ValidateCoreArgs {
   /** prior-published-week END abs hours of THIS employee's shifts (current week
    *  day 0 = abs hour 0). Optional; absent → no cross-week rest check. */
   priorTail?: number[]
+  /** next-week START abs hours of THIS employee's shifts, expressed in the
+   *  edited week's frame ((day+7)*24 + start_hour). Optional; absent → no
+   *  cross-week-ahead rest check. */
+  nextHead?: number[]
 }
 
 /**
@@ -142,6 +146,20 @@ export function validateAssignmentCore(args: ValidateCoreArgs): Verdict {
           ok: false,
           severity: 'hard',
           reason: `מפר מנוחה של ${settings.minRestHours} שעות מול השבוע הקודם`,
+        }
+    }
+  }
+  // Cross-week rest, symmetric case: next week's head (start abs hours, in the
+  // edited week's frame). Blocks e.g. Sat-night → next-Sun-morning.
+  const nextHead = args.nextHead
+  if (nextHead && nextHead.length > 0) {
+    const myEnd = mine[1]
+    for (const headStart of nextHead) {
+      if (headStart - myEnd < settings.minRestHours)
+        return {
+          ok: false,
+          severity: 'hard',
+          reason: `מפר מנוחה של ${settings.minRestHours} שעות מול השבוע הבא`,
         }
     }
   }
