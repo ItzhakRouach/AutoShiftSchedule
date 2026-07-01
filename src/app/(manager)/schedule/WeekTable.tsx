@@ -26,6 +26,26 @@ interface Props {
 
 const BASE_SHIFTS: ShiftKey[] = ['morning', 'noon', 'night']
 
+// Full Hebrew weekday names by index (0 = Sunday … 6 = Saturday), matching
+// `DayInfo.index`. Used only for the cell's screen-reader label — the visible
+// header uses the shorter `DayInfo.short` form.
+const DAY_NAMES_FULL = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
+
+/** "<day>, <shift>, <role>: <names | לא מאויש>" for the cell's aria-label. */
+function buildCellLabel(
+  dayIndex: number,
+  shiftName: string,
+  roleName: string,
+  entries: { employeeId: string; tempName?: string }[],
+  empById: Map<string, { name: string }>,
+): string {
+  const names = entries
+    .map((e) => e.tempName ?? empById.get(e.employeeId)?.name)
+    .filter((n): n is string => !!n)
+  const who = names.length > 0 ? names.join(', ') : 'לא מאויש'
+  return `${DAY_NAMES_FULL[dayIndex] ?? ''}, ${shiftName}, ${roleName}: ${who}`
+}
+
 // Frozen-column widths (RTL: pinned to the physical RIGHT edge). The role
 // column's offset MUST equal the shift column's width so they don't overlap.
 const SHIFT_W = 96
@@ -142,6 +162,7 @@ export function WeekTable({ view, onSlot, onDayPair, assign, initialSelectedId, 
                         && assign.pendingSlot.day === d.index
                         && assign.pendingSlot.shiftKey === shift
                         && assign.pendingSlot.roleId === roleId
+                      const cellLabel = buildCellLabel(d.index, m.name, role?.name ?? roleId, cellEntries, empById)
                       return (
                         <WeekTableCell key={d.index}
                           entries={cellEntries}
@@ -157,6 +178,7 @@ export function WeekTable({ view, onSlot, onDayPair, assign, initialSelectedId, 
                           onRemoveTemp={assign ? assign.removeTemp : undefined}
                           capacityLabel={editable ? capacity.label : ''}
                           capacityStatus={editable ? capacity.status : 'unconfigured'}
+                          cellLabel={cellLabel}
                         />
                       )
                     })}

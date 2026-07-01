@@ -56,6 +56,10 @@ export interface WeekTableCellProps {
   capacityLabel?: string
   /** 'under' tints the cell with a soft warning; 'full'/'unconfigured' render plain. */
   capacityStatus?: 'under' | 'full' | 'unconfigured'
+  /** Screen-reader label: "<day>, <shift>, <role>: <names | לא מאויש>" — composed
+   *  in WeekTable.tsx (day/shift/role names are in scope there) so this stays a
+   *  plain string prop and React.memo's shallow-equality check keeps working. */
+  cellLabel: string
 }
 
 const DND_MIME = 'application/x-employee-id'
@@ -69,7 +73,7 @@ const DND_MIME = 'application/x-employee-id'
 function WeekTableCellImpl(props: WeekTableCellProps) {
   const { entries, empById, isFilled, covered, selectedId, onClick, showUnfilled } = props
   const { isPending, isBusy, onDropEmployee, onDragEmployee, onRemoveTemp } = props
-  const { capacityLabel, capacityStatus } = props
+  const { capacityLabel, capacityStatus, cellLabel } = props
   const hasSelected = selectedId !== null
   const cellHasSelected = hasSelected && entries.some((e) => e.employeeId === selectedId)
   const empty = entries.length === 0 && !isFilled && !covered
@@ -115,7 +119,7 @@ function WeekTableCellImpl(props: WeekTableCellProps) {
 
   if (entries.length === 0) {
     return (
-      <td style={cellStyle} onClick={clickHandler} aria-busy={isBusy || undefined} {...dropProps}>
+      <td style={cellStyle} onClick={clickHandler} aria-busy={isBusy || undefined} aria-label={cellLabel} {...dropProps}>
         {covered ? (
           <span title="מאויש ע״י משמרת 12 שעות" style={{ color: 'var(--text-3)', fontWeight: 700, fontSize: 11 }}>12ש׳</span>
         ) : (
@@ -127,7 +131,7 @@ function WeekTableCellImpl(props: WeekTableCellProps) {
   const dragHandler = isBusy ? undefined : onDragEmployee
   const removeHandler = isBusy ? undefined : onRemoveTemp
   return (
-    <td style={cellStyle} onClick={clickHandler} aria-busy={isBusy || undefined} {...dropProps}>
+    <td style={cellStyle} onClick={clickHandler} aria-busy={isBusy || undefined} aria-label={cellLabel} {...dropProps}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {entries.map((en, i) => {
           // Ad-hoc temp worker: distinct dashed chip + remove (×).
