@@ -95,36 +95,37 @@ test('assigning an employee already scheduled elsewhere that day requires in-she
   await expect(page).toHaveURL(/\/team/, { timeout: 10000 })
   await addEmployee(page, 'דנה כהן')
   await addEmployee(page, 'יוסי לוי')
-  await addEmployee(page, 'מאיה בר')
 
+  // Build the scenario by hand on the empty, pre-generation grid — no auto
+  // scheduler involved, so both "an empty slot" and "someone already booked
+  // elsewhere that day" are guaranteed rather than hoped-for.
   await page.goto('/schedule')
   await expect(page.getByRole('heading', { name: 'שיבוץ אוטומטי' })).toBeVisible({ timeout: 10000 })
-  await page.getByRole('button', { name: 'צור סידור אוטומטי' }).click()
-  await expect(page.getByTestId('coverage')).toBeVisible({ timeout: 30000 })
 
-  // Find an employee already assigned to some shift on day 0 (auto-scheduler
-  // should have booked at least one), then open a DIFFERENT, empty shift on
-  // that same day so the candidate list shows them as "assigned elsewhere".
   const weekTable = page.getByTestId('week-table')
-  const dayCells = weekTable.locator('tbody tr td:nth-child(3)') // first day column
-  const cellCount = await dayCells.count()
-  let assignedName: string | null = null
-  let emptyCellIndex = -1
-  for (let i = 0; i < cellCount; i++) {
-    const text = (await dayCells.nth(i).innerText()).trim()
-    if (text === 'לא מאויש' && emptyCellIndex === -1) emptyCellIndex = i
-    else if (assignedName === null && text && text !== 'לא מאויש' && !text.includes('12ש׳')) assignedName = text
-  }
-  test.skip(assignedName === null || emptyCellIndex === -1, 'auto-scheduler did not produce the day-0 mix this test needs')
+  // First row of each shift group carries both the shift name and the role
+  // name (rowSpan), so intersecting on shift text lands on the אחמ״ש row.
+  const morningRow = weekTable.locator('tr', { hasText: 'בוקר' }).first()
+  const noonRow = weekTable.locator('tr', { hasText: 'צהריים' }).first()
+  const morningDay0 = morningRow.locator('td').nth(2) // shift col, role col, then days
+  const noonDay0 = noonRow.locator('td').nth(2)
 
-  await dayCells.nth(emptyCellIndex).click()
+  // Shift A (בוקר, day 0): assign דנה כהן directly from the candidate list.
+  await morningDay0.click()
   await expect(page.getByText('עובדים זמינים')).toBeVisible({ timeout: 8000 })
+  await page.locator('button', { hasText: 'דנה כהן' }).first().click()
+  await expect(page.getByText('שובץ ✓')).toBeVisible({ timeout: 5000 })
+  await expect(page.getByText('עובדים זמינים')).toBeHidden({ timeout: 8000 })
+  await expect(morningDay0).toContainText('דנה כהן')
 
+  // Shift B (צהריים, day 0, same role): tapping דנה כהן here must NOT assign
+  // immediately — she's already committed to shift A that day, so the
+  // candidate list shows her as "assigned_other" and tapping opens the
+  // in-sheet confirm strip (native window.confirm is unreliable/silent in PWAs).
+  await noonDay0.click()
+  await expect(page.getByText('עובדים זמינים')).toBeVisible({ timeout: 8000 })
   const candidateBtn = page.locator('button', { hasText: 'משובץ במשמרת אחרת' }).first()
-  test.skip((await candidateBtn.count()) === 0, 'no candidate is booked elsewhere on this day in this run')
-
-  // Tapping the candidate must NOT assign immediately — it opens an inline
-  // confirm strip (native window.confirm is unreliable/silent in PWAs).
+  await expect(candidateBtn).toBeVisible({ timeout: 5000 })
   await candidateBtn.click()
   await expect(page.getByText('עובד זה כבר משובץ במשמרת אחרת ביום זה')).toBeVisible({ timeout: 5000 })
 
@@ -135,18 +136,20 @@ test('assigning an employee already scheduled elsewhere that day requires in-she
   await expect(page.getByText('שובץ ✓')).toBeHidden()
   await page.mouse.click(5, 5)
   await expect(page.getByText('עובדים זמינים')).toBeHidden({ timeout: 8000 })
-  await expect(dayCells.nth(emptyCellIndex)).toHaveText('לא מאויש')
+  await expect(noonDay0).toHaveText('לא מאויש')
+  await expect(morningDay0).toContainText('דנה כהן')
 
   // Reopen and this time confirm the move with העבר — it completes via the
-  // same assignSlot path and the target cell picks up the moved employee.
-  await dayCells.nth(emptyCellIndex).click()
+  // same assignSlot path: דנה כהן now appears in shift B and is gone from A.
+  await noonDay0.click()
   await expect(page.getByText('עובדים זמינים')).toBeVisible({ timeout: 8000 })
   await page.locator('button', { hasText: 'משובץ במשמרת אחרת' }).first().click()
   await expect(page.getByText('עובד זה כבר משובץ במשמרת אחרת ביום זה')).toBeVisible({ timeout: 5000 })
   await page.getByRole('button', { name: 'העבר' }).click()
   await expect(page.getByText('שובץ ✓')).toBeVisible({ timeout: 5000 })
   await expect(page.getByText('עובדים זמינים')).toBeHidden({ timeout: 8000 })
-  await expect(dayCells.nth(emptyCellIndex)).toContainText(assignedName!)
+  await expect(noonDay0).toContainText('דנה כהן')
+  await expect(morningDay0).toHaveText('לא מאויש')
 })
 
 test('clicking a worker chip opens the editor; highlight lives only in the totals bar', async ({ page }) => {
