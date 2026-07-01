@@ -137,7 +137,6 @@ export function WeekTable({ view, onSlot, onDayPair, assign, initialSelectedId, 
                         covered={coveredSet.has(`${d.index}:${shift}:${roleId}`)}
                         selectedId={selectedId}
                         onClick={editable ? () => handleCellClick(d.index, shift, roleId) : undefined}
-                        onSelectEmp={toggleSelect}
                         showUnfilled={showUnfilled}
                         onDropEmployee={assign ? (id) => handleDrop(d.index, shift, roleId, id) : undefined}
                         onDragEmployee={assign ? assign.clearHeld : undefined}

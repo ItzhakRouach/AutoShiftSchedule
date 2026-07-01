@@ -40,7 +40,6 @@ export interface WeekTableCellProps {
   covered: boolean
   selectedId: string | null
   onClick?: () => void
-  onSelectEmp: (id: string) => void
   showUnfilled: boolean
   /** True when this cell is the pending target for click-to-assign. */
   isPending?: boolean
@@ -61,7 +60,7 @@ const DND_MIME = 'application/x-employee-id'
  * default shallow equality is enough.
  */
 function WeekTableCellImpl(props: WeekTableCellProps) {
-  const { entries, empById, isFilled, covered, selectedId, onClick, onSelectEmp, showUnfilled } = props
+  const { entries, empById, isFilled, covered, selectedId, onClick, showUnfilled } = props
   const { isPending, onDropEmployee, onDragEmployee, onRemoveTemp } = props
   const hasSelected = selectedId !== null
   const cellHasSelected = hasSelected && entries.some((e) => e.employeeId === selectedId)
@@ -115,19 +114,14 @@ function WeekTableCellImpl(props: WeekTableCellProps) {
           return (
             <span
               key={i}
-              role="button"
-              aria-pressed={isSelected}
               draggable={!!onDragEmployee}
               onDragStart={onDragEmployee ? (ev) => { ev.dataTransfer.setData(DND_MIME, en.employeeId); ev.dataTransfer.effectAllowed = 'move'; onDragEmployee(en.employeeId) } : undefined}
-              title={isSelected ? 'לחץ לביטול הסימון' : 'לחץ לסימון עובד'}
-              onClick={(ev) => { ev.stopPropagation(); onSelectEmp(en.employeeId) }}
               style={{
                 display: 'inline-flex', alignItems: 'center',
                 color: emp?.color ?? 'var(--text)', fontWeight: 700,
                 whiteSpace: 'nowrap', fontSize: 13, lineHeight: 1.4,
-                cursor: onDragEmployee ? 'grab' : 'pointer',
+                cursor: onDragEmployee ? 'grab' : undefined,
                 opacity: hasSelected && !isSelected ? 0.35 : 1,
-                textDecoration: isSelected ? 'underline' : undefined,
                 transition: 'opacity 0.15s',
               }}
             >

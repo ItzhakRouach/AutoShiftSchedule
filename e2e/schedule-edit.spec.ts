@@ -86,3 +86,40 @@ test('manager manually edits a slot and applies a 12h shift', async ({ page }) =
   const found = (await twelveMarker.count()) > 0
   expect(found).toBe(true)
 })
+
+test('clicking a worker chip opens the editor; highlight lives only in the totals bar', async ({ page }) => {
+  test.setTimeout(120_000)
+  await signupAndOnboard(page)
+
+  await page.goto('/team')
+  await expect(page).toHaveURL(/\/team/, { timeout: 10000 })
+  await addEmployee(page, 'דנה כהן')
+  await addEmployee(page, 'יוסי לוי')
+
+  await page.goto('/schedule')
+  await expect(page.getByRole('heading', { name: 'שיבוץ אוטומטי' })).toBeVisible({ timeout: 10000 })
+  await page.getByRole('button', { name: 'צור סידור אוטומטי' }).click()
+  await expect(page.getByTestId('coverage')).toBeVisible({ timeout: 30000 })
+
+  // Clicking an assigned worker's name INSIDE a grid cell must open the
+  // SwapEditor (not toggle a highlight) — this is the bug being fixed.
+  const gridChip = page.getByTestId('week-table').getByText('דנה כהן').first()
+  await expect(gridChip).toBeVisible({ timeout: 10000 })
+  await gridChip.click()
+  await expect(page.getByText('עובדים זמינים')).toBeVisible({ timeout: 8000 })
+  await page.mouse.click(5, 5)
+  await expect(page.getByText('עובדים זמינים')).toBeHidden({ timeout: 8000 })
+
+  // Highlighting a worker's shifts is now exclusively a totals-bar action:
+  // clicking a chip there toggles aria-pressed without opening the editor.
+  const totalsChip = page.getByTestId('emp-total-chip').first()
+  await expect(totalsChip).toBeVisible({ timeout: 10000 })
+  await expect(totalsChip).toHaveAttribute('aria-pressed', 'false')
+  await totalsChip.click()
+  await expect(totalsChip).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByText('עובדים זמינים')).toBeHidden()
+
+  // Toggling off restores the default state.
+  await totalsChip.click()
+  await expect(totalsChip).toHaveAttribute('aria-pressed', 'false')
+})
