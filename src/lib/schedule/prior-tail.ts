@@ -3,12 +3,13 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { PriorPeriodRow } from './prior-period'
 
 /**
- * Cross-week rest carry-over: given the immediately-preceding published period
- * (resolved upstream via findPriorPublishedPeriod), return per employee the
- * END abs-hours of all their prior-week shifts. The abs reference is
- * "current week day 0 = abs hour 0", so e.g. a prior-Saturday night
- * (23:00–07:00) places at start=-1, end=7 — colliding with Sunday morning at
- * abs 7 (gap 0).
+ * Cross-week rest carry-over: given the immediately-preceding period
+ * REGARDLESS OF STATUS (resolved upstream via findAdjacentPeriod(-7) — rest
+ * protection must hold even when the manager hasn't published that week yet),
+ * return per employee the END abs-hours of all their prior-week shifts. The
+ * abs reference is "current week day 0 = abs hour 0", so e.g. a
+ * prior-Saturday night (23:00–07:00) places at start=-1, end=7 — colliding
+ * with Sunday morning at abs 7 (gap 0).
  *
  * Returns {} when `prior` is null or the prior period is not the immediately
  * preceding week (gap of exactly 7 days). A gap ≥ 14 days can't violate any

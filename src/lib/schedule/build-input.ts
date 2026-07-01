@@ -8,7 +8,7 @@ import {
   type MapInput,
 } from './map-rows'
 import { computePriorWeekTail } from './prior-tail'
-import { findPriorPublishedPeriod } from './prior-period'
+import { findPriorPublishedPeriod, findAdjacentPeriod } from './prior-period'
 import { computePriorMetrics } from './prior-metrics'
 
 export interface PeriodInfo {
@@ -147,13 +147,18 @@ export async function buildEngineInput(
 
   const holidayDates = new Set<string>((holidayRows ?? []).map((h: { date: string }) => h.date))
 
-  // Resolve the prior published period ONCE and reuse it for both deficit
-  // (fairness carry-over) and tail (rest carry-over) — saves a duplicate
-  // schedule_periods lookup. The two computations are then run in parallel.
-  const prior = await findPriorPublishedPeriod(supabase, wp, period.week_start_date as string)
+  // Fairness (deficit/extras) must count only PUBLISHED reality; rest
+  // protection must hold against the adjacent week's REAL assignments even if
+  // it hasn't been published yet — so these resolve to two different periods.
+  // Both lookups run in parallel, then feed their own downstream computation.
+  const weekStart = period.week_start_date as string
+  const [prior, adjacentPrior] = await Promise.all([
+    findPriorPublishedPeriod(supabase, wp, weekStart),
+    findAdjacentPeriod(supabase, wp, weekStart, -7),
+  ])
   const [{ deficit: priorDeficit, extras: priorExtras }, priorWeekTail] = await Promise.all([
     computePriorMetrics(supabase, prior, employees ?? []),
-    computePriorWeekTail(supabase, wp, prior, period.week_start_date as string),
+    computePriorWeekTail(supabase, wp, adjacentPrior, weekStart),
   ])
 
   const rows: MapInput = {
