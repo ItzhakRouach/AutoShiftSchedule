@@ -205,6 +205,11 @@ describe('mapToEngineInput', () => {
     expect(empA?.priorExtras).toBe(2)
     expect(empB?.priorExtras).toBe(0)
   })
+
+  it('passes rows.nextWeekHead through to EngineInput.nextWeekHead unchanged', () => {
+    const { input } = mapToEngineInput(baseRows({ nextWeekHead: { e1: [175] } }))
+    expect(input.nextWeekHead).toEqual({ e1: [175] })
+  })
 })
 
 describe('seedFromUuid', () => {

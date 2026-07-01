@@ -8,7 +8,7 @@ import type {
   ShiftKey,
   Settings,
 } from './types'
-import { restOk, shiftStartAbs } from './rest'
+import { restOk, shiftEndAbs, shiftStartAbs } from './rest'
 import { isSacredBlocked } from './shabbat-holiday'
 
 export interface CheckContext {
@@ -26,6 +26,13 @@ export interface CheckContext {
    * entry is checked vs the proposed shift's START abs hour for minRest.
    */
   priorTail?: number[]
+  /**
+   * Optional carry-over from the next (already-committed) week: list of START
+   * abs-hours of the employee's next-week shifts (current week day 0 = abs
+   * hour 0). Each entry is checked vs the proposed shift's END abs hour for
+   * minRest — the symmetric case of `priorTail`.
+   */
+  nextHead?: number[]
 }
 
 /** 1. Role match. */
@@ -51,15 +58,24 @@ export function availabilityAllows(
 }
 
 /** 6. Rest between this shift and every committed shift, INCLUDING the prior
- *  published week's tail (e.g. Saturday night → Sunday morning). */
+ *  published week's tail (e.g. Saturday night → Sunday morning) and the next
+ *  (already-committed) week's head (e.g. Sunday morning ← Saturday night). */
 export function restSatisfied(ctx: CheckContext): boolean {
   const sameWeek = ctx.current.every((a) =>
     restOk(a.day, a.shift, ctx.meta.index, ctx.shift, ctx.settings.minRestHours),
   )
   if (!sameWeek) return false
-  if (!ctx.priorTail || ctx.priorTail.length === 0) return true
-  const startAbs = shiftStartAbs(ctx.meta.index, ctx.shift)
-  return ctx.priorTail.every((endAbs) => startAbs - endAbs >= ctx.settings.minRestHours)
+  if (ctx.priorTail && ctx.priorTail.length > 0) {
+    const startAbs = shiftStartAbs(ctx.meta.index, ctx.shift)
+    const priorOk = ctx.priorTail.every((endAbs) => startAbs - endAbs >= ctx.settings.minRestHours)
+    if (!priorOk) return false
+  }
+  if (ctx.nextHead && ctx.nextHead.length > 0) {
+    const endAbs = shiftEndAbs(ctx.meta.index, ctx.shift)
+    const nextOk = ctx.nextHead.every((headStart) => headStart - endAbs >= ctx.settings.minRestHours)
+    if (!nextOk) return false
+  }
+  return true
 }
 
 /** 7. One shift per employee per day. */

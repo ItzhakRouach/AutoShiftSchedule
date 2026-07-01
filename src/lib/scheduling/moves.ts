@@ -38,6 +38,7 @@ function legal(
     current,
     settings: input.settings,
     priorTail: input.priorWeekTail?.[emp.id],
+    nextHead: input.nextWeekHead?.[emp.id],
   }
   return isAssignable(ctx)
 }

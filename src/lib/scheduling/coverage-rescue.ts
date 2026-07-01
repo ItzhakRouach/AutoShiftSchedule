@@ -51,6 +51,7 @@ export function runCoverageRescue(
               current: st.committed[e.id],
               settings: input.settings,
               priorTail: input.priorWeekTail?.[e.id],
+              nextHead: input.nextWeekHead?.[e.id],
             },
             { allowSoftOff: true },
           )

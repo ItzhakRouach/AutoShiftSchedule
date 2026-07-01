@@ -69,6 +69,7 @@ function placeNextDay(
         emp: N, meta: metaNext, shift, roleId: role,
         request: reqOf(input, N.id, dp1), current: st.committed[N.id],
         settings: input.settings, priorTail: input.priorWeekTail?.[N.id],
+        nextHead: input.nextWeekHead?.[N.id],
       })
       if (!legal) continue
 

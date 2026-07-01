@@ -92,6 +92,14 @@ export interface EngineInput {
    * adjacent week). Used ONLY by `restSatisfied` (does NOT inflate maxShifts).
    */
   priorWeekTail?: Record<string, number[]>
+  /**
+   * Cross-week rest carry-over, symmetric to `priorWeekTail` but FORWARD:
+   * per-employee START abs-hours of shifts already committed next week (any
+   * status). E.g. a next-week Sunday morning starts at abs 175 — 0h after a
+   * current-week Saturday night (ends at abs 175) — blocking that Saturday
+   * night when minRestHours ≥ 1. {} = no adjacent next week.
+   */
+  nextWeekHead?: Record<string, number[]>
 }
 
 /** A concrete assignment of an employee to a day/shift/role. */

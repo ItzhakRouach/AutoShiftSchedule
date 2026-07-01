@@ -58,5 +58,6 @@ export function validateAssignment(
     current,
     settings: input.settings,
     priorTail: input.priorWeekTail?.[emp.id],
+    nextHead: input.nextWeekHead?.[emp.id],
   })
 }

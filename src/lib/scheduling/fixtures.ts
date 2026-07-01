@@ -98,6 +98,7 @@ export function input(over: Partial<EngineInput> & { employees: Employee[] }): E
     settings: over.settings ?? settings(),
     seed: over.seed ?? 1,
     priorWeekTail: over.priorWeekTail,
+    nextWeekHead: over.nextWeekHead,
   }
 }
 

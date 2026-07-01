@@ -10,6 +10,7 @@ import {
 import { computePriorWeekTail } from './prior-tail'
 import { findPriorPublishedPeriod, findAdjacentPeriod } from './prior-period'
 import { computePriorMetrics } from './prior-metrics'
+import { computeNextWeekHead } from './next-head'
 
 export interface PeriodInfo {
   id: string
@@ -148,17 +149,19 @@ export async function buildEngineInput(
   const holidayDates = new Set<string>((holidayRows ?? []).map((h: { date: string }) => h.date))
 
   // Fairness (deficit/extras) must count only PUBLISHED reality; rest
-  // protection must hold against the adjacent week's REAL assignments even if
-  // it hasn't been published yet — so these resolve to two different periods.
-  // Both lookups run in parallel, then feed their own downstream computation.
+  // protection must hold against BOTH adjacent weeks' REAL assignments even if
+  // they haven't been published yet — so these resolve to different periods,
+  // all three lookups running in parallel before their downstream computations.
   const weekStart = period.week_start_date as string
-  const [prior, adjacentPrior] = await Promise.all([
+  const [prior, priorAdjacent, nextAdjacent] = await Promise.all([
     findPriorPublishedPeriod(supabase, wp, weekStart),
     findAdjacentPeriod(supabase, wp, weekStart, -7),
+    findAdjacentPeriod(supabase, wp, weekStart, 7),
   ])
-  const [{ deficit: priorDeficit, extras: priorExtras }, priorWeekTail] = await Promise.all([
+  const [{ deficit: priorDeficit, extras: priorExtras }, priorWeekTail, nextWeekHead] = await Promise.all([
     computePriorMetrics(supabase, prior, employees ?? []),
-    computePriorWeekTail(supabase, wp, adjacentPrior, weekStart),
+    computePriorWeekTail(supabase, wp, priorAdjacent, weekStart),
+    computeNextWeekHead(supabase, wp, nextAdjacent, weekStart),
   ])
 
   const rows: MapInput = {
@@ -178,6 +181,7 @@ export async function buildEngineInput(
     priorDeficit,
     priorExtras,
     priorWeekTail,
+    nextWeekHead,
   }
 
   const { input, keyToShiftTypeId, nameToRoleId } = mapToEngineInput(rows)
