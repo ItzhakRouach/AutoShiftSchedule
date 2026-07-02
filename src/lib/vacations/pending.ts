@@ -2,6 +2,7 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export type VacationStatus = 'pending' | 'approved' | 'rejected'
+export type VacationKind = 'vacation' | 'miluim'
 
 export interface WorkplaceVacation {
   id: string
@@ -10,6 +11,7 @@ export interface WorkplaceVacation {
   dateFrom: string
   dateTo: string
   status: VacationStatus
+  kind: VacationKind
 }
 
 const STATUS_ORDER: Record<VacationStatus, number> = { pending: 0, approved: 1, rejected: 2 }
@@ -17,16 +19,18 @@ const STATUS_ORDER: Record<VacationStatus, number> = { pending: 0, approved: 1, 
 /**
  * Current & upcoming vacation requests for a workplace (any status), so the
  * manager can review pending ones AND re-edit earlier decisions. Past vacations
- * (date_to before today) are omitted to keep the list relevant. Uses an
- * elevated client because vacation rows are RLS-scoped to their employee; the
- * caller MUST pass the manager's OWN workplace id (via getActiveWorkplace).
+ * (date_to before today) are omitted to keep the list relevant. Accepts either
+ * the regular authed client (vacations_manager_write / owns_employee now lets
+ * a manager SELECT their own employees' vacation rows directly) or the admin
+ * client (pre-existing dashboard call site) — the caller MUST pass the
+ * manager's OWN workplace id (via getActiveWorkplace) either way.
  */
 export async function getWorkplaceVacations(
-  admin: SupabaseClient,
+  client: SupabaseClient,
   workplaceId: string,
   todayISO: string,
 ): Promise<WorkplaceVacation[]> {
-  const { data: emps } = await admin
+  const { data: emps } = await client
     .from('employees')
     .select('id, name')
     .eq('workplace_id', workplaceId)
@@ -34,9 +38,9 @@ export async function getWorkplaceVacations(
   const ids = [...nameById.keys()]
   if (ids.length === 0) return []
 
-  const { data: vacs } = await admin
+  const { data: vacs } = await client
     .from('employee_vacations')
-    .select('id, employee_id, date_from, date_to, status')
+    .select('id, employee_id, date_from, date_to, status, kind')
     .in('employee_id', ids)
     .gte('date_to', todayISO)
 
@@ -48,6 +52,7 @@ export async function getWorkplaceVacations(
       dateFrom: v.date_from as string,
       dateTo: v.date_to as string,
       status: (v.status as VacationStatus) ?? 'pending',
+      kind: (v.kind as VacationKind) ?? 'vacation',
     }))
     // Pending first (need action), then by start date.
     .sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status] || a.dateFrom.localeCompare(b.dateFrom))

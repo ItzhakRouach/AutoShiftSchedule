@@ -6,6 +6,7 @@ import { getActiveWorkplace } from '@/lib/workplace/current'
 import { getScheduleView } from '@/lib/schedule/view-data'
 import { getPublishedScheduleView, listPublishedWeeks } from '@/lib/schedule/published-view'
 import { getEditMeta } from '@/lib/schedule/edit-meta'
+import { getWorkplaceVacations } from '@/lib/vacations/pending'
 import { Card } from '@/components/ui/Card'
 import { Icon } from '@/components/ui/Icon'
 import { ScheduleClient } from './ScheduleClient'
@@ -28,9 +29,16 @@ export default async function SchedulePage({
   if (!workplace) redirect('/onboarding')
 
   const sp = await searchParams
-  const [view, weeks] = await Promise.all([
+  const todayISO = new Date().toISOString().slice(0, 10)
+  const [view, weeks, workerVacations] = await Promise.all([
     getScheduleView(supabase, workplace.id),
     listPublishedWeeks(supabase, workplace.id),
+    // Upcoming vacations of ANY status/kind for the "בקשות עובדים" per-worker
+    // vacation sheet — richer than view.vacations (approved-only, used for grid
+    // shading). Regular authed client: vacations_manager_write (owns_employee)
+    // now permits managers to SELECT directly — no service-role needed here,
+    // unlike the dashboard's pre-existing admin-client call to this same helper.
+    getWorkplaceVacations(supabase, workplace.id, todayISO),
   ])
   const currentPeriodId = view?.periodId
 
@@ -68,7 +76,7 @@ export default async function SchedulePage({
   return (
     <main className="schedule-main" style={{ background: 'var(--bg)', direction: 'rtl' }}>
       {view ? (
-        <ScheduleClient view={view} editMeta={editMeta} />
+        <ScheduleClient view={view} editMeta={editMeta} workerVacations={workerVacations} />
       ) : (
         <p style={{ textAlign: 'right', color: 'var(--text-2)' }}>
           לא ניתן לטעון את נתוני הסידור כרגע.

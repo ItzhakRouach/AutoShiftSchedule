@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/Card'
 import { Btn } from '@/components/ui/Btn'
 import { Icon } from '@/components/ui/Icon'
 import { formatHebDate } from '@/lib/dates/week'
-import type { WorkplaceVacation, VacationStatus } from '@/lib/vacations/pending'
+import type { WorkplaceVacation, VacationStatus, VacationKind } from '@/lib/vacations/pending'
 import { approveVacation, rejectVacation } from './vacation-actions'
 
 const STATUS_META: Record<VacationStatus, { label: string; color: string; soft: string }> = {
@@ -30,6 +30,15 @@ function StatusPill({ status }: { status: VacationStatus }) {
   )
 }
 
+function KindPill({ kind }: { kind: VacationKind }) {
+  if (kind !== 'miluim') return null
+  return (
+    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--warning)', background: 'var(--warning-soft)', padding: '2px 8px', borderRadius: 'var(--r-pill)' }}>
+      מילואים
+    </span>
+  )
+}
+
 function Row({ v, busy, onSet }: { v: WorkplaceVacation; busy: boolean; onSet: (s: 'approved' | 'rejected') => void }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
@@ -37,6 +46,7 @@ function Row({ v, busy, onSet }: { v: WorkplaceVacation; busy: boolean; onSet: (
         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
           <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{v.employeeName}</span>
           <StatusPill status={v.status} />
+          <KindPill kind={v.kind} />
         </div>
         <div style={{ fontSize: 12.5, color: 'var(--text-2)' }}>{range(v)}</div>
       </div>
