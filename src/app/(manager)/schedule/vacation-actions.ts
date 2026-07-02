@@ -18,8 +18,9 @@ export async function addWorkerVacation(
   employeeId: string,
   dateFrom: string,
   dateTo: string,
+  kind: 'vacation' | 'miluim' = 'vacation',
 ): Promise<Result> {
-  const parsed = managerAddVacationSchema.safeParse({ employeeId, dateFrom, dateTo })
+  const parsed = managerAddVacationSchema.safeParse({ employeeId, dateFrom, dateTo, kind })
   if (!parsed.success) {
     const first = parsed.error.issues[0]
     return { error: first?.message ?? 'נתונים לא תקינים' }
@@ -37,7 +38,9 @@ export async function addWorkerVacation(
     .maybeSingle()
   if (!emp) return { error: 'העובד לא נמצא' }
 
-  // Overlap check mirrors the employee-side one (pending OR approved blocks).
+  // Overlap check mirrors the employee-side one (pending OR approved blocks) —
+  // a miluim range overlapping a vacation range is still an overlap: one
+  // absence per period of time, regardless of kind.
   const { data: overlapping } = await supabase
     .from('employee_vacations')
     .select('id')
@@ -53,6 +56,7 @@ export async function addWorkerVacation(
     date_from: parsed.data.dateFrom,
     date_to: parsed.data.dateTo,
     status: 'approved', // the manager is the approver — no pending step needed
+    kind: parsed.data.kind,
   })
   if (error) return { error: 'שגיאה בהוספת חופשה' }
 

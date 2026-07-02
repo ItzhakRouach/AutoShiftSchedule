@@ -29,12 +29,15 @@ export const addVacationSchema = z
 
 export type AddVacationInput = z.infer<typeof addVacationSchema>
 
-/** Manager-initiated vacation for a worker, from the schedule requests view. */
+/** Manager-initiated vacation for a worker, from the schedule requests view.
+ *  `kind` distinguishes ordinary vacation from military reserve duty (מילואים)
+ *  — both are hard-off ranges for the scheduler, only the label differs. */
 export const managerAddVacationSchema = z
   .object({
     employeeId: z.string().uuid({ message: 'מזהה עובד לא תקין' }),
     dateFrom: z.string().regex(isoDateRegex, { message: 'תאריך התחלה לא תקין' }),
     dateTo: z.string().regex(isoDateRegex, { message: 'תאריך סיום לא תקין' }),
+    kind: z.enum(['vacation', 'miluim']).default('vacation'),
   })
   .refine((d) => d.dateTo >= d.dateFrom, {
     message: 'תאריך סיום לפני תאריך התחלה',
