@@ -83,16 +83,16 @@ export async function buildEngineInput(
   // `.in('employee_id', …)` filters) and the resolved prior/adjacent period
   // rows (for the cross-week metric/tail/head computations).
   const { employeeRoles, availability, vacations, priorDeficit, priorExtras, priorWeekTail, nextWeekHead } =
-    await fetchEmployeeScoped(
+    await fetchEmployeeScoped({
       supabase,
-      wp,
+      workplaceId: wp,
       employeeIds,
-      employees ?? [],
+      employees: employees ?? [],
       prior,
       priorAdjacent,
       nextAdjacent,
       weekStart,
-    )
+    })
 
   const rows: MapInput = {
     weekDates: weekDatesArr,

@@ -101,19 +101,27 @@ export async function fetchWorkplaceScoped(
   }
 }
 
+export interface FetchEmployeeScopedArgs {
+  supabase: SupabaseClient
+  workplaceId: string
+  employeeIds: string[]
+  employees: { id: string; min_shifts_per_week: number | null }[]
+  /** PUBLISHED prior period (fairness deficit/extras count ONLY this status). */
+  prior: PriorPeriodRow | null
+  /** Immediately-preceding period regardless of status (rest tail carry-over). */
+  priorAdjacent: PriorPeriodRow | null
+  /** Immediately-following period regardless of status (rest head carry-over). */
+  nextAdjacent: PriorPeriodRow | null
+  weekStart: string
+}
+
 /** Everything that depends on the STAGE-2 results: the employee id list (for
  *  the `.in('employee_id', …)` filters) and the resolved prior/adjacent period
- *  rows (for the cross-week metric/tail/head computations). */
-export async function fetchEmployeeScoped(
-  supabase: SupabaseClient,
-  workplaceId: string,
-  employeeIds: string[],
-  employees: { id: string; min_shifts_per_week: number | null }[],
-  prior: PriorPeriodRow | null,
-  priorAdjacent: PriorPeriodRow | null,
-  nextAdjacent: PriorPeriodRow | null,
-  weekStart: string,
-) {
+ *  rows (for the cross-week metric/tail/head computations). Named-params object
+ *  (not positional) because 3 same-typed `PriorPeriodRow | null` args in a row
+ *  is a transposition hazard that would silently corrupt fairness+rest. */
+export async function fetchEmployeeScoped(args: FetchEmployeeScopedArgs) {
+  const { supabase, workplaceId, employeeIds, employees, prior, priorAdjacent, nextAdjacent, weekStart } = args
   const [
     [{ data: employeeRoles }, { data: availability }, { data: vacations }],
     { deficit: priorDeficit, extras: priorExtras },
@@ -134,7 +142,9 @@ export async function fetchEmployeeScoped(
             .eq('status', 'approved'), // only manager-approved vacations are time off
         ])
       : Promise.resolve([{ data: [] as never[] }, { data: [] as never[] }, { data: [] as never[] }]),
+    // fairness counts only the PUBLISHED prior period.
     computePriorMetrics(supabase, prior, employees),
+    // rest tail/head use the ADJACENT periods regardless of status.
     computePriorWeekTail(supabase, workplaceId, priorAdjacent, weekStart),
     computeNextWeekHead(supabase, workplaceId, nextAdjacent, weekStart),
   ])
