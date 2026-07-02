@@ -21,10 +21,21 @@ export default function SwRegister() {
       return
     }
 
+    // When a new SW (bumped CACHE_NAME) takes control after a deploy, reload
+    // once so the shell + its embedded server-action IDs are fresh — otherwise
+    // a tab open across a deploy calls dead action IDs and every action errors.
+    let reloaded = false
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (reloaded) return
+      reloaded = true
+      window.location.reload()
+    })
+
     window.addEventListener('load', () => {
       navigator.serviceWorker
         .register('/sw.js')
         .then((registration) => {
+          registration.update()
           console.log('[SW] Registered:', registration.scope)
         })
         .catch((err) => {

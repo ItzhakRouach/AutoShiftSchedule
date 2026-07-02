@@ -1,7 +1,7 @@
 // Minimal app-shell service worker for the מִשְׁמֶרֶת PWA.
 // Network-first for navigations (so auth/redirects are never served stale),
 // cache-first for same-origin static assets. Only OK responses are cached.
-const CACHE_NAME = 'mishmeret-v1';
+const CACHE_NAME = 'mishmeret-v2';
 const APP_SHELL = ['/'];
 
 self.addEventListener('install', (event) => {

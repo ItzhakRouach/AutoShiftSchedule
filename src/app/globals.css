@@ -18,7 +18,7 @@ body {
    roster table is large and easy to read. Controls stay capped so buttons/banners
    don't stretch the full width. */
 .schedule-main {
-  max-width: 560px;
+  max-width: 640px;
   margin: 0 auto;
   padding: 24px 20px;
 }
@@ -26,9 +26,15 @@ body {
   max-width: 600px;
   margin: 0 auto;
 }
+/* Tablets/mid-size laptops: give the roster table real room sooner. */
+@media (min-width: 768px) {
+  .schedule-main {
+    max-width: 920px;
+  }
+}
 @media (min-width: 1024px) {
   .schedule-main {
-    max-width: 1200px;
+    max-width: min(1400px, 96vw);
     padding: 28px 32px;
   }
 }
