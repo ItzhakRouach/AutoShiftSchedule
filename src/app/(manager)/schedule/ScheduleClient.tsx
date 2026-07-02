@@ -182,8 +182,10 @@ export function ScheduleClient({ view, editMeta }: Props) {
               // The sheet already shows its own inline "שובץ ✓"/warning message;
               // once it closes (or immediately, for a warning that stays up) also
               // surface the shared בטל toast so sheet-made edits are reversible
-              // the same way fast tap/drag assigns are.
-              assign.setToast({ text: 'שובץ ✓', kind: 'ok', onUndo: () => assign.runUndo(undo) })
+              // the same way fast tap/drag assigns are. Removals (unassign/
+              // temp-remove) get 'הוסר ✓' instead of 'שובץ ✓'.
+              const removed = undo.kind === 'unassign' || undo.kind === 'temp-remove'
+              assign.setToast({ text: removed ? 'הוסר ✓' : 'שובץ ✓', kind: 'ok', onUndo: () => assign.runUndo(undo) })
             }}
           />
           <TwelvePairEditor day={pairDay} onClose={() => setPairDay(null)} view={view} meta={editMeta} />
