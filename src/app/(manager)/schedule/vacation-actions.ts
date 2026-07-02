@@ -6,19 +6,20 @@ import { authedWorkplace } from './edit-actions-helpers'
 
 type Result = { ok: true } | { error: string }
 
-const OVERLAP_MSG = 'טווח החופשה חופף לחופשה קיימת'
+const OVERLAP_MSG = 'הטווח חופף להיעדרות קיימת'
 
 /**
- * Manager adds (and auto-approves) a vacation for a worker in their workplace,
- * from the schedule "בקשות עובדים" view. Unlike the employee-submitted flow
- * (pending → manager approval), a manager-created vacation is approved
- * immediately since the manager IS the approver.
+ * Manager adds (and auto-approves) a היעדרות (absence) — vacation, מילואים or
+ * מחלה — for a worker in their workplace, from the schedule "בקשות עובדים"
+ * view. Unlike the employee-submitted flow (pending → manager approval), a
+ * manager-created absence is approved immediately since the manager IS the
+ * approver.
  */
 export async function addWorkerVacation(
   employeeId: string,
   dateFrom: string,
   dateTo: string,
-  kind: 'vacation' | 'miluim' = 'vacation',
+  kind: 'vacation' | 'miluim' | 'sick' = 'vacation',
 ): Promise<Result> {
   const parsed = managerAddVacationSchema.safeParse({ employeeId, dateFrom, dateTo, kind })
   if (!parsed.success) {
@@ -39,8 +40,8 @@ export async function addWorkerVacation(
   if (!emp) return { error: 'העובד לא נמצא' }
 
   // Overlap check mirrors the employee-side one (pending OR approved blocks) —
-  // a miluim range overlapping a vacation range is still an overlap: one
-  // absence per period of time, regardless of kind.
+  // any absence range overlapping another is still an overlap: one absence
+  // per period of time, regardless of kind.
   const { data: overlapping } = await supabase
     .from('employee_vacations')
     .select('id')
@@ -58,16 +59,16 @@ export async function addWorkerVacation(
     status: 'approved', // the manager is the approver — no pending step needed
     kind: parsed.data.kind,
   })
-  if (error) return { error: 'שגיאה בהוספת חופשה' }
+  if (error) return { error: 'שגיאה בהוספת היעדרות' }
 
   revalidatePath('/schedule')
   return { ok: true }
 }
 
-/** Manager removes a worker's vacation (e.g. to undo a wrong entry). Scoped to
+/** Manager removes a worker's היעדרות (e.g. to undo a wrong entry). Scoped to
  *  the manager's active workplace via a join through employees. */
 export async function removeWorkerVacation(vacationId: string): Promise<Result> {
-  if (!vacationId) return { error: 'מזהה חופשה חסר' }
+  if (!vacationId) return { error: 'מזהה היעדרות חסר' }
 
   const { supabase, workplace, redirectLogin } = await authedWorkplace()
   if (redirectLogin) return { error: 'אין הרשאה' }
@@ -78,7 +79,7 @@ export async function removeWorkerVacation(vacationId: string): Promise<Result> 
     .select('id, employee_id')
     .eq('id', vacationId)
     .maybeSingle()
-  if (!vac) return { error: 'החופשה לא נמצאה' }
+  if (!vac) return { error: 'ההיעדרות לא נמצאה' }
 
   const { data: emp } = await supabase
     .from('employees')
@@ -89,7 +90,7 @@ export async function removeWorkerVacation(vacationId: string): Promise<Result> 
   if (!emp) return { error: 'אין הרשאה' }
 
   const { error } = await supabase.from('employee_vacations').delete().eq('id', vacationId)
-  if (error) return { error: 'שגיאה במחיקת חופשה' }
+  if (error) return { error: 'שגיאה במחיקת היעדרות' }
 
   revalidatePath('/schedule')
   return { ok: true }

@@ -136,7 +136,7 @@ export function RequestsOverviewRow({ emp, rowIndex, days, byDay, empVacs, isoBy
             fontFamily: 'var(--font)', padding: '2px 8px', borderRadius: 'var(--r-pill)',
           }}
         >
-          חופשה
+          היעדרות
         </button>
       </td>
       {days.map((d) => {

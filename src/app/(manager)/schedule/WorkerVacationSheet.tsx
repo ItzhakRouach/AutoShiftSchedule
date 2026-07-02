@@ -9,14 +9,10 @@ import { InlineAlert } from '@/components/ui/InlineAlert'
 import { formatHebDate, hebrewDayName } from '@/lib/dates/week'
 import { rangesOverlap } from '@/lib/dates/ranges'
 import type { WorkplaceVacation, VacationKind, VacationStatus } from '@/lib/vacations/pending'
+import { ABSENCE_KIND_META, ABSENCE_KIND_OPTIONS } from '@/lib/vacations/kind-meta'
 import { addWorkerVacation, removeWorkerVacation } from './vacation-actions'
 
-const OVERLAP_MSG = 'טווח החופשה חופף לחופשה קיימת'
-
-const KIND_OPTIONS = [
-  { value: 'vacation', label: 'חופשה' },
-  { value: 'miluim', label: 'מילואים' },
-]
+const OVERLAP_MSG = 'הטווח חופף להיעדרות קיימת'
 
 const STATUS_META: Record<VacationStatus, { label: string; color: string; soft: string }> = {
   pending: { label: 'ממתין לאישור', color: 'var(--warning)', soft: 'var(--warning-soft)' },
@@ -51,9 +47,10 @@ interface Props {
   onClose: () => void
 }
 
-/** Manager-side sheet: add/remove a worker's vacation or מילואים range, from
- *  the schedule "בקשות עובדים" view. Mirrors VacationSection's employee-side
- *  UX, split into its own file to keep RequestsOverviewRow ≤200 lines. */
+/** Manager-side sheet: add/remove a worker's היעדרות (absence) range — vacation,
+ *  מילואים or מחלה — from the schedule "בקשות עובדים" view. Mirrors
+ *  VacationSection's employee-side UX, split into its own file to keep
+ *  RequestsOverviewRow ≤200 lines. */
 export function WorkerVacationSheet({ employeeId, employeeName, vacations, onClose }: Props) {
   const router = useRouter()
   const [dateFrom, setDateFrom] = useState('')
@@ -97,10 +94,10 @@ export function WorkerVacationSheet({ employeeId, employeeName, vacations, onClo
   }
 
   return (
-    <Sheet open onClose={onClose} title={`חופשה — ${employeeName}`}>
+    <Sheet open onClose={onClose} title={`היעדרות — ${employeeName}`}>
       {vacations.length === 0 ? (
         <div style={{ fontSize: 14, color: 'var(--text-3)', marginBottom: 16, padding: '8px 0' }}>
-          אין חופשות מוגדרות
+          אין היעדרויות מוגדרות
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
@@ -118,7 +115,7 @@ export function WorkerVacationSheet({ employeeId, employeeName, vacations, onClo
                 </div>
                 <div style={{ display: 'flex', gap: 6 }}>
                   <Chip {...STATUS_META[v.status]} />
-                  {v.kind === 'miluim' && <Chip color="var(--warning)" soft="var(--warning-soft)" label="מילואים" />}
+                  {v.kind !== 'vacation' && <Chip {...ABSENCE_KIND_META[v.kind]} />}
                 </div>
               </div>
               <button
@@ -137,10 +134,13 @@ export function WorkerVacationSheet({ employeeId, employeeName, vacations, onClo
       )}
 
       <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-2)', marginBottom: 10 }}>
-        הוספת חופשה
+        הוספת היעדרות
+      </div>
+      <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-3)', marginBottom: 6 }}>
+        סוג היעדרות
       </div>
       <div style={{ marginBottom: 12 }}>
-        <Segmented options={KIND_OPTIONS} value={kind} onChange={(v) => setKind(v as VacationKind)} />
+        <Segmented options={ABSENCE_KIND_OPTIONS} value={kind} onChange={(v) => setKind(v as VacationKind)} />
       </div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
         <input
@@ -171,7 +171,7 @@ export function WorkerVacationSheet({ employeeId, employeeName, vacations, onClo
         onClick={handleAdd}
         disabled={isPending || !dateFrom || !dateTo}
       >
-        הוסף חופשה
+        הוסף היעדרות
       </Btn>
     </Sheet>
   )
