@@ -4,30 +4,12 @@ import React, { useState, useTransition } from 'react'
 import { Card } from '@/components/ui/Card'
 import { Btn } from '@/components/ui/Btn'
 import { InlineAlert } from '@/components/ui/InlineAlert'
-import { formatHebDate, hebrewDayName } from '@/lib/dates/week'
 import { rangesOverlap } from '@/lib/dates/ranges'
-import type { VacationRow, VacationStatus } from '@/lib/requests/context'
+import type { VacationRow } from '@/lib/requests/context'
 import { addVacation, removeVacation } from './vacation-actions'
+import { VacationRowCard } from './VacationRowCard'
 
 const OVERLAP_MSG = 'טווח החופשה חופף לחופשה קיימת'
-
-const STATUS_META: Record<VacationStatus, { label: string; color: string; soft: string }> = {
-  pending: { label: 'ממתין לאישור', color: 'var(--warning)', soft: 'var(--warning-soft)' },
-  approved: { label: 'אושר ✓', color: 'var(--success)', soft: 'var(--success-soft)' },
-  rejected: { label: 'נדחה', color: 'var(--danger)', soft: 'var(--danger-soft)' },
-}
-
-function VacationStatusBadge({ status }: { status: VacationStatus }) {
-  const m = STATUS_META[status] ?? STATUS_META.pending
-  return (
-    <span style={{
-      alignSelf: 'flex-start', fontSize: 11.5, fontWeight: 700, color: m.color,
-      background: m.soft, padding: '2px 9px', borderRadius: 'var(--r-pill)',
-    }}>
-      {m.label}
-    </span>
-  )
-}
 
 interface VacationSectionProps {
   employeeId: string
@@ -112,43 +94,13 @@ export function VacationSection({ employeeId, vacations, isReadOnly }: VacationS
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
           {vacations.map((v) => (
-            <Card
+            <VacationRowCard
               key={v.id}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '12px 14px',
-              }}
-            >
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
-                  יום {hebrewDayName(v.date_from)} {formatHebDate(v.date_from)}
-                  {v.date_from !== v.date_to && (
-                    <> — יום {hebrewDayName(v.date_to)} {formatHebDate(v.date_to)}</>
-                  )}
-                </div>
-                <VacationStatusBadge status={v.status} />
-              </div>
-              {!isReadOnly && (
-                <button
-                  onClick={() => handleRemove(v.id)}
-                  disabled={isPending}
-                  style={{
-                    border: 'none',
-                    background: 'transparent',
-                    color: 'var(--danger)',
-                    cursor: 'pointer',
-                    fontSize: 13,
-                    fontWeight: 600,
-                    fontFamily: 'var(--font)',
-                    padding: '4px 8px',
-                  }}
-                >
-                  הסר
-                </button>
-              )}
-            </Card>
+              vacation={v}
+              isReadOnly={isReadOnly}
+              disabled={isPending}
+              onRemove={handleRemove}
+            />
           ))}
         </div>
       )}
