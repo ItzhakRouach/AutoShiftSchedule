@@ -5,6 +5,8 @@ import { redirect } from 'next/navigation'
 import { validateManualAssignment } from '@/lib/schedule/validate-edit'
 import { resolveShiftKey } from '@/lib/schedule/shift-types-cache'
 import type { UndoSnapshot } from '@/lib/schedule/undo-core'
+import { buildManualTwelveFills } from '@/lib/schedule/twelve-fills'
+import type { TwelveHourKey } from '@/lib/scheduling/types'
 import { authedWorkplace, slotCapacityError, GENERIC_ERROR, type EditResult } from './edit-actions-helpers'
 
 const TWELVE_H_WARNING =
@@ -76,6 +78,9 @@ export async function assignSlot(
         shift_type_id: shiftTypeId,
         role_id: roleId,
         source: 'manual',
+        // Explicit null: a manual 8h assignment overwriting a stale 12h row
+        // must not leave its old fills behind.
+        twelve_fills: null,
       },
       { onConflict: 'period_id,employee_id,day_of_week' },
     )
@@ -148,6 +153,10 @@ export async function assignTwelveHour(
   const offNote = verdict.severity === 'soft' ? verdict.reason : undefined
 
   // unique(period,employee,day) enforces one row/day; the 12h replaces any base.
+  // Manual 12h picks are always single-role, so fills = every FILLS window
+  // under roleId (set explicitly — an upsert overwriting a stale 12h row must
+  // never leave old fills behind).
+  const twelveFills = buildManualTwelveFills(shiftKey as TwelveHourKey, roleId)
   const { error } = await supabase
     .from('assignments')
     .upsert(
@@ -158,6 +167,7 @@ export async function assignTwelveHour(
         shift_type_id: variantShiftTypeId,
         role_id: roleId,
         source: 'fallback_12h',
+        twelve_fills: twelveFills,
       },
       { onConflict: 'period_id,employee_id,day_of_week' },
     )

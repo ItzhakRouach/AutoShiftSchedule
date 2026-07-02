@@ -4,6 +4,7 @@
 // requirement is now covered by m12_day is removed — without leaving any noon
 // slot for that role under-covered.
 import type { ShiftId } from '@/lib/domain/constants'
+import type { TwelveFillEntry } from './twelve-fills'
 
 /** A base-shift assignment on the target day, scoped to one role. */
 export interface DayRoleSlot {
@@ -43,4 +44,29 @@ export function planTwelvePair(args: PlanArgs): PairPlan {
   // Covered by m12_day = 1. So removable = current + 1 - required, capped at 1.
   const removable = Math.max(0, Math.min(1, noonEmployees.length + 1 - noonRequired))
   return { noonToRemove: noonEmployees.slice(0, removable) }
+}
+
+export interface PairTwelveFills {
+  morning: TwelveFillEntry[]
+  night: TwelveFillEntry[]
+}
+
+/**
+ * The twelve_fills plan for the two rows an applied pair writes: the morning
+ * row covers morning (under the morning person's OWN role) + noon (under the
+ * wizard's chosen pair role — the noon slot this pair frees up); the night
+ * row covers night under the night person's OWN (preserved) role.
+ */
+export function pairTwelveFills(
+  morningRoleId: string,
+  nightRoleId: string,
+  pairRoleId: string,
+): PairTwelveFills {
+  return {
+    morning: [
+      { shift: 'morning', role_id: morningRoleId },
+      { shift: 'noon', role_id: pairRoleId },
+    ],
+    night: [{ shift: 'night', role_id: nightRoleId }],
+  }
 }

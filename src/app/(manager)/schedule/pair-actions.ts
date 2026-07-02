@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveWorkplace } from '@/lib/workplace/current'
 import { validateManualAssignment } from '@/lib/schedule/validate-edit'
-import { planTwelvePair, type DayRoleSlot } from '@/lib/schedule/twelve-pair-core'
+import { planTwelvePair, pairTwelveFills, type DayRoleSlot } from '@/lib/schedule/twelve-pair-core'
 import { buildPairSnapshot, type DaySnapshotRow } from '@/lib/schedule/pair-snapshot'
 import { getWorkplaceShiftTypes } from '@/lib/schedule/shift-types-cache'
 import type { ShiftId } from '@/lib/domain/constants'
@@ -97,10 +97,12 @@ export async function applyTwelvePair(
     )
   if (snapErr) return { ok: false, error: GENERIC }
 
+  // Fills set explicitly (stale-fills prevention) — see pairTwelveFills.
+  const fills = pairTwelveFills(morningRoleId, nightRoleId, roleId)
   const base = { period_id: periodId, day_of_week: dayIndex, source: 'fallback_12h' }
   const { error: upErr } = await supabase.from('assignments').upsert([
-    { ...base, employee_id: morningEmployeeId, shift_type_id: dayId, role_id: morningRoleId },
-    { ...base, employee_id: nightEmployeeId, shift_type_id: nightId, role_id: nightRoleId },
+    { ...base, employee_id: morningEmployeeId, shift_type_id: dayId, role_id: morningRoleId, twelve_fills: fills.morning },
+    { ...base, employee_id: nightEmployeeId, shift_type_id: nightId, role_id: nightRoleId, twelve_fills: fills.night },
   ], { onConflict: 'period_id,employee_id,day_of_week' })
   if (upErr) return { ok: false, error: GENERIC }
 
@@ -168,10 +170,12 @@ export async function cancelTwelvePair(
   if (delErr) return { ok: false, error: GENERIC }
 
   if (toRestore.length > 0) {
+    // Snapshotted rows are the pre-pair base 8h assignments — never 12h fills.
     const rows = toRestore.map((r) => ({
       period_id: periodId, day_of_week: dayIndex,
       employee_id: r.employee_id, shift_type_id: r.shift_type_id,
       role_id: r.role_id, source: r.source ?? 'manual',
+      twelve_fills: null,
     }))
     const { error: restoreErr } = await supabase
       .from('assignments')

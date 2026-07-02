@@ -81,6 +81,9 @@ export async function undoEdit(periodId: string, snapshot: UndoSnapshot): Promis
   }
 
   if (plan.op === 'restore-emp-day-row') {
+    // twelve_fills: null — undoing back to a snapshotted row degrades any 12h
+    // fill plan to the legacy heuristic; the snapshot only ever captured base
+    // shift_type_id/role_id, never a fills plan, so this is accepted.
     const { error } = await supabase.from('assignments').upsert(
       {
         period_id: periodId,
@@ -89,6 +92,7 @@ export async function undoEdit(periodId: string, snapshot: UndoSnapshot): Promis
         shift_type_id: plan.shiftTypeId,
         role_id: plan.roleId,
         source: plan.source,
+        twelve_fills: null,
       },
       { onConflict: 'period_id,employee_id,day_of_week' },
     )

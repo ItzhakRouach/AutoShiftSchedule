@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { planTwelvePair, type DayRoleSlot } from './twelve-pair-core'
+import { planTwelvePair, pairTwelveFills, type DayRoleSlot } from './twelve-pair-core'
 
 const slots = (...s: DayRoleSlot[]) => s
 
@@ -65,5 +65,25 @@ describe('planTwelvePair', () => {
       noonRequired: 1,
     })
     expect(plan.noonToRemove).toEqual([])
+  })
+})
+
+describe('pairTwelveFills', () => {
+  it('morning row fills morning under the morning role + noon under the pair role', () => {
+    const fills = pairTwelveFills('role-morning', 'role-night', 'role-pair')
+    expect(fills.morning).toEqual([
+      { shift: 'morning', role_id: 'role-morning' },
+      { shift: 'noon', role_id: 'role-pair' },
+    ])
+  })
+
+  it('night row fills night under the (preserved) night role', () => {
+    const fills = pairTwelveFills('role-morning', 'role-night', 'role-pair')
+    expect(fills.night).toEqual([{ shift: 'night', role_id: 'role-night' }])
+  })
+
+  it('when the night role equals the pair role, night fill still uses the night role', () => {
+    const fills = pairTwelveFills('role-morning', 'role-pair', 'role-pair')
+    expect(fills.night).toEqual([{ shift: 'night', role_id: 'role-pair' }])
   })
 })
