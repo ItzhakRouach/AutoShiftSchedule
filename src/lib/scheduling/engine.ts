@@ -20,7 +20,7 @@ function reqOf(input: EngineInput, empId: string, day: number) {
 export function generateSchedule(input: EngineInput): EngineResult {
   // Run the engine's real fill ONCE. Feasibility is derived from this same
   // result (FIX B), guaranteeing coverage.filledSlots == feasibility.maxStaffable.
-  const st = runFill(input)
+  const st = runFill(input, input.skipTwelve ?? false)
 
   const warnings = collectWarnings(input, st.grid)
   const feasibility = feasibilityFromFill(input, st)

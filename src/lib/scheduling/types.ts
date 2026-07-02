@@ -97,6 +97,8 @@ export interface EngineInput {
   nextWeekHead?: Record<string, number[]>
   /** Dev-only opt-in: measure each fill pass's wall time into `EngineResult.timings` (pure; never affects decisions/determinism). Default off. */
   collectTimings?: boolean
+  /** 8h-first generation: true skips the 12h auto-coverage pass — `twelveHourAssignments` stays empty, gaps surface as `warnings` (`twelveHourSuggestions` still computed). Default false. */
+  skipTwelve?: boolean
 }
 
 /** A concrete assignment of an employee to a day/shift/role. */

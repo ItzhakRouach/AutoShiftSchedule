@@ -100,6 +100,7 @@ export function input(over: Partial<EngineInput> & { employees: Employee[] }): E
     priorWeekTail: over.priorWeekTail,
     nextWeekHead: over.nextWeekHead,
     collectTimings: over.collectTimings,
+    skipTwelve: over.skipTwelve,
   }
 }
 
