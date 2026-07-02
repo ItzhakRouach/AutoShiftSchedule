@@ -3,7 +3,8 @@
 import { useMemo, useState } from 'react'
 import { type ShiftId } from '@/lib/domain/constants'
 import { shiftMetaFromRow, roleMetaFromRow } from '@/lib/domain/meta'
-import { buildWeekGrid, buildEmpTotals, coveredByTwelve, cellCapacity } from '@/lib/schedule/week-table-data'
+import { buildWeekGrid, buildEmpTotals, cellCapacity } from '@/lib/schedule/week-table-data'
+import { coveredByTwelve } from '@/lib/schedule/week-table-twelve'
 import type { ScheduleView } from '@/lib/schedule/view-data'
 import type { SlotCtx } from './SwapEditor'
 import type { CellAssign } from './useCellAssign'
@@ -72,7 +73,7 @@ export function WeekTable({ view, onSlot, onDayPair, assign, initialSelectedId, 
   // Heavy derived data — recompute only when `view` actually changes. Without
   // useMemo, every cell-click (which sets selectedId) would re-walk the grid.
   const weekGrid = useMemo(() => buildWeekGrid(view), [view])
-  const coveredSet = useMemo(() => coveredByTwelve(view), [view])
+  const coveredMap = useMemo(() => coveredByTwelve(view), [view])
   const empTotals = useMemo(() => buildEmpTotals(view, view.employees), [view])
   const empById = useMemo(() => new Map(view.employees.map((e) => [e.id, e])), [view.employees])
   const roleById = useMemo(() => new Map(view.roles.map((r) => [r.id, r])), [view.roles])
@@ -153,11 +154,14 @@ export function WeekTable({ view, onSlot, onDayPair, assign, initialSelectedId, 
                     {days.map((d) => {
                       const requiredCount = view.requirements[d.index]?.[shift]?.[roleId] ?? 0
                       const cellEntries = weekGrid[d.index]?.[shift]?.[roleId] ?? []
-                      const covered = coveredSet.has(`${d.index}:${shift}:${roleId}`)
-                      // A 12h shift covering this slot counts as 1 occupant even
+                      const coveredCount = coveredMap.get(`${d.index}:${shift}:${roleId}`) ?? 0
+                      const covered = coveredCount > 0
+                      // Each 12h shift covering this slot counts as 1 occupant even
                       // though its NAME renders in a different (anchor) cell —
                       // stay consistent with the "12ש׳" chip / isFilled treatment.
-                      const assignedCount = cellEntries.length + (covered ? 1 : 0)
+                      // coveredCount can be >1 (two 12h shifts covering the same
+                      // cell), fixing the old Set-based "2/1" undercount bug.
+                      const assignedCount = cellEntries.length + coveredCount
                       const capacity = cellCapacity(assignedCount, requiredCount)
                       const isBusy = !!assign?.pendingSlot
                         && assign.pendingSlot.day === d.index

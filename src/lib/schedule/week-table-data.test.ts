@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildWeekGrid, buildEmpTotals, coveredByTwelve, cellCapacity } from './week-table-data'
+import { buildWeekGrid, buildEmpTotals, cellCapacity } from './week-table-data'
 import type { ScheduleView } from './view-data'
 
 function makeView(overrides: Partial<ScheduleView> = {}): ScheduleView {
@@ -69,46 +69,9 @@ describe('buildWeekGrid — base assignments', () => {
   })
 })
 
-describe('buildWeekGrid — 12h expansion', () => {
-  it('places m12_day in its anchor (morning) only; noon is covered, not filled', () => {
-    // m12_day fills ['morning', 'noon'] → anchor = morning; noon stays empty (covered).
-    const view = makeView({
-      grid: {},
-      twelve: [{ day: 0, variant: 'm12_day', roleId: 'r-guard', employeeId: 'e1' }],
-    })
-    const grid = buildWeekGrid(view)
-    expect(grid[0]?.morning?.['r-guard'] ?? []).toEqual([{ employeeId: 'e1', is12h: true, requested: false, variant: 'm12_day' }])
-    // noon is left EMPTY in the grid…
-    expect(grid[0]?.noon?.['r-guard'] ?? []).toHaveLength(0)
-    expect(grid[0]?.night?.['r-guard'] ?? []).toHaveLength(0)
-    // …but flagged covered (so the table won't mark it "unfilled").
-    expect(coveredByTwelve(view).has('0:noon:r-guard')).toBe(true)
-  })
-
-  it('expands m12_night into night only', () => {
-    // m12_night fills ['night'] per TWELVE_HOUR_FILLS
-    const view = makeView({
-      grid: {},
-      twelve: [{ day: 1, variant: 'm12_night', roleId: 'r-achm', employeeId: 'e2' }],
-    })
-    const grid = buildWeekGrid(view)
-    expect(grid[1]?.night?.['r-achm'] ?? []).toEqual([{ employeeId: 'e2', is12h: true, requested: false, variant: 'm12_night' }])
-    expect(grid[1]?.morning?.['r-achm'] ?? []).toHaveLength(0)
-  })
-
-  it('m12_night marks noon as covered at the 12h person\'s role (physical overlap)', () => {
-    // m12_night = 19–07; physically covers ['noon','night']. Anchor=night. So
-    // an empty noon cell at the SAME role (e.g. מוקדן when the wizard pair was
-    // אחמ״ש) should render the 12ש׳ chip — not "לא מאויש".
-    const view = makeView({
-      grid: {},
-      twelve: [{ day: 1, variant: 'm12_night', roleId: 'r-moked', employeeId: 'e2' }],
-    })
-    const covered = coveredByTwelve(view)
-    expect(covered.has('1:noon:r-moked')).toBe(true)
-    expect(covered.has('1:night:r-moked')).toBe(false) // anchor — the name lives here
-  })
-})
+// buildWeekGrid 12h-expansion + coveredByTwelve behavior (legacy heuristic,
+// cross-role fills, anchor gap-preference) is now pinned in
+// week-table-twelve.test.ts, alongside the fills-aware helpers it tests.
 
 describe('buildEmpTotals', () => {
   it('counts base assignments per employee', () => {
