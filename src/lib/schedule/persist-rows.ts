@@ -5,6 +5,7 @@
 // scheduling logic" rule.
 
 import type { EngineResult } from '@/lib/scheduling/types'
+import { buildEngineTwelveFills, type TwelveFillEntry } from './twelve-fills'
 
 export interface AssignmentInsertRow {
   period_id: string
@@ -13,6 +14,9 @@ export interface AssignmentInsertRow {
   shift_type_id: string
   role_id: string
   source: string
+  /** Real 12h fill plan (see twelve-fills.ts); null for 8h rows and for 12h
+   *  rows whose fills couldn't be resolved. */
+  twelve_fills?: TwelveFillEntry[] | null
 }
 
 export interface PreservedRow {
@@ -66,10 +70,13 @@ export function buildAssignmentRows(
     seen.add(dayKey)
     if (!replaceManual && preservedSet.has(dayKey)) continue
     const shiftTypeId = allKeyToShiftTypeId[t.variant]
-    // role: the variant fills (possibly two roles); persist the first covered.
+    // role: the variant fills (possibly two roles); persist the first covered
+    // (back-compat with pre-fills consumers of role_id).
     const firstShift = Object.keys(t.rolesByShift)[0] as keyof typeof t.rolesByShift
     const roleId = nameToRoleId[t.rolesByShift[firstShift] as string]
     if (!shiftTypeId || !roleId) continue
+    const twelveFills = buildEngineTwelveFills(t.variant, t.rolesByShift, nameToRoleId)
+    if (!twelveFills) continue
     rows.push({
       period_id: periodId,
       employee_id: t.employeeId,
@@ -77,6 +84,7 @@ export function buildAssignmentRows(
       shift_type_id: shiftTypeId,
       role_id: roleId,
       source: 'auto',
+      twelve_fills: twelveFills,
     })
   }
 
@@ -98,6 +106,7 @@ export function buildAssignmentRows(
         shift_type_id: shiftTypeId,
         role_id: roleId,
         source: 'auto',
+        twelve_fills: null,
       })
     }
   }

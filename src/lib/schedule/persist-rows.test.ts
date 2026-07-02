@@ -61,15 +61,18 @@ describe('buildAssignmentRows', () => {
 
     const rows = buildAssignmentRows(result, baseCtx())
 
-    expect(rows).toEqual([
-      {
-        period_id: PERIOD_ID,
-        employee_id: 'emp-1',
-        day_of_week: 2,
-        shift_type_id: 'st-m12-day',
-        role_id: 'role-ahmash',
-        source: 'auto',
-      },
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({
+      period_id: PERIOD_ID,
+      employee_id: 'emp-1',
+      day_of_week: 2,
+      shift_type_id: 'st-m12-day',
+      role_id: 'role-ahmash',
+      source: 'auto',
+    })
+    expect(rows[0].twelve_fills).toEqual([
+      { shift: 'morning', role_id: 'role-ahmash' },
+      { shift: 'noon', role_id: 'role-ahmash' },
     ])
   })
 
@@ -109,16 +112,16 @@ describe('buildAssignmentRows', () => {
 
     const rows = buildAssignmentRows(result, ctx)
 
-    expect(rows).toEqual([
-      {
-        period_id: PERIOD_ID,
-        employee_id: 'emp-1',
-        day_of_week: 0,
-        shift_type_id: 'st-m12-night',
-        role_id: 'role-mavtach',
-        source: 'auto',
-      },
-    ])
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({
+      period_id: PERIOD_ID,
+      employee_id: 'emp-1',
+      day_of_week: 0,
+      shift_type_id: 'st-m12-night',
+      role_id: 'role-mavtach',
+      source: 'auto',
+    })
+    expect(rows[0].twelve_fills).toEqual([{ shift: 'night', role_id: 'role-mavtach' }])
   })
 
   it('maps plain 8h assignments to day/shift/role/source correctly', () => {
@@ -134,22 +137,8 @@ describe('buildAssignmentRows', () => {
     const rows = buildAssignmentRows(result, baseCtx())
 
     expect(rows).toEqual([
-      {
-        period_id: PERIOD_ID,
-        employee_id: 'emp-3',
-        day_of_week: 3,
-        shift_type_id: 'st-noon',
-        role_id: 'role-mokdan',
-        source: 'auto',
-      },
-      {
-        period_id: PERIOD_ID,
-        employee_id: 'emp-3',
-        day_of_week: 4,
-        shift_type_id: 'st-night',
-        role_id: 'role-mavtach',
-        source: 'auto',
-      },
+      { period_id: PERIOD_ID, employee_id: 'emp-3', day_of_week: 3, shift_type_id: 'st-noon', role_id: 'role-mokdan', source: 'auto', twelve_fills: null },
+      { period_id: PERIOD_ID, employee_id: 'emp-3', day_of_week: 4, shift_type_id: 'st-night', role_id: 'role-mavtach', source: 'auto', twelve_fills: null },
     ])
   })
 
