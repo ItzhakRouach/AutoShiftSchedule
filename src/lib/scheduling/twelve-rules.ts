@@ -29,6 +29,10 @@ export interface TwelveCtx {
   request: DayRequest
   current: Assignment[]
   settings: Settings
+  /** Cross-week rest carry-over — see CheckContext.priorTail in constraints.ts. */
+  priorTail?: number[]
+  /** Cross-week rest carry-over — see CheckContext.nextHead in constraints.ts. */
+  nextHead?: number[]
 }
 
 /** Absolute [start, end) the 12h variant occupies on `day`. */
@@ -61,6 +65,14 @@ export function canTwelve(ctx: TwelveCtx): boolean {
   const [vs, ve] = interval(ctx.variant, ctx.meta.index)
   for (const a of ctx.current) {
     if (gapToCommitted(vs, ve, a) < ctx.settings.minRestHours) return false
+  }
+  if (ctx.priorTail && ctx.priorTail.length > 0) {
+    const priorOk = ctx.priorTail.every((endAbs) => vs - endAbs >= ctx.settings.minRestHours)
+    if (!priorOk) return false
+  }
+  if (ctx.nextHead && ctx.nextHead.length > 0) {
+    const nextOk = ctx.nextHead.every((headStart) => headStart - ve >= ctx.settings.minRestHours)
+    if (!nextOk) return false
   }
   return true
 }

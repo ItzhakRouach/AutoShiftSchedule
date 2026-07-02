@@ -36,7 +36,16 @@ const PREFERRED: TwelveHourKey[] = ['m12_day', 'm12_night']
 /** Hard-constraint check for `e` taking `variant` on `day`, ignoring `absorb`. */
 function legal(input: EngineInput, st: FillState, e: Employee, meta: DayMeta, variant: TwelveHourKey, absorb: Assignment | null): boolean {
   const current = absorb ? st.committed[e.id].filter((x) => x !== absorb) : st.committed[e.id]
-  return canTwelve({ emp: e, meta, variant, request: reqOf(input, e.id, meta.index), current, settings: input.settings })
+  return canTwelve({
+    emp: e,
+    meta,
+    variant,
+    request: reqOf(input, e.id, meta.index),
+    current,
+    settings: input.settings,
+    priorTail: input.priorWeekTail?.[e.id],
+    nextHead: input.nextWeekHead?.[e.id],
+  })
 }
 
 /** One greedy assignment of `variant` on the day; returns true if it committed. */
