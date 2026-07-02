@@ -70,13 +70,14 @@ export function buildAssignmentRows(
     seen.add(dayKey)
     if (!replaceManual && preservedSet.has(dayKey)) continue
     const shiftTypeId = allKeyToShiftTypeId[t.variant]
-    // role: the variant fills (possibly two roles); persist the first covered
-    // (back-compat with pre-fills consumers of role_id).
-    const firstShift = Object.keys(t.rolesByShift)[0] as keyof typeof t.rolesByShift
-    const roleId = nameToRoleId[t.rolesByShift[firstShift] as string]
-    if (!shiftTypeId || !roleId) continue
+    if (!shiftTypeId) continue
+    // Compute fills first to derive role_id consistently from fills[0].
     const twelveFills = buildEngineTwelveFills(t.variant, t.rolesByShift, nameToRoleId)
     if (!twelveFills) continue
+    // role_id: derived from the first fill in the variant's order (invariant:
+    // role_id === twelveFills[0].role_id). This guarantees consistency even if
+    // rolesByShift keys diverge from FILLS order.
+    const roleId = twelveFills[0].role_id
     rows.push({
       period_id: periodId,
       employee_id: t.employeeId,

@@ -148,4 +148,24 @@ describe('buildAssignmentRows — twelve_fills', () => {
     expect(rows).toHaveLength(1)
     expect(rows[0].twelve_fills).toBeNull()
   })
+
+  it('role_id invariant: cross-role 12h row has role_id === twelveFills[0].role_id', () => {
+    // Enforce that role_id is derived from fills[0], not from rolesByShift order.
+    const result: ResultInput = {
+      twelveHourAssignments: [
+        {
+          employeeId: 'emp-6',
+          day: 4,
+          variant: 'm12_day',
+          rolesByShift: { morning: 'מוקדן', noon: 'אחמ"ש' },
+        },
+      ],
+      assignmentsByEmployee: {},
+    }
+
+    const rows = buildAssignmentRows(result, baseCtx())
+
+    expect(rows).toHaveLength(1)
+    expect(rows[0].role_id).toBe(rows[0].twelve_fills![0].role_id)
+  })
 })
