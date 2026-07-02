@@ -5,121 +5,15 @@ import { checkFeasibility } from '@/lib/scheduling'
 import { buildEngineInput } from './build-input'
 import { weekDatesFrom } from './map-rows'
 import { shiftMetaFromRow, type ShiftDisplay } from '@/lib/domain/meta'
-import { buildNightBeforeByDay, toSerializable, type NightBeforeMap } from './night-before'
+import { buildNightBeforeByDay, toSerializable } from './night-before'
 import { buildDayInfos, splitAssignments } from './view-data-grid'
 import { getSignedScheduleImageUrl } from '@/lib/publish/image'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { FeasibilityResult, ShiftKey } from '@/lib/scheduling/types'
 import type { AbsenceKind } from '@/lib/vacations/kind-meta'
+import { buildRequestedSet, type ScheduleView, type ViewReq, type ViewRequest } from './view-types'
 
-export interface ViewEmployee { id: string; name: string; color: string }
-export interface ViewRole { id: string; name: string; color?: string; rank?: number }
-export interface DayInfo { index: number; short: string; date: string }
-/** assignments[day][shiftKey][roleId] = employeeId[] */
-export type ViewGrid = Record<number, Record<string, Record<string, string[]>>>
-/** requirements[day][shiftKey][roleId] = count */
-export type ViewReq = Record<number, Record<string, Record<string, number>>>
-
-/** A persisted 12h assignment, surfaced separately so it renders distinctly. */
-export interface ViewTwelve {
-  day: number
-  variant: string // ShiftId (12h key)
-  roleId: string
-  employeeId: string
-}
-
-/** An ad-hoc free-text "temp" worker placed in a cell (no roster employee). */
-export interface ViewTempEntry {
-  day: number
-  shiftKey: string // base ShiftKey the temp fills
-  roleId: string
-  assignmentId: string
-  name: string
-}
-
-/** One employee's request for a single day. */
-export interface ViewRequest {
-  employeeId: string
-  dayOfWeek: number
-  isOff: boolean
-  preferredShiftIds: string[]
-}
-
-/** A manager-assigned day note (רענון / free text) marking an employee off-shift. */
-export interface DayNote {
-  employeeId: string
-  day: number
-  label: string
-}
-
-/** One vacation row surfaced to the manager view — inclusive date range. */
-export interface ViewVacation {
-  employeeId: string
-  dateFrom: string
-  dateTo: string
-  kind: AbsenceKind
-}
-
-export interface ScheduleView {
-  periodId: string
-  status: string
-  weekStart: string
-  days: DayInfo[]
-  shiftKeys: ShiftKey[]
-  roles: ViewRole[]
-  employees: ViewEmployee[]
-  requirements: ViewReq
-  grid: ViewGrid
-  twelve: ViewTwelve[]
-  /** Ad-hoc free-text temp workers placed in cells (no roster employee). */
-  temps: ViewTempEntry[]
-  /** base shiftKey → shift_type_id (for opening the editor on a base slot). */
-  shiftTypeIdByKey: Record<string, string>
-  /** base shiftKey → display meta (name/time/color) from the workplace's DB rows. */
-  shiftMeta?: Record<string, ShiftDisplay>
-  hasAssignments: boolean
-  feasibility: FeasibilityResult | null
-  /** All employee requests for this period. */
-  requests: ViewRequest[]
-  /**
-   * Set of "employeeId:day:shiftTypeId" keys where the assignment matches a
-   * requested shift (is_off=false AND preferred_shift_ids includes the assigned
-   * base shift's type id).
-   */
-  requestedSet: Set<string>
-  /** Manager-assigned day notes (רענון / free text) for this period. */
-  dayNotes?: DayNote[]
-  /** Employee-submitted vacation ranges visible to the manager (RLS-scoped). */
-  vacations?: ViewVacation[]
-  /** Time-limited signed URL to the period's published schedule PNG. Present
-   *  only when status === 'published' AND an image was uploaded. 7-day TTL. */
-  imageShareUrl?: string | null
-  /**
-   * Per day D (0..6), the list of employee IDs whose previous shift extended
-   * past midnight of D — i.e. they were physically working overnight when D
-   * begins. Used by the day-note UI to warn the manager when labeling someone
-   * the day after a night/m12_night/m12_15to3 shift. D=0 (Sunday) consults the
-   * prior-week tail to catch Saturday-night → Sunday cases. Optional for
-   * legacy callers (published-view, tests) that don't populate it.
-   */
-  nightBeforeByDay?: NightBeforeMap
-}
-
-/**
- * Pure helper — builds a Set of "employeeId:day:shiftTypeId" keys where the
- * employee actively requested that exact shift (is_off=false and the shift id
- * appears in preferred_shift_ids). Exported for unit testing.
- */
-export function buildRequestedSet(requests: ViewRequest[]): Set<string> {
-  const set = new Set<string>()
-  for (const r of requests) {
-    if (r.isOff || r.preferredShiftIds.length === 0) continue
-    for (const sid of r.preferredShiftIds) {
-      set.add(`${r.employeeId}:${r.dayOfWeek}:${sid}`)
-    }
-  }
-  return set
-}
+export * from './view-types'
 
 /** Resolves all data for /schedule. Returns null on missing workplace/period. */
 export async function getScheduleView(
@@ -153,7 +47,7 @@ export async function getScheduleView(
     supabase.from('employees').select('id, name, color').eq('workplace_id', workplaceId).order('name'),
     supabase
       .from('assignments')
-      .select('id, employee_id, temp_name, day_of_week, shift_type_id, role_id')
+      .select('id, employee_id, temp_name, day_of_week, shift_type_id, role_id, twelve_fills')
       .eq('period_id', periodId),
     supabase
       .from('shift_requirements')

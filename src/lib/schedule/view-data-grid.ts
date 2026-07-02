@@ -4,6 +4,7 @@ import { formatHebDate } from '@/lib/dates/week'
 import type { ShiftId } from '@/lib/domain/constants'
 import type { ShiftKey } from '@/lib/scheduling/types'
 import type { DayInfo, ViewGrid, ViewTwelve, ViewTempEntry } from './view-data'
+import { parseTwelveFills } from './twelve-fills'
 
 const DAY_SHORTS = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳']
 
@@ -23,6 +24,8 @@ export interface AssignmentRaw {
   day_of_week: number
   shift_type_id: string
   role_id: string
+  /** jsonb column, unknown shape until parsed — see twelve-fills.ts. */
+  twelve_fills?: unknown
 }
 
 export interface GridSplit {
@@ -66,7 +69,9 @@ export function splitAssignments(
     list.push({ employeeId: a.employee_id, shiftKey: anyKey })
 
     if (!BASE_KEYS.has(anyKey)) {
-      twelve.push({ day: a.day_of_week, variant: anyKey, roleId: a.role_id, employeeId: a.employee_id })
+      const parsed = parseTwelveFills(a.twelve_fills)
+      const fills = parsed?.map((f) => ({ shift: f.shift, roleId: f.role_id }))
+      twelve.push({ day: a.day_of_week, variant: anyKey, roleId: a.role_id, employeeId: a.employee_id, ...(fills ? { fills } : {}) })
       continue
     }
     const day = (grid[a.day_of_week] ??= {})

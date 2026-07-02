@@ -9,11 +9,11 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { formatHebDate } from '@/lib/dates/week'
 import { weekDatesFrom } from './map-rows'
 import { shiftMetaFromRow, type ShiftDisplay } from '@/lib/domain/meta'
-import { buildRequestedSet, type ScheduleView, type ViewGrid, type ViewTwelve, type ViewTempEntry, type ViewRequest } from './view-data'
+import { buildRequestedSet, type ScheduleView, type ViewRequest } from './view-data'
+import { splitAssignments } from './view-data-grid'
 import type { ShiftKey } from '@/lib/scheduling/types'
 
 const DAY_SHORTS = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳']
-const BASE_KEYS = new Set(['morning', 'noon', 'night'])
 
 /** Published weeks for a workplace (newest first) — for the week navigator. */
 export interface PublishedWeek { id: string; weekStart: string; label: string }
@@ -69,7 +69,7 @@ export async function getPublishedScheduleView(
     supabase.rpc('workplace_roster', { wp: workplaceId }),
     supabase
       .from('assignments')
-      .select('id, employee_id, temp_name, day_of_week, shift_type_id, role_id')
+      .select('id, employee_id, temp_name, day_of_week, shift_type_id, role_id, twelve_fills')
       .eq('period_id', period.id),
     supabase.from('shift_types').select('id, key, name, color, start_hour, hours').eq('workplace_id', workplaceId),
     supabase
@@ -91,25 +91,7 @@ export async function getPublishedScheduleView(
     shiftMeta[st.key] = shiftMetaFromRow(st)
   }
 
-  const grid: ViewGrid = {}
-  const twelve: ViewTwelve[] = []
-  const temps: ViewTempEntry[] = []
-  for (const a of assignsRaw ?? []) {
-    const key = idToKey[a.shift_type_id]
-    if (!key) continue
-    if (a.temp_name && !a.employee_id) {
-      temps.push({ day: a.day_of_week, shiftKey: key, roleId: a.role_id, assignmentId: a.id ?? '', name: a.temp_name })
-      continue
-    }
-    if (!a.employee_id) continue
-    if (!BASE_KEYS.has(key)) {
-      twelve.push({ day: a.day_of_week, variant: key, roleId: a.role_id, employeeId: a.employee_id })
-      continue
-    }
-    const day = (grid[a.day_of_week] ??= {})
-    const byShift = (day[key] ??= {})
-    ;(byShift[a.role_id] ??= []).push(a.employee_id)
-  }
+  const { grid, twelve, temps } = splitAssignments(assignsRaw ?? [], idToKey)
 
   const weekDates = weekDatesFrom(period.week_start_date)
   const days = Array.from({ length: 7 }, (_, i) => ({
