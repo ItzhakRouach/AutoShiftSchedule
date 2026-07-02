@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Btn } from '@/components/ui/Btn'
-import { clearSchedule } from './actions'
+import { clearSchedule } from './lifecycle-actions'
 
 /**
  * Danger control: wipes ALL assignments for the period so the manager can

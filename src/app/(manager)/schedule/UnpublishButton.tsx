@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { unpublishSchedule } from './actions'
+import { unpublishSchedule } from './lifecycle-actions'
 
 interface Props {
   periodId: string

@@ -4,7 +4,8 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import type { ScheduleView } from '@/lib/schedule/view-data'
 import type { Coverage, TwelveHourSuggestion, OverriddenOff, Warning } from '@/lib/scheduling/types'
-import { runSchedule, publishSchedule, hasManualAssignments } from './actions'
+import { runSchedule } from './actions'
+import { publishSchedule, hasManualAssignments } from './lifecycle-actions'
 
 /** Generate / publish orchestration + the state it drives. Split out of
  *  ScheduleClient to keep that component a thin view (≤200 lines). */
