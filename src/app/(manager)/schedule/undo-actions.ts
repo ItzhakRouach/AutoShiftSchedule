@@ -9,7 +9,7 @@ import { authedWorkplace, GENERIC_ERROR, type EditResult } from './edit-actions-
 const rowShapeSchema = z.object({
   shiftTypeId: z.string().uuid(),
   roleId: z.string().uuid(),
-  source: z.string().min(1).max(40),
+  source: z.enum(['auto', 'manual', 'fallback_12h']),
 })
 
 const daySchema = z.number().int().min(0).max(6)
@@ -66,6 +66,19 @@ export async function undoEdit(periodId: string, snapshot: UndoSnapshot): Promis
   if (!period) return { ok: false, error: GENERIC_ERROR }
 
   const plan = planUndo(parsed.data)
+
+  // Guard: every plan that references an employeeId must have that employee
+  // scoped to the authed workplace — undo must never write/delete rows for an
+  // employee outside it (same pattern as request-actions.ts).
+  if ('employeeId' in plan) {
+    const { data: employee } = await supabase
+      .from('employees')
+      .select('id')
+      .eq('id', plan.employeeId)
+      .eq('workplace_id', workplace.id)
+      .maybeSingle()
+    if (!employee) return { ok: false, error: GENERIC_ERROR }
+  }
 
   if (plan.op === 'restore-emp-day-row') {
     const { error } = await supabase.from('assignments').upsert(
