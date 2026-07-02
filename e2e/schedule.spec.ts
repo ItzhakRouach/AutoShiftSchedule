@@ -76,6 +76,9 @@ test('manager generates an auto schedule and sees coverage + assignments', async
   if (await completeTwelve.count()) {
     await completeTwelve.click()
     await expect(coverage).toHaveText(/\d+%/, { timeout: 30000 })
+    // The completion run may itself surface fresh uncovered/overridden data,
+    // reopening the popup — dismiss it again before continuing.
+    await dismissCoverageIssues(page)
   }
 
   // The week table should be visible (default view is "סידור").
