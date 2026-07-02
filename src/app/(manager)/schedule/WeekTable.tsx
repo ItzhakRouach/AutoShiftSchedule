@@ -9,8 +9,10 @@ import type { ScheduleView } from '@/lib/schedule/view-data'
 import type { SlotCtx } from './SwapEditor'
 import type { CellAssign } from './useCellAssign'
 import type { ShiftKey } from '@/lib/scheduling/types'
+import { LtrText } from '@/components/ui/LtrText'
 import { EmpTotalsBar } from './EmpTotalsBar'
 import { WeekTableCell } from './WeekTableCell'
+import { buildCellLabel } from './week-table-helpers'
 
 interface Props {
   view: ScheduleView
@@ -26,27 +28,6 @@ interface Props {
 }
 
 const BASE_SHIFTS: ShiftKey[] = ['morning', 'noon', 'night']
-
-// Full Hebrew weekday names by index (0 = Sunday … 6 = Saturday), matching
-// `DayInfo.index`. Used only for the cell's screen-reader label — the visible
-// header uses the shorter `DayInfo.short` form.
-const DAY_NAMES_FULL = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
-
-/** "<day>, <shift>, <role>: <names | לא מאויש>" for the cell's aria-label. */
-function buildCellLabel(
-  dayIndex: number,
-  shiftName: string,
-  roleName: string,
-  entries: { employeeId: string; tempName?: string }[],
-  empById: Map<string, { name: string }>,
-  covered: boolean,
-): string {
-  const names = entries
-    .map((e) => e.tempName ?? empById.get(e.employeeId)?.name)
-    .filter((n): n is string => !!n)
-  const who = names.length > 0 ? names.join(', ') : covered ? 'מאויש ע״י משמרת 12 שעות' : 'לא מאויש'
-  return `${DAY_NAMES_FULL[dayIndex] ?? ''}, ${shiftName}, ${roleName}: ${who}`
-}
 
 // Frozen-column widths (RTL: pinned to the physical RIGHT edge). The role
 // column's offset MUST equal the shift column's width so they don't overlap.
@@ -144,7 +125,7 @@ export function WeekTable({ view, onSlot, onDayPair, assign, initialSelectedId, 
                       <td rowSpan={roles.length} style={{ ...S.sticky, right: 0, padding: '12px 8px', textAlign: 'center', fontSize: 13, color: m.color, background: `color-mix(in srgb, ${m.color} 16%, var(--surface))`, verticalAlign: 'middle', width: SHIFT_W, minWidth: SHIFT_W, maxWidth: SHIFT_W, borderTop: showGroupDivider ? '3px solid var(--border-strong, var(--border))' : undefined }}>
                         <div style={S.layer}>
                           <div style={{ fontWeight: 800, whiteSpace: 'nowrap', fontSize: 13 }}>{m.name}</div>
-                          <div style={{ fontSize: 11, color: 'var(--text-2)', fontWeight: 600, marginTop: 3 }}>{m.time}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-2)', fontWeight: 600, marginTop: 3 }}><LtrText>{m.time}</LtrText></div>
                         </div>
                       </td>
                     )}

@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { Card } from '@/components/ui/Card'
 import { Stepper } from '@/components/ui/Stepper'
 import { Btn } from '@/components/ui/Btn'
+import { LtrText } from '@/components/ui/LtrText'
 import { shiftMetaFromRow, roleMetaFromRow } from '@/lib/domain/meta'
 import { updateRequirements } from './requirements-actions'
 
@@ -125,7 +126,7 @@ export function RequirementsSection({ shiftTypes, roles, requirements }: Props) 
               >
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)' }}>{meta.name}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>{meta.time}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}><LtrText>{meta.time}</LtrText></div>
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-2)' }}>
                   {total} עובדים

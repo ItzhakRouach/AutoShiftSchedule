@@ -2,6 +2,7 @@
 
 import { Card } from '@/components/ui/Card'
 import { Icon } from '@/components/ui/Icon'
+import { LtrText } from '@/components/ui/LtrText'
 import { SHIFT_META } from '@/lib/domain/constants'
 import type { ScheduleView } from '@/lib/schedule/view-data'
 import type { TwelveHourSuggestion } from '@/lib/scheduling/types'
@@ -60,7 +61,7 @@ export function TwelveHourList({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {suggestions.map((s, i) => (
           <div key={i} style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.4 }}>
-            יום {s.day + 1} · {SHIFT_META[s.variant]?.name ?? s.variant} · {roleById.get(s.roleId) ?? ''}
+            יום {s.day + 1} · <LtrText>{SHIFT_META[s.variant]?.name ?? s.variant}</LtrText> · {roleById.get(s.roleId) ?? ''}
           </div>
         ))}
       </div>

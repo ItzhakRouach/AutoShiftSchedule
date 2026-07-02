@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Avatar } from '@/components/ui/Avatar'
+import { LtrText } from '@/components/ui/LtrText'
 import { SHIFT_META, FALLBACK_12H_ORDER, type ShiftId } from '@/lib/domain/constants'
 import { candidateStatus } from '@/lib/schedule/candidate-status'
 import type { EditMeta } from '@/lib/schedule/edit-meta'
@@ -40,7 +41,7 @@ export function TwelveHourAssign({ slot, view, meta, busy, run }: Props) {
               color: variant === v ? 'var(--accent)' : 'var(--text)',
             }}
           >
-            {SHIFT_META[v].name}
+            <LtrText>{SHIFT_META[v].name}</LtrText>
           </button>
         ))}
       </div>

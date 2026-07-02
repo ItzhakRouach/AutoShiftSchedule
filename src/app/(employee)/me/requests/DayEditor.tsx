@@ -3,6 +3,7 @@
 import React, { useState, useTransition } from 'react'
 import { Btn } from '@/components/ui/Btn'
 import { InlineAlert } from '@/components/ui/InlineAlert'
+import { LtrText } from '@/components/ui/LtrText'
 import { SHIFT_META } from '@/lib/domain/constants'
 import type { ShiftTypeRow, RequestRow } from '@/lib/requests/context'
 import { saveDayRequest } from './actions'
@@ -91,7 +92,7 @@ export function DayEditor({ shiftTypes, request, periodId, employeeId, dayOfWeek
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>{st.name}</div>
-                <div style={{ fontSize: 13, color: 'var(--text-2)' }}>{meta?.time ?? `${st.start_hour}:00`}</div>
+                <div style={{ fontSize: 13, color: 'var(--text-2)' }}><LtrText>{meta?.time ?? `${st.start_hour}:00`}</LtrText></div>
               </div>
               <span style={circle(on, color)}>{on && '✓'}</span>
             </button>

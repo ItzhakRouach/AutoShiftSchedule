@@ -2,6 +2,7 @@
 
 import { memo } from 'react'
 import { SHIFT_META, type ShiftId } from '@/lib/domain/constants'
+import { LtrText } from '@/components/ui/LtrText'
 import { TempChip } from './TempChip'
 
 const S = {
@@ -156,14 +157,22 @@ function WeekTableCellImpl(props: WeekTableCellProps) {
             >
               {en.requested && <Badge />}
               {emp?.name ?? '?'}
-              {en.is12h && (
-                <span
-                  title={en.variant ? SHIFT_META[en.variant as ShiftId]?.time : '12 שעות'}
-                  style={{ color: 'var(--accent)', fontWeight: 800, marginInlineStart: 3, fontSize: 11 }}
-                >
-                  {en.variant ? SHIFT_META[en.variant as ShiftId]?.time ?? '12ש׳' : '12ש׳'}
-                </span>
-              )}
+              {en.is12h && (() => {
+                const meta = en.variant ? SHIFT_META[en.variant as ShiftId] : undefined
+                const name = meta?.name ?? '12ש׳'
+                const time = meta?.time
+                return (
+                  <span
+                    title={time ? `${name} ${time}` : name}
+                    style={{ display: 'inline-flex', alignItems: 'baseline', gap: 3, marginInlineStart: 3 }}
+                  >
+                    <span style={{ color: 'var(--accent)', fontWeight: 800, fontSize: 11 }}>{name}</span>
+                    {time && (
+                      <LtrText style={{ color: 'var(--text-3)', fontWeight: 600, fontSize: 9.5 }}>{time}</LtrText>
+                    )}
+                  </span>
+                )
+              })()}
             </span>
           )
         })}

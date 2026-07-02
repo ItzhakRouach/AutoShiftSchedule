@@ -3,6 +3,7 @@
 import { Card } from '@/components/ui/Card'
 import { Avatar } from '@/components/ui/Avatar'
 import { Icon } from '@/components/ui/Icon'
+import { LtrText } from '@/components/ui/LtrText'
 import { RoleChip } from '@/components/ui/RoleChip'
 import { SHIFT_META, type ShiftId } from '@/lib/domain/constants'
 import type { ScheduleView } from '@/lib/schedule/view-data'
@@ -62,7 +63,7 @@ export function DayGrid({ view, selDay, onSlot, assign, selfId }: Props) {
             >
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)' }}>{m.name}</div>
-                <div style={{ fontSize: 12.5, color: 'var(--text-2)', fontWeight: 600 }}>{m.time}</div>
+                <div style={{ fontSize: 12.5, color: 'var(--text-2)', fontWeight: 600 }}><LtrText>{m.time}</LtrText></div>
               </div>
             </div>
             <div style={{ padding: '6px 14px 12px' }}>
