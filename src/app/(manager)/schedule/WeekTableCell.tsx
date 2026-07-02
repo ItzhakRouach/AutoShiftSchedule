@@ -55,8 +55,9 @@ export interface WeekTableCellProps {
   onRemoveTemp?: (assignmentId: string) => void
   /** "X/Y" capacity readout (manager-only, edit mode) — blank hides the badge. */
   capacityLabel?: string
-  /** 'under' tints the cell with a soft warning; 'full'/'unconfigured' render plain. */
-  capacityStatus?: 'under' | 'full' | 'unconfigured'
+  /** Badge renders ONLY for 'under' (soft warning tint) and 'over' (danger
+   *  tint) — 'full'/'unconfigured' show no badge at all (it doesn't matter). */
+  capacityStatus?: 'under' | 'full' | 'over' | 'unconfigured'
   /** Screen-reader label: "<day>, <shift>, <role>: <names | לא מאויש>" — composed
    *  in WeekTable.tsx (day/shift/role names are in scope there) so this stays a
    *  plain string prop and React.memo's shallow-equality check keeps working. */
@@ -84,7 +85,9 @@ function WeekTableCellImpl(props: WeekTableCellProps) {
     ? 'color-mix(in srgb, var(--danger) 6%, transparent)'
     : capacityStatus === 'under'
       ? 'var(--warning-soft)'
-      : 'var(--surface)'
+      : capacityStatus === 'over'
+        ? 'var(--danger-soft)'
+        : 'var(--surface)'
   const dimCell = hasSelected && !cellHasSelected
   const highlightCell = cellHasSelected || isPending
 
@@ -98,8 +101,11 @@ function WeekTableCellImpl(props: WeekTableCellProps) {
     transition: 'opacity 0.15s, outline 0.15s, background 0.15s',
   }
 
-  const capacityBadge = capacityLabel && (
-    <div style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 600, marginTop: 2 }}>{capacityLabel}</div>
+  // Only 'under' and 'over' are worth flagging — an exactly-full or
+  // unconfigured cell needs no badge at all (reduces ubiquitous-badge noise).
+  const showBadge = capacityStatus === 'under' || capacityStatus === 'over'
+  const capacityBadge = capacityLabel && showBadge && (
+    <div style={{ fontSize: 10, color: capacityStatus === 'over' ? 'var(--danger)' : 'var(--text-3)', fontWeight: 600, marginTop: 2 }}>{capacityLabel}</div>
   )
 
   // While busy, ignore taps/drops on this cell (double-tap / mid-flight guard).

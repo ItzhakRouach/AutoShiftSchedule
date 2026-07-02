@@ -113,16 +113,19 @@ export function buildEmpTotals(view: ScheduleView, employees: ViewEmployee[]): E
 export interface CellCapacity {
   /** `"X/Y"` — blank when the slot has no configured requirement. */
   label: string
-  status: 'under' | 'full' | 'unconfigured'
+  status: 'under' | 'full' | 'over' | 'unconfigured'
 }
 
 /**
  * Manager-facing capacity readout for a single (day, shift, role) cell.
  * `requiredCount <= 0` means the slot has no staffing target for this day —
- * distinct from `under`, which means a real target isn't met yet.
+ * distinct from `under`, which means a real target isn't met yet. `over`
+ * (assigned beyond the requirement) gets its own status so the UI can flag it
+ * distinctly from an exactly-full cell, which needs no badge at all.
  */
 export function cellCapacity(assignedCount: number, requiredCount: number): CellCapacity {
   if (requiredCount <= 0) return { label: '', status: 'unconfigured' }
   const label = `${assignedCount}/${requiredCount}`
-  return { label, status: assignedCount >= requiredCount ? 'full' : 'under' }
+  const status = assignedCount > requiredCount ? 'over' : assignedCount === requiredCount ? 'full' : 'under'
+  return { label, status }
 }

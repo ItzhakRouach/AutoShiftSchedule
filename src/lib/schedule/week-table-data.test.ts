@@ -139,7 +139,7 @@ describe('cellCapacity', () => {
     expect(cellCapacity(2, 2)).toEqual({ label: '2/2', status: 'full' })
   })
 
-  it('3/2 (over-staffed) → full', () => {
-    expect(cellCapacity(3, 2)).toEqual({ label: '3/2', status: 'full' })
+  it('3/2 (over-staffed) → over', () => {
+    expect(cellCapacity(3, 2)).toEqual({ label: '3/2', status: 'over' })
   })
 })
