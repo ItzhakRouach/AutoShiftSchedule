@@ -106,6 +106,8 @@
   --success-soft: rgba(19,138,119,0.12);
   --warning: #C77F23;
   --warning-soft: rgba(199,127,35,0.14);
+  --vacation: #4E53B8;
+  --vacation-soft: rgba(78,83,184,0.12);
   --danger: #C5443C;
   --danger-soft: rgba(197,68,60,0.12);
 }
