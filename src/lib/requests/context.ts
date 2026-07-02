@@ -21,7 +21,7 @@ export interface RequestRow {
 }
 
 export type VacationStatus = 'pending' | 'approved' | 'rejected'
-export type VacationKind = 'vacation' | 'miluim'
+export type VacationKind = 'vacation' | 'miluim' | 'sick'
 
 export interface VacationRow {
   id: string

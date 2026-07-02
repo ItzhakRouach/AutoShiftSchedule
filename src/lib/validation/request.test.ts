@@ -120,12 +120,23 @@ describe('managerAddVacationSchema', () => {
     if (result.success) expect(result.data.kind).toBe('miluim')
   })
 
-  it('rejects an unknown kind', () => {
+  it('accepts an explicit sick kind', () => {
     const result = managerAddVacationSchema.safeParse({
       employeeId: validUUID,
       dateFrom: '2026-07-01',
       dateTo: '2026-07-07',
       kind: 'sick',
+    })
+    expect(result.success).toBe(true)
+    if (result.success) expect(result.data.kind).toBe('sick')
+  })
+
+  it('rejects an unknown kind', () => {
+    const result = managerAddVacationSchema.safeParse({
+      employeeId: validUUID,
+      dateFrom: '2026-07-01',
+      dateTo: '2026-07-07',
+      kind: 'unpaid',
     })
     expect(result.success).toBe(false)
   })

@@ -2,7 +2,7 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export type VacationStatus = 'pending' | 'approved' | 'rejected'
-export type VacationKind = 'vacation' | 'miluim'
+export type VacationKind = 'vacation' | 'miluim' | 'sick'
 
 export interface WorkplaceVacation {
   id: string
