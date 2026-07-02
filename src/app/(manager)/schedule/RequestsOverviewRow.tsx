@@ -109,11 +109,12 @@ interface Props {
   isoByDayIndex: string[]
   shiftTypeIdByKey: Record<string, string>
   onEdit: (day: DayColumn, req: ViewRequest | undefined) => void
+  onOpenVacation: () => void
 }
 
 /** One employee's request row: sticky name cell + a DayCell per day. Split out
  *  of RequestsOverview to keep that component ≤200 lines. */
-export function RequestsOverviewRow({ emp, rowIndex, days, byDay, empVacs, isoByDayIndex, shiftTypeIdByKey, onEdit }: Props) {
+export function RequestsOverviewRow({ emp, rowIndex, days, byDay, empVacs, isoByDayIndex, shiftTypeIdByKey, onEdit, onOpenVacation }: Props) {
   const empHasAnyVac = empVacs.length > 0
   return (
     <tr style={{ background: rowIndex % 2 === 0 ? 'var(--surface)' : 'var(--bg)' }}>
@@ -127,6 +128,16 @@ export function RequestsOverviewRow({ emp, rowIndex, days, byDay, empVacs, isoBy
             🌴
           </span>
         )}
+        <button
+          onClick={onOpenVacation}
+          style={{
+            display: 'block', marginTop: 4, border: 'none', background: 'var(--surface-sunk)',
+            color: 'var(--text-2)', cursor: 'pointer', fontSize: 11, fontWeight: 700,
+            fontFamily: 'var(--font)', padding: '2px 8px', borderRadius: 'var(--r-pill)',
+          }}
+        >
+          חופשה
+        </button>
       </td>
       {days.map((d) => {
         const req = byDay?.get(d.index)

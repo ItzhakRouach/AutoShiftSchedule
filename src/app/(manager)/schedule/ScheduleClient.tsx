@@ -7,6 +7,7 @@ import { Segmented } from '@/components/ui/Segmented'
 import { Spinner } from '@/components/ui/Spinner'
 import type { ScheduleView } from '@/lib/schedule/view-data'
 import type { EditMeta } from '@/lib/schedule/edit-meta'
+import type { WorkplaceVacation } from '@/lib/vacations/pending'
 import { useScheduleActions } from './useScheduleActions'
 import { FeasibilityBanner } from './FeasibilityBanner'
 import { CoverageIssues } from './CoverageIssues'
@@ -26,6 +27,7 @@ import { useCellAssign } from './useCellAssign'
 interface Props {
   view: ScheduleView
   editMeta: EditMeta | null
+  workerVacations: WorkplaceVacation[]
 }
 
 type ViewMode = 'schedule' | 'requests'
@@ -35,7 +37,7 @@ const VIEW_OPTIONS = [
   { value: 'requests', label: 'בקשות עובדים' },
 ]
 
-export function ScheduleClient({ view, editMeta }: Props) {
+export function ScheduleClient({ view, editMeta, workerVacations }: Props) {
   const a = useScheduleActions(view)
   const [slot, setSlot] = useState<SlotCtx | null>(null)
   const [pairDay, setPairDay] = useState<number | null>(null)
@@ -138,7 +140,7 @@ export function ScheduleClient({ view, editMeta }: Props) {
       <div style={{ height: 14 }} />
 
       {viewMode === 'requests' && (
-        <RequestsOverview view={view} />
+        <RequestsOverview view={view} workerVacations={workerVacations} />
       )}
 
       {/* Managers can open the grid to build by hand even before the auto-run

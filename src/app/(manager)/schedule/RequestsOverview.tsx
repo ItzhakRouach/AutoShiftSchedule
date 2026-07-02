@@ -2,61 +2,33 @@
 
 import { useState, useTransition } from 'react'
 import { SHIFT_META, type ShiftId } from '@/lib/domain/constants'
-import type { ScheduleView, ViewEmployee, ViewRequest, ViewVacation } from '@/lib/schedule/view-data'
+import type { ScheduleView, ViewRequest } from '@/lib/schedule/view-data'
+import type { WorkplaceVacation } from '@/lib/vacations/pending'
 import { ManagerRequestEditor, type ShiftOption, type RequestEditTarget } from './ManagerRequestEditor'
 import { managerClearAllRequests } from './request-actions'
 import { RequestsOverviewRow, stickyName } from './RequestsOverviewRow'
 import { RequestsOverviewControls } from './RequestsOverviewControls'
+import { WorkerVacationSheet } from './WorkerVacationSheet'
+import {
+  buildRequestMap, submittedCount, buildVacationsByEmployee,
+  buildWorkerVacationsByEmployee, isoForDayIndex,
+} from './requests-overview-helpers'
 
 interface Props {
   view: ScheduleView
+  workerVacations: WorkplaceVacation[]
 }
 
 const BASE_KEYS = ['morning', 'noon', 'night'] as const
 
-/** Build a lookup: employeeId → dayOfWeek → ViewRequest */
-function buildRequestMap(
-  requests: ViewRequest[],
-): Map<string, Map<number, ViewRequest>> {
-  const map = new Map<string, Map<number, ViewRequest>>()
-  for (const r of requests) {
-    let byDay = map.get(r.employeeId)
-    if (!byDay) { byDay = new Map(); map.set(r.employeeId, byDay) }
-    byDay.set(r.dayOfWeek, r)
-  }
-  return map
-}
-
-/** Employees that have at least one request row. */
-function submittedCount(employees: ViewEmployee[], reqMap: Map<string, Map<number, ViewRequest>>): number {
-  return employees.filter((e) => (reqMap.get(e.id)?.size ?? 0) > 0).length
-}
-
-function buildVacationsByEmployee(vacations: ViewVacation[]): Map<string, ViewVacation[]> {
-  const m = new Map<string, ViewVacation[]>()
-  for (const v of vacations) {
-    let list = m.get(v.employeeId)
-    if (!list) { list = []; m.set(v.employeeId, list) }
-    list.push(v)
-  }
-  return m
-}
-
-/** ISO date for current-week day index 0..6 (Sunday..Saturday). */
-function isoForDayIndex(weekStart: string, dayIndex: number): string {
-  const [y, m, d] = weekStart.split('-').map(Number)
-  const date = new Date(y, m - 1, d)
-  date.setDate(date.getDate() + dayIndex)
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-}
-
-export function RequestsOverview({ view }: Props) {
+export function RequestsOverview({ view, workerVacations }: Props) {
   // Local copy so manager edits reflect instantly WITHOUT a full page refresh
   // (which would bounce off the requests tab) — lets them enter many in a row.
   const [requests, setRequests] = useState<ViewRequest[]>(view.requests)
   const [editing, setEditing] = useState<RequestEditTarget | null>(null)
   const [confirmClear, setConfirmClear] = useState(false)
   const [clearing, startClear] = useTransition()
+  const [vacationTarget, setVacationTarget] = useState<{ id: string; name: string } | null>(null)
 
   function onSaved(saved: { employeeId: string; dayOfWeek: number; isOff: boolean; preferredShiftIds: string[] }) {
     setRequests((prev) => [
@@ -83,6 +55,7 @@ export function RequestsOverview({ view }: Props) {
   const submitted = submittedCount(view.employees, reqMap)
   const total = view.employees.length
   const vacsByEmp = buildVacationsByEmployee(view.vacations ?? [])
+  const workerVacsByEmp = buildWorkerVacationsByEmployee(workerVacations)
   // Off-day visibility: how many off-requests across the team this week, and
   // how many distinct employees filed at least one. Helps the manager spot a
   // week where mass-off requests will strain coverage.
@@ -164,6 +137,7 @@ export function RequestsOverview({ view }: Props) {
                   isOff: req?.isOff ?? false,
                   preferredShiftIds: req?.preferredShiftIds ?? [],
                 })}
+                onOpenVacation={() => setVacationTarget({ id: emp.id, name: emp.name })}
               />
             ))}
           </tbody>
@@ -177,6 +151,15 @@ export function RequestsOverview({ view }: Props) {
           shiftOptions={shiftOptions}
           onSaved={onSaved}
           onClose={() => setEditing(null)}
+        />
+      )}
+
+      {vacationTarget && (
+        <WorkerVacationSheet
+          employeeId={vacationTarget.id}
+          employeeName={vacationTarget.name}
+          vacations={workerVacsByEmp.get(vacationTarget.id) ?? []}
+          onClose={() => setVacationTarget(null)}
         />
       )}
     </div>
