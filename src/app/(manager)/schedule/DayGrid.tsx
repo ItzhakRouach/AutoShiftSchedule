@@ -95,7 +95,7 @@ export function DayGrid({ view, selDay, onSlot, assign, selfId }: Props) {
                         style={{
                           fontSize: 12,
                           fontWeight: 700,
-                          color: need > 0 ? (filled.length >= need ? 'var(--success)' : '#EB6A4E') : 'var(--text-2)',
+                          color: need > 0 ? (filled.length >= need ? 'var(--success)' : 'var(--danger)') : 'var(--text-2)',
                         }}
                       >
                         {need > 0 ? `${filled.length}/${need}` : filled.length}
@@ -144,9 +144,9 @@ export function DayGrid({ view, selDay, onSlot, assign, selfId }: Props) {
                             gap: 6,
                             padding: '6px 13px',
                             borderRadius: 99,
-                            border: '1.5px dashed #EB6A4E',
-                            background: 'rgba(235,106,78,0.07)',
-                            color: '#EB6A4E',
+                            border: '1.5px dashed var(--danger)',
+                            background: 'color-mix(in srgb, var(--danger) 7%, transparent)',
+                            color: 'var(--danger)',
                             fontSize: 13,
                             fontWeight: 600,
                             cursor: onSlot && !busy ? 'pointer' : 'default',
