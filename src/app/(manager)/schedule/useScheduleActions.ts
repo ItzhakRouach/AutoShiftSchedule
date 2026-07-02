@@ -26,11 +26,11 @@ export function useScheduleActions(view: ScheduleView) {
 
   const hasResult = view.hasAssignments || coverage !== null
 
-  function triggerGenerate(replaceManual: boolean) {
+  function triggerGenerate(replaceManual: boolean, withTwelveHour = false) {
     setShowConfirm(false)
     setError(null)
     startRun(async () => {
-      const res = await runSchedule(view.periodId, { replaceManual })
+      const res = await runSchedule(view.periodId, { replaceManual, withTwelveHour })
       if (!res.ok) { setError(res.error ?? 'שגיאה'); return }
       setCoverage(res.coverage ?? null)
       setSuggestions(res.twelveHourSuggestions ?? [])
@@ -41,6 +41,12 @@ export function useScheduleActions(view: ScheduleView) {
       setShowIssues(ov.length > 0 || un.length > 0)
       router.refresh()
     })
+  }
+
+  /** Secondary "השלם 12ש׳ אוטומטית" action: re-run WITH the 12h pass, keeping
+   *  manual edits (the deterministic seed regenerates the identical 8h layer). */
+  function completeTwelveHour() {
+    triggerGenerate(false, true)
   }
 
   function handleGenerateClick() {
@@ -71,6 +77,6 @@ export function useScheduleActions(view: ScheduleView) {
     coverage, suggestions, overriddenOff, uncovered, showIssues, setShowIssues,
     error, published, setPublished, publishing, checking, running, hasResult,
     showConfirm, setShowConfirm,
-    triggerGenerate, handleGenerateClick, publish, resetAfterDelete,
+    triggerGenerate, handleGenerateClick, completeTwelveHour, publish, resetAfterDelete,
   }
 }

@@ -1,10 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Btn } from '@/components/ui/Btn'
 import { Card } from '@/components/ui/Card'
 import { Segmented } from '@/components/ui/Segmented'
-import { Spinner } from '@/components/ui/Spinner'
 import type { ScheduleView } from '@/lib/schedule/view-data'
 import type { EditMeta } from '@/lib/schedule/edit-meta'
 import type { WorkplaceVacation } from '@/lib/vacations/pending'
@@ -23,6 +21,7 @@ import { PublishControls } from './PublishControls'
 import { WorkerPalette } from './WorkerPalette'
 import { AssignToast } from './AssignToast'
 import { useCellAssign } from './useCellAssign'
+import { GenerateControls } from './GenerateControls'
 
 interface Props {
   view: ScheduleView
@@ -49,7 +48,7 @@ export function ScheduleClient({ view, editMeta, workerVacations }: Props) {
   const {
     coverage, suggestions, overriddenOff, uncovered, showIssues, setShowIssues,
     error, published, publishing, checking, running, hasResult, showConfirm, setShowConfirm,
-    triggerGenerate, handleGenerateClick, publish, resetAfterDelete,
+    triggerGenerate, handleGenerateClick, completeTwelveHour, publish, resetAfterDelete,
   } = a
 
   if (running) return <Generating />
@@ -115,20 +114,17 @@ export function ScheduleClient({ view, editMeta, workerVacations }: Props) {
         </Card>
       )}
 
-      {editMeta && (
-        <>
-          <div style={{ height: 10 }} />
-          <Btn variant="outline" size="md" icon="bell" style={{ width: '100%' }} onClick={() => setShowDayNotes(true)}>
-            רענון / שמירת עובד ליום (לפני יצירה)
-          </Btn>
-        </>
-      )}
-
-      <div style={{ height: 12 }} />
-      <Btn variant="primary" size="lg" icon={checking ? undefined : 'check'} style={{ width: '100%' }} disabled={checking} onClick={handleGenerateClick}>
-        {checking ? <Spinner size={18} color="#fff" /> : null}
-        {checking ? 'רגע…' : 'צור סידור אוטומטי'}
-      </Btn>
+      <GenerateControls
+        view={view}
+        editMeta={editMeta}
+        status={view.status}
+        hasResult={hasResult}
+        checking={checking}
+        running={running}
+        onOpenDayNotes={() => setShowDayNotes(true)}
+        onGenerateClick={handleGenerateClick}
+        onCompleteTwelveHour={completeTwelveHour}
+      />
 
       <div style={{ height: 14 }} />
       <Segmented

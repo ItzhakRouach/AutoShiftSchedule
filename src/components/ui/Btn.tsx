@@ -15,6 +15,7 @@ interface BtnProps {
   style?: React.CSSProperties
   disabled?: boolean
   type?: 'button' | 'submit' | 'reset'
+  'data-testid'?: string
 }
 
 export function Btn({
@@ -26,6 +27,7 @@ export function Btn({
   style,
   disabled,
   type = 'button',
+  'data-testid': testId,
 }: BtnProps) {
   const sizes: Record<BtnSize, { padding: string; fontSize: number; gap: number; h: number }> = {
     sm: { padding: '8px 14px', fontSize: 14, gap: 6, h: 36 },
@@ -68,6 +70,7 @@ export function Btn({
     <button
       type={type}
       className="btn"
+      data-testid={testId}
       onClick={disabled ? undefined : onClick}
       disabled={disabled}
       style={{
