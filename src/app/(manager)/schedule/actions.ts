@@ -16,7 +16,7 @@ export async function runSchedule(
   opts: RunOptions = {},
 ): Promise<RunResult> {
   const actionStart = isDev ? performance.now() : 0
-  const { replaceManual = false } = opts
+  const { replaceManual = false, withTwelveHour = false } = opts
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -44,7 +44,7 @@ export async function runSchedule(
   let result
   try {
     const engineStart = isDev ? performance.now() : 0
-    result = generateSchedule({ ...built.input, collectTimings: isDev })
+    result = generateSchedule({ ...built.input, collectTimings: isDev, skipTwelve: !withTwelveHour })
     if (isDev) {
       console.debug('[engine timings]', result.timings, 'engine ms', performance.now() - engineStart)
     }
