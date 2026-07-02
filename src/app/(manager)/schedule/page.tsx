@@ -71,7 +71,6 @@ export default async function SchedulePage({
 
   // Current period — the live editor.
   const editMeta = view ? await getEditMeta(supabase, workplace.id, view.periodId) : null
-  const pastWeeks = weeks.filter((w) => w.id !== currentPeriodId)
 
   return (
     <main className="schedule-main" style={{ background: 'var(--bg)', direction: 'rtl' }}>
@@ -81,21 +80,6 @@ export default async function SchedulePage({
         <p style={{ textAlign: 'right', color: 'var(--text-2)' }}>
           לא ניתן לטעון את נתוני הסידור כרגע.
         </p>
-      )}
-      {pastWeeks.length > 0 && (
-        <div className="schedule-controls" style={{ marginTop: 16 }}>
-          <Link
-            href={`/schedule?w=${pastWeeks[0].id}`}
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              padding: '11px 16px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)',
-              background: 'var(--surface)', color: 'var(--text-2)', textDecoration: 'none',
-              fontSize: 14, fontWeight: 600,
-            }}
-          >
-            <Icon name="calendar" size={17} /> צפה בשבועות קודמים
-          </Link>
-        </div>
       )}
     </main>
   )
