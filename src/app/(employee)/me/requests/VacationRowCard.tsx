@@ -3,6 +3,7 @@
 import { Card } from '@/components/ui/Card'
 import { formatHebDate, hebrewDayName } from '@/lib/dates/week'
 import type { VacationRow, VacationStatus } from '@/lib/requests/context'
+import { ABSENCE_KIND_META } from '@/lib/vacations/kind-meta'
 
 const STATUS_META: Record<VacationStatus, { label: string; color: string; soft: string }> = {
   pending: { label: 'ממתין לאישור', color: 'var(--warning)', soft: 'var(--warning-soft)' },
@@ -22,17 +23,19 @@ function VacationStatusBadge({ status }: { status: VacationStatus }) {
   )
 }
 
-/** Manager-set military reserve duty (מילואים) uses the same mechanism as a
- *  vacation, distinguished only by `kind` — workers only ever SEE this label
- *  (they can't self-mark miluim; only a manager sets it). */
+/** Manager-set kinds (מילואים / מחלה) use the same mechanism as a self-added
+ *  vacation, distinguished only by `kind` — workers only ever SEE these labels
+ *  (they can't self-mark them; only a manager sets them). Plain 'vacation' is
+ *  the worker's own default and needs no extra badge. */
 function KindBadge({ kind }: { kind: VacationRow['kind'] }) {
-  if (kind !== 'miluim') return null
+  if (kind === 'vacation') return null
+  const m = ABSENCE_KIND_META[kind]
   return (
     <span style={{
-      alignSelf: 'flex-start', fontSize: 11.5, fontWeight: 700, color: 'var(--warning)',
-      background: 'var(--warning-soft)', padding: '2px 9px', borderRadius: 'var(--r-pill)',
+      alignSelf: 'flex-start', fontSize: 11.5, fontWeight: 700, color: m.color,
+      background: m.soft, padding: '2px 9px', borderRadius: 'var(--r-pill)',
     }}>
-      מילואים
+      {m.label}
     </span>
   )
 }

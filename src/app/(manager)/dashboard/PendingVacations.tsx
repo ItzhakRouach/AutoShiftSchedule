@@ -7,6 +7,7 @@ import { Btn } from '@/components/ui/Btn'
 import { Icon } from '@/components/ui/Icon'
 import { formatHebDate } from '@/lib/dates/week'
 import type { WorkplaceVacation, VacationStatus, VacationKind } from '@/lib/vacations/pending'
+import { ABSENCE_KIND_META } from '@/lib/vacations/kind-meta'
 import { approveVacation, rejectVacation } from './vacation-actions'
 
 const STATUS_META: Record<VacationStatus, { label: string; color: string; soft: string }> = {
@@ -31,10 +32,11 @@ function StatusPill({ status }: { status: VacationStatus }) {
 }
 
 function KindPill({ kind }: { kind: VacationKind }) {
-  if (kind !== 'miluim') return null
+  if (kind === 'vacation') return null
+  const m = ABSENCE_KIND_META[kind]
   return (
-    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--warning)', background: 'var(--warning-soft)', padding: '2px 8px', borderRadius: 'var(--r-pill)' }}>
-      מילואים
+    <span style={{ fontSize: 11, fontWeight: 700, color: m.color, background: m.soft, padding: '2px 8px', borderRadius: 'var(--r-pill)' }}>
+      {m.label}
     </span>
   )
 }
