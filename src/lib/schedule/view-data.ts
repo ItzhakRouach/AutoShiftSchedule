@@ -10,6 +10,7 @@ import { buildDayInfos, splitAssignments } from './view-data-grid'
 import { getSignedScheduleImageUrl } from '@/lib/publish/image'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { FeasibilityResult, ShiftKey } from '@/lib/scheduling/types'
+import type { AbsenceKind } from '@/lib/vacations/kind-meta'
 
 export interface ViewEmployee { id: string; name: string; color: string }
 export interface ViewRole { id: string; name: string; color?: string; rank?: number }
@@ -56,6 +57,7 @@ export interface ViewVacation {
   employeeId: string
   dateFrom: string
   dateTo: string
+  kind: AbsenceKind
 }
 
 export interface ScheduleView {
@@ -170,7 +172,7 @@ export async function getScheduleView(
     // owned by the manager — no explicit workplace filter needed.
     supabase
       .from('employee_vacations')
-      .select('employee_id, date_from, date_to')
+      .select('employee_id, date_from, date_to, kind')
       .eq('status', 'approved'), // only APPROVED vacations count (match the engine)
   ])
 
@@ -257,6 +259,7 @@ export async function getScheduleView(
       employeeId: v.employee_id,
       dateFrom: v.date_from,
       dateTo: v.date_to,
+      kind: (v.kind as AbsenceKind | null) ?? 'vacation',
     })),
     imageShareUrl,
     nightBeforeByDay,

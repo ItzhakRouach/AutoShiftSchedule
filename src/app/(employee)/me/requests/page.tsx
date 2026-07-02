@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getEmployeeRequestsContext } from '@/lib/requests/context'
-import { formatHebDate, isInVacationRange } from '@/lib/dates/week'
+import { formatHebDate, resolveAbsenceKind } from '@/lib/dates/week'
 import { RequestsHeader } from './RequestsHeader'
 import { DayList } from './DayList'
 import { VacationSection } from './VacationSection'
@@ -30,14 +30,14 @@ export default async function RequestsPage() {
       dateLabel: formatHebDate(iso),
       request: requestsByDay[i] ?? null,
       // Only APPROVED vacations lock a day off; a pending request doesn't yet.
-      inVacation: isInVacationRange(iso, vacations.filter((v) => v.status === 'approved')),
+      absenceKind: resolveAbsenceKind(iso, vacations.filter((v) => v.status === 'approved')),
     }
   })
 
-  // A vacation-covered day counts as "filled" even without a request row, since
-  // the engine already treats vacation as a hard off-day server-side.
+  // An absence-covered day counts as "filled" even without a request row,
+  // since the engine already treats it as a hard off-day server-side.
   const filled = days.filter(
-    (d) => d.inVacation || d.request?.is_off || (d.request?.preferred_shift_ids?.length ?? 0) > 0,
+    (d) => d.absenceKind || d.request?.is_off || (d.request?.preferred_shift_ids?.length ?? 0) > 0,
   ).length
 
   return (

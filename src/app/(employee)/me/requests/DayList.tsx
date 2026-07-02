@@ -6,6 +6,7 @@ import { Sheet } from '@/components/ui/Sheet'
 import { Icon } from '@/components/ui/Icon'
 import { SHIFT_META } from '@/lib/domain/constants'
 import type { ShiftTypeRow, RequestRow } from '@/lib/requests/context'
+import { ABSENCE_KIND_META, type AbsenceKind } from '@/lib/vacations/kind-meta'
 import { DayEditor } from './DayEditor'
 
 const HEB_DAYS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
@@ -14,9 +15,9 @@ interface DayCard {
   dayOfWeek: number
   dateLabel: string
   request: RequestRow | null
-  /** True when this date falls in one of the employee's active vacation ranges
+  /** Set when this date falls in one of the employee's active absence ranges
    *  — the engine already treats it as a hard off-day; UI just reflects that. */
-  inVacation: boolean
+  absenceKind: AbsenceKind | null
 }
 
 interface DayListProps {
@@ -67,7 +68,7 @@ export function DayList({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
         {days.map((day) => {
           const r = day.request
-          const locked = isReadOnly || day.inVacation
+          const locked = isReadOnly || !!day.absenceKind
           return (
             <Card
               key={day.dayOfWeek}
@@ -97,23 +98,23 @@ export function DayList({
                     alignItems: 'center',
                   }}
                 >
-                  {day.inVacation ? (
+                  {day.absenceKind ? (
                     <span
                       data-testid="vacation-locked-chip"
-                      title="יום זה מסומן כחופשה — לא ניתן לערוך מכאן"
+                      title="יום זה מסומן כהיעדרות — לא ניתן לערוך מכאן"
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: 6,
                         fontSize: 13.5,
                         fontWeight: 700,
-                        color: 'var(--vacation)',
-                        background: 'var(--vacation-soft)',
+                        color: ABSENCE_KIND_META[day.absenceKind].color,
+                        background: ABSENCE_KIND_META[day.absenceKind].soft,
                         padding: '6px 12px',
                         borderRadius: 99,
                       }}
                     >
-                      🌴 חופשה
+                      {ABSENCE_KIND_META[day.absenceKind].label}
                     </span>
                   ) : (r?.is_off || (r?.preferred_shift_ids.length ?? 0) > 0) ? (
                     // Show EVERY chosen option: preferred shift chips AND a "יום

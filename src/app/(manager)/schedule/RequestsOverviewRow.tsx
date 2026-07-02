@@ -1,8 +1,9 @@
 'use client'
 
 import { SHIFT_META } from '@/lib/domain/constants'
-import { isInVacationRange } from '@/lib/dates/week'
+import { resolveAbsenceKind } from '@/lib/dates/week'
 import type { ViewEmployee, ViewRequest, ViewVacation } from '@/lib/schedule/view-data'
+import { ABSENCE_KIND_META, type AbsenceKind } from '@/lib/vacations/kind-meta'
 
 interface DayColumn {
   index: number
@@ -35,7 +36,7 @@ function ShiftChip({ shiftTypeId, shiftTypeIdByKey }: { shiftTypeId: string; shi
   )
 }
 
-function DayCell({ req, shiftTypeIdByKey, onVacation, onClick }: { req: ViewRequest | undefined; shiftTypeIdByKey: Record<string, string>; onVacation: boolean; onClick?: () => void }) {
+function DayCell({ req, shiftTypeIdByKey, absenceKind, onClick }: { req: ViewRequest | undefined; shiftTypeIdByKey: Record<string, string>; absenceKind: AbsenceKind | null; onClick?: () => void }) {
   const cellStyle: React.CSSProperties = {
     padding: '8px 10px',
     borderLeft: '1px solid var(--border)',
@@ -45,14 +46,15 @@ function DayCell({ req, shiftTypeIdByKey, onVacation, onClick }: { req: ViewRequ
     minWidth: 80,
     cursor: onClick ? 'pointer' : 'default',
   }
-  if (onVacation) {
+  if (absenceKind) {
+    const meta = ABSENCE_KIND_META[absenceKind]
     return (
       <td
         data-testid="vacation-cell"
-        title="העובד בחופשה ביום זה"
-        style={{ ...cellStyle, background: 'var(--vacation-soft)' }}
+        title={`העובד ב${meta.label} ביום זה`}
+        style={{ ...cellStyle, background: meta.soft }}
       >
-        <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--vacation)' }}>🌴 חופשה</span>
+        <span style={{ fontSize: 12, fontWeight: 800, color: meta.color }}>{meta.label}</span>
       </td>
     )
   }
@@ -112,20 +114,33 @@ interface Props {
   onOpenVacation: () => void
 }
 
+/** Picks the kind to show in the row's week-marker badge: the earliest (by
+ *  date_from) of the employee's active/upcoming ranges — deterministic when
+ *  several kinds are present in the same week. */
+function primaryWeekKind(empVacs: ViewVacation[]): AbsenceKind | null {
+  if (empVacs.length === 0) return null
+  const sorted = [...empVacs].sort((a, b) => (a.dateFrom < b.dateFrom ? -1 : a.dateFrom > b.dateFrom ? 1 : 0))
+  return sorted[0].kind
+}
+
 /** One employee's request row: sticky name cell + a DayCell per day. Split out
  *  of RequestsOverview to keep that component ≤200 lines. */
 export function RequestsOverviewRow({ emp, rowIndex, days, byDay, empVacs, isoByDayIndex, shiftTypeIdByKey, onEdit, onOpenVacation }: Props) {
-  const empHasAnyVac = empVacs.length > 0
+  const weekKind = primaryWeekKind(empVacs)
   return (
     <tr style={{ background: rowIndex % 2 === 0 ? 'var(--surface)' : 'var(--bg)' }}>
       <td style={{ ...stickyName, background: 'var(--surface-2)' }}>
         <span style={{ color: emp.color, fontWeight: 700 }}>{emp.name}</span>
-        {empHasAnyVac && (
+        {weekKind && (
           <span
-            title="לעובד יש חופשה בשבוע זה או חופשה פעילה"
-            style={{ marginInlineStart: 6, fontSize: 11, fontWeight: 800, color: 'var(--vacation)', background: 'var(--vacation-soft)', padding: '1px 6px', borderRadius: 99 }}
+            title={`לעובד יש ${ABSENCE_KIND_META[weekKind].label} בשבוע זה או היעדרות פעילה`}
+            style={{
+              marginInlineStart: 6, fontSize: 11, fontWeight: 800,
+              color: ABSENCE_KIND_META[weekKind].color, background: ABSENCE_KIND_META[weekKind].soft,
+              padding: '1px 6px', borderRadius: 99,
+            }}
           >
-            🌴
+            {ABSENCE_KIND_META[weekKind].label}
           </span>
         )}
         <button
@@ -141,14 +156,17 @@ export function RequestsOverviewRow({ emp, rowIndex, days, byDay, empVacs, isoBy
       </td>
       {days.map((d) => {
         const req = byDay?.get(d.index)
-        const onVacation = isInVacationRange(isoByDayIndex[d.index], empVacs.map((v) => ({ date_from: v.dateFrom, date_to: v.dateTo })))
+        const absenceKind = resolveAbsenceKind(
+          isoByDayIndex[d.index],
+          empVacs.map((v) => ({ date_from: v.dateFrom, date_to: v.dateTo, kind: v.kind })),
+        )
         return (
           <DayCell
             key={d.index}
             req={req}
             shiftTypeIdByKey={shiftTypeIdByKey}
-            onVacation={onVacation}
-            onClick={onVacation ? undefined : () => onEdit(d, req)}
+            absenceKind={absenceKind}
+            onClick={absenceKind ? undefined : () => onEdit(d, req)}
           />
         )
       })}

@@ -44,3 +44,18 @@ export function isInVacationRange(
 ): boolean {
   return ranges.some((r) => iso >= r.date_from && iso <= r.date_to)
 }
+
+/**
+ * Resolves the absence kind covering `iso`, or null if no range covers it.
+ * If multiple ranges overlap the same day, the one with the earliest
+ * `date_from` wins — a deterministic, stable tie-break.
+ */
+export function resolveAbsenceKind<K extends string>(
+  iso: string,
+  ranges: Array<{ date_from: string; date_to: string; kind: K }>,
+): K | null {
+  const covering = ranges.filter((r) => iso >= r.date_from && iso <= r.date_to)
+  if (covering.length === 0) return null
+  covering.sort((a, b) => (a.date_from < b.date_from ? -1 : a.date_from > b.date_from ? 1 : 0))
+  return covering[0].kind
+}

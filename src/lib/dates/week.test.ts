@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { upcomingWeekStartISO, formatHebDate, hebrewDayName, isInVacationRange } from './week'
+import { upcomingWeekStartISO, formatHebDate, hebrewDayName, isInVacationRange, resolveAbsenceKind } from './week'
 
 describe('upcomingWeekStartISO', () => {
   it('returns the same Sunday when today IS Sunday', () => {
@@ -79,5 +79,39 @@ describe('isInVacationRange', () => {
   })
   it('empty ranges → always false', () => {
     expect(isInVacationRange('2026-06-10', [])).toBe(false)
+  })
+})
+
+describe('resolveAbsenceKind', () => {
+  it('returns null when no range covers the date', () => {
+    const ranges = [{ date_from: '2026-06-10', date_to: '2026-06-15', kind: 'vacation' as const }]
+    expect(resolveAbsenceKind('2026-06-09', ranges)).toBeNull()
+  })
+
+  it('returns the covering range kind (vacation)', () => {
+    const ranges = [{ date_from: '2026-06-10', date_to: '2026-06-15', kind: 'vacation' as const }]
+    expect(resolveAbsenceKind('2026-06-12', ranges)).toBe('vacation')
+  })
+
+  it('returns the covering range kind (miluim) — this is the regression case: a', () => {
+    const ranges = [{ date_from: '2026-06-10', date_to: '2026-06-15', kind: 'miluim' as const }]
+    expect(resolveAbsenceKind('2026-06-12', ranges)).toBe('miluim')
+  })
+
+  it('returns the covering range kind (sick)', () => {
+    const ranges = [{ date_from: '2026-06-10', date_to: '2026-06-15', kind: 'sick' as const }]
+    expect(resolveAbsenceKind('2026-06-12', ranges)).toBe('sick')
+  })
+
+  it('when multiple ranges overlap a day, picks the one with the earliest date_from deterministically', () => {
+    const ranges = [
+      { date_from: '2026-06-05', date_to: '2026-06-20', kind: 'vacation' as const },
+      { date_from: '2026-06-01', date_to: '2026-06-30', kind: 'miluim' as const },
+    ]
+    expect(resolveAbsenceKind('2026-06-12', ranges)).toBe('miluim')
+  })
+
+  it('empty ranges → null', () => {
+    expect(resolveAbsenceKind('2026-06-10', [])).toBeNull()
   })
 })
