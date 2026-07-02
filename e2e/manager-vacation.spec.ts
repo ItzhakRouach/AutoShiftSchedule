@@ -1,5 +1,30 @@
 import { test, expect, type Page } from '@playwright/test'
 
+/** Mirrors src/lib/dates/week.ts#upcomingWeekStartISO — the requests grid
+ *  only ever shows the upcoming week, so regression coverage for a day cell
+ *  must target a real date inside it (not a fixed future date). */
+function upcomingWeekStartISO(today: Date): string {
+  const day = today.getDay()
+  const daysUntilSunday = day === 0 ? 0 : 7 - day
+  const sunday = new Date(today)
+  sunday.setDate(today.getDate() + daysUntilSunday)
+  const yyyy = sunday.getFullYear()
+  const mm = String(sunday.getMonth() + 1).padStart(2, '0')
+  const dd = String(sunday.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
+
+/** ISO date for `offset` days after `iso`. */
+function addDaysISO(iso: string, offset: number): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  const date = new Date(y, m - 1, d)
+  date.setDate(date.getDate() + offset)
+  const yyyy = date.getFullYear()
+  const mm = String(date.getMonth() + 1).padStart(2, '0')
+  const dd = String(date.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
+
 /** Sign up → onboard → land on dashboard. */
 async function signupAndOnboard(page: Page) {
   const uuid = crypto.randomUUID().replace(/-/g, '').slice(0, 12)
@@ -75,8 +100,11 @@ test('manager sets a vacation, a מילואים and a מחלה range for workers
   await page.getByRole('button', { name: 'הוסף היעדרות' }).click()
 
   await expect(page.getByText('יום שבת 1.8 — יום רביעי 5.8')).toBeVisible({ timeout: 10000 })
-  // The מילואים kind chip appears alongside the approved-status chip.
-  await expect(page.locator('span').filter({ hasText: 'מילואים' })).toBeVisible()
+  // The מילואים kind chip appears alongside the approved-status chip (scoped
+  // to the sheet panel — the row itself ALSO shows a מילואים week-marker badge
+  // behind the sheet, so an unscoped locator would match both).
+  const yossiSheet = page.getByRole('heading', { name: /היעדרות — יוסי לוי/ }).locator('..')
+  await expect(yossiSheet.locator('span').filter({ hasText: 'מילואים' })).toBeVisible()
 
   // ── 3. Remove the מילואים entry — the "הסר" undo path ──────────────────────
   await page.getByRole('button', { name: 'הסר' }).first().click()
@@ -97,6 +125,48 @@ test('manager sets a vacation, a מילואים and a מחלה range for workers
   await page.getByRole('button', { name: 'הוסף היעדרות' }).click()
 
   await expect(page.getByText('יום רביעי 15.7 — יום חמישי 16.7')).toBeVisible({ timeout: 10000 })
-  // The מחלה kind chip appears alongside the approved-status chip.
-  await expect(page.locator('span').filter({ hasText: 'מחלה' })).toBeVisible()
+  // The מחלה kind chip appears alongside the approved-status chip (scoped to
+  // the sheet panel — see the מילואים note above for why this must be scoped).
+  const mayaSheet = page.getByRole('heading', { name: /היעדרות — מאיה בר/ }).locator('..')
+  await expect(mayaSheet.locator('span').filter({ hasText: 'מחלה' })).toBeVisible()
+
+  // Close before opening the next worker's sheet.
+  await page.locator('body').click({ position: { x: 5, y: 5 } })
+  await expect(page.getByRole('heading', { name: /היעדרות — מאיה בר/ })).toBeHidden({ timeout: 5000 })
+
+  // ── 5. REGRESSION: a מילואים day cell in the "בקשות עובדים" grid must show
+  // מילואים, not the generic חופשה label (the reported bug — the grid used a
+  // kind-less boolean and a hardcoded חופשה/palm-tree label for ANY absence).
+  const uuid2 = crypto.randomUUID().replace(/-/g, '').slice(0, 12)
+  await page.goto('/team')
+  await addEmployee(page, `רון גל ${uuid2}`)
+  await page.goto('/schedule')
+  await page.getByRole('button', { name: 'בקשות עובדים' }).click()
+  await expect(page.getByTestId('requests-overview')).toBeVisible({ timeout: 10000 })
+
+  const sunday = upcomingWeekStartISO(new Date())
+  const tuesday = addDaysISO(sunday, 2) // a day guaranteed to render in the grid
+
+  const ronRow = page.locator('tr').filter({ hasText: `רון גל ${uuid2}` })
+  await ronRow.getByRole('button', { name: 'היעדרות' }).click()
+  const ronHeading = page.getByRole('heading', { name: new RegExp(`היעדרות — רון גל ${uuid2}`) })
+  await expect(ronHeading).toBeVisible({ timeout: 8000 })
+
+  await page.getByRole('button', { name: 'מילואים', exact: true }).click()
+  await page.getByLabel('תאריך התחלה').fill(tuesday)
+  await page.getByLabel('תאריך סיום').fill(tuesday)
+  await page.getByRole('button', { name: 'הוסף היעדרות' }).click()
+  const ronSheet = ronHeading.locator('..')
+  await expect(ronSheet.locator('span').filter({ hasText: 'מילואים' })).toBeVisible({ timeout: 10000 })
+
+  await page.locator('body').click({ position: { x: 5, y: 5 } })
+  await expect(ronHeading).toBeHidden({ timeout: 5000 })
+
+  // The day cell for Tuesday now renders the מילואים label/color — never
+  // "חופשה" and never the palm emoji.
+  const dayCell = ronRow.getByTestId('vacation-cell')
+  await expect(dayCell).toBeVisible({ timeout: 10000 })
+  await expect(dayCell).toHaveText('מילואים')
+  await expect(dayCell).not.toHaveText(/חופשה/)
+  await expect(dayCell).not.toContainText('🌴')
 })
