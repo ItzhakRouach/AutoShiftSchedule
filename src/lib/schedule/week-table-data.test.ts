@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildWeekGrid, buildEmpTotals, cellCapacity } from './week-table-data'
+import { buildWeekGrid, buildEmpTotals, cellCapacity, countUncoveredCells } from './week-table-data'
 import type { ScheduleView } from './view-data'
 
 function makeView(overrides: Partial<ScheduleView> = {}): ScheduleView {
@@ -141,5 +141,47 @@ describe('cellCapacity', () => {
 
   it('3/2 (over-staffed) → over', () => {
     expect(cellCapacity(3, 2)).toEqual({ label: '3/2', status: 'over' })
+  })
+})
+
+describe('countUncoveredCells', () => {
+  it('fully-staffed view (matches makeView default requirements) → 0', () => {
+    // makeView only requires day 0; night/r-achm + night/r-guard are gaps by
+    // default, so build a view whose grid fully matches its requirements.
+    const view = makeView({
+      grid: {
+        0: {
+          morning: { 'r-achm': ['e1'], 'r-moked': ['e2'], 'r-guard': ['e2'] },
+          noon: { 'r-achm': ['e1'], 'r-moked': ['e2'], 'r-guard': ['e2'] },
+          night: { 'r-achm': ['e1'], 'r-moked': ['e2'], 'r-guard': ['e2'] },
+        },
+      },
+    })
+    expect(countUncoveredCells(view)).toBe(0)
+  })
+
+  it('counts one gap per under-staffed required cell', () => {
+    // Default makeView: day-0 grid only fills morning/r-achm + noon/r-moked;
+    // the other 7 required (shift, role) cells for day 0 are empty → 7 gaps.
+    const view = makeView()
+    expect(countUncoveredCells(view)).toBe(7)
+  })
+
+  it('unconfigured cells (no requirement) are never counted as gaps', () => {
+    const view = makeView({ requirements: {}, grid: {} })
+    expect(countUncoveredCells(view)).toBe(0)
+  })
+
+  it('a cell covered entirely by a 12h assignment is not counted as a gap', () => {
+    // m12_day (morning+noon) covers r-guard's morning+noon requirement for e1;
+    // night/r-guard has no requirement here, isolating the covered cells.
+    const view = makeView({
+      requirements: {
+        0: { morning: { 'r-guard': 1 }, noon: { 'r-guard': 1 }, night: {} },
+      },
+      grid: { 0: { morning: {}, noon: {}, night: {} } },
+      twelve: [{ day: 0, variant: 'm12_day', roleId: 'r-guard', employeeId: 'e1' }],
+    })
+    expect(countUncoveredCells(view)).toBe(0)
   })
 })

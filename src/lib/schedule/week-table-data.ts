@@ -3,7 +3,7 @@
  * Pure — no IO, no Supabase. Testable with plain fixtures.
  */
 import type { ScheduleView, ViewEmployee } from './view-data'
-import { twelveAnchor, twelveFillsOf } from './week-table-twelve'
+import { twelveAnchor, twelveFillsOf, coveredByTwelve } from './week-table-twelve'
 
 export interface CellEntry {
   employeeId: string
@@ -128,4 +128,32 @@ export function cellCapacity(assignedCount: number, requiredCount: number): Cell
   const label = `${assignedCount}/${requiredCount}`
   const status = assignedCount > requiredCount ? 'over' : assignedCount === requiredCount ? 'full' : 'under'
   return { label, status }
+}
+
+/**
+ * Number of required (day, shift, role) cells still short of their target —
+ * i.e. the "לא מאויש" gaps the manager sees. Mirrors WeekTable's per-cell
+ * math exactly: `assignedCount = cellEntries.length + coveredCount` (a 12h
+ * shift's covered cell counts toward its target without needing a base
+ * occupant). Drives the secondary "השלם 12ש׳ אוטומטית" button's visibility.
+ */
+export function countUncoveredCells(view: ScheduleView): number {
+  const grid = buildWeekGrid(view)
+  const coveredMap = coveredByTwelve(view)
+  let gaps = 0
+  for (const dayKey of Object.keys(view.requirements)) {
+    const day = Number(dayKey)
+    const dayReq = view.requirements[day] ?? {}
+    for (const shift of Object.keys(dayReq)) {
+      const roleReq = dayReq[shift] ?? {}
+      for (const [roleId, requiredCount] of Object.entries(roleReq)) {
+        if (requiredCount <= 0) continue
+        const cellEntries = grid[day]?.[shift]?.[roleId] ?? []
+        const coveredCount = coveredMap.get(`${day}:${shift}:${roleId}`) ?? 0
+        const assignedCount = cellEntries.length + coveredCount
+        if (assignedCount < requiredCount) gaps++
+      }
+    }
+  }
+  return gaps
 }
