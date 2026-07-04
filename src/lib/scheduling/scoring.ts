@@ -1,6 +1,7 @@
 // Soft-objective candidate scoring. Lower comparator output = higher priority.
 import type { Assignment, EmploymentType, Employee } from './types'
 import { fairnessScore } from './fairness'
+import { compareFloorProgress } from './request-gate'
 
 /** Employment-type priority: full-time first, then part-time, then student. */
 export const EMPLOYMENT_RANK: Record<EmploymentType, number> = {
@@ -27,6 +28,10 @@ export interface CandidateState {
   current: Assignment[]
   /** how many of this employee's requests are satisfied so far */
   requestsSatisfied: number
+  /** this employee's OWN request floor (floorTarget = max(min(2,rc), ceil(rc/2))).
+   *  Requesters still below their own floor are prioritized over those who met it,
+   *  driving the "at least half of your requests" guarantee. Defaults to 0. */
+  floorTarget?: number
   /** deterministic lottery rank (0 = drawn first); lower wins */
   lotteryRank: number
   /** is this employee a SENIOR holder for the role(s) in play for this match?
@@ -90,9 +95,11 @@ export function compareCandidates(
     const br0 = b.requested ? 0 : 1
     if (ar0 !== br0) return ar0 - br0
     if (a.requested && b.requested) {
-      const af = floorRank(a.requestsSatisfied)
-      const bf = floorRank(b.requestsSatisfied)
-      if (af !== bf) return af - bf
+      const fc = compareFloorProgress(
+        a.requestsSatisfied, a.floorTarget ?? 0,
+        b.requestsSatisfied, b.floorTarget ?? 0,
+      )
+      if (fc !== 0) return fc
     }
   }
 
@@ -126,12 +133,15 @@ export function compareCandidates(
   const br = b.requested ? 0 : 1
   if (ar !== br) return ar - br
 
-  // 4. request-satisfaction floor: fewer satisfied requests first (below 2,
-  // then below 1). Applied among requesters to drive the >=2 (else >=1) floor.
+  // 4. request-satisfaction floor: requesters still BELOW their own floor
+  // (floorTarget = "at least half", never < 2) rank ahead of those who met it;
+  // among below-floor, fewer satisfied first. Drives the per-employee floor.
   if (a.requested && b.requested) {
-    const af = floorRank(a.requestsSatisfied)
-    const bf = floorRank(b.requestsSatisfied)
-    if (af !== bf) return af - bf
+    const fc = compareFloorProgress(
+      a.requestsSatisfied, a.floorTarget ?? 0,
+      b.requestsSatisfied, b.floorTarget ?? 0,
+    )
+    if (fc !== 0) return fc
   }
 
   // 4.5 senior-for-role preference: among candidates still tied (same request
@@ -185,9 +195,3 @@ export function reachMinRank(c: CandidateState): number {
   return EMPLOYMENT_RANK[c.emp.employmentType]
 }
 
-/** Employees with 0 satisfied requests rank above those with 1, then 2+. */
-export function floorRank(satisfied: number): number {
-  if (satisfied <= 0) return 0
-  if (satisfied === 1) return 1
-  return 2
-}

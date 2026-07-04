@@ -10,6 +10,7 @@
 import type { Assignment, DayMeta, Employee, EngineInput, ShiftKey, TwelveHourAssignment } from './types'
 import { isAssignable, type CheckContext } from './constraints'
 import { compareCandidates, isSeniorForRole, type CandidateState } from './scoring'
+import { floorTarget } from './request-gate'
 import { maxMatch, type MatchSlot } from './matching'
 import { BASE_SHIFTS } from './types'
 
@@ -84,6 +85,7 @@ function candState(
     mustAcceptRequested: emp.mustAccept && requested,
     current: st.committed[emp.id],
     requestsSatisfied: st.satisfied[emp.id],
+    floorTarget: floorTarget(input, emp.id),
     lotteryRank: st.lotteryRank[emp.id],
     seniorForRole: openRoleIds.some((r) => isSeniorForRole(emp, r)),
   }
@@ -123,6 +125,7 @@ function slotCandState(
     mustAcceptRequested: e.mustAccept && requested,
     current: st.committed[e.id],
     requestsSatisfied: st.satisfied[e.id],
+    floorTarget: floorTarget(input, e.id),
     lotteryRank: st.lotteryRank[e.id],
     seniorForRole: isSeniorForRole(e, slot.roleId),
   }
