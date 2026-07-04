@@ -47,21 +47,21 @@ export const TWELVE_HOUR_FILLS: Record<TwelveHourKey, ShiftKey[]> = {
   m12_15to3: ['noon', 'night'],
 }
 
-/** Preference order: day/night split first, 03-15/15-03 only as last resort. */
-export const TWELVE_HOUR_PREFERENCE: TwelveHourKey[] = [
-  'm12_day',
-  'm12_night',
-  'm12_3to15',
-  'm12_15to3',
-]
+/**
+ * Variants the auto-scheduler may assign: ONLY the day/night pair. The off-cycle
+ * 03-15/15-03 variants are intentionally never auto-assigned (they remain valid
+ * historical shift types for rendering/persistence — see SHIFT_META).
+ */
+export const TWELVE_HOUR_PREFERENCE: TwelveHourKey[] = ['m12_day', 'm12_night']
 
-/** Pick the 12h variant that covers a given uncovered base shift. */
+/** Pick the 12h variant that covers a given uncovered base shift (day/night pair
+ *  only; m12_day fills morning+noon, m12_night fills night). */
 export function variantForShift(shift: ShiftKey): TwelveHourKey {
   switch (shift) {
     case 'morning':
       return 'm12_day'
     case 'noon':
-      return 'm12_15to3'
+      return 'm12_day' // m12_day (07–19) fills morning+noon → covers a noon gap
     case 'night':
       return 'm12_night'
   }

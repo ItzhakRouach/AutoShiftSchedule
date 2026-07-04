@@ -29,7 +29,10 @@ export interface ShiftMeta {
 }
 
 export const SHIFT_ORDER: ShiftId[] = ['morning', 'noon', 'night']
-export const FALLBACK_12H_ORDER: ShiftId[] = ['m12_day', 'm12_night', 'm12_3to15', 'm12_15to3']
+// Only the day/night 12h pair is auto-assigned or offered. The off-cycle
+// m12_3to15/m12_15to3 stay defined in SHIFT_META as valid historical shift types
+// (for rendering/persisting old rows) but are never scheduled — see fallback.ts.
+export const FALLBACK_12H_ORDER: ShiftId[] = ['m12_day', 'm12_night']
 
 // Default staffing per BASE shift × role (ported from DesignTemplate/data.jsx).
 // Applied to every day of the week on workplace creation. Only counts > 0 create rows.

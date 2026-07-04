@@ -5,9 +5,10 @@
 // required role in EACH covered window (cross-role allowed: the person may fill
 // a different role per window as long as they hold the role required there).
 //
-// Preference (STRICT): day/night split (m12_day + m12_night) first; the
-// 03-15 / 15-03 variants are used ONLY as a last resort, when day/night cannot
-// close the remaining gaps for that day.
+// Only the day/night split (m12_day + m12_night) is auto-assigned. The off-cycle
+// 03-15 / 15-03 variants were intentionally removed from scheduling — a gap the
+// day/night pair cannot close is left as a warning (they remain valid historical
+// shift types for rendering, but the engine never assigns them).
 import type {
   Assignment,
   DayMeta,
@@ -17,7 +18,7 @@ import type {
   TwelveHourKey,
 } from './types'
 import type { FillState } from './dayfill'
-import { TWELVE_HOUR_FILLS, TWELVE_HOUR_PREFERENCE } from './fallback'
+import { TWELVE_HOUR_FILLS } from './fallback'
 import { orderedEmployees } from './dayfill'
 import { canTwelve } from './twelve-rules'
 import {
@@ -128,18 +129,14 @@ export function runTwelveFill(input: EngineInput, st: FillState): TwelveHourAssi
 
   for (const d of input.days) {
     const meta = metas[d.index]
-    // Phase 1 — PREFERRED day/night pair: greedy fill, then displacement to free
-    // an 8h holder so the pair can tile the whole day. Repeat until no progress.
+    // PREFERRED day/night pair: greedy fill, then displacement to free an 8h holder
+    // so the pair can tile the whole day. Repeat until no progress. Any gap the pair
+    // cannot close is left as a warning (off-cycle variants are no longer used).
     let moved = true
     while (moved && openPairs(input, st, d.index).length > 0) {
       moved = false
       for (const v of PREFERRED) if (tryVariant(input, st, out, meta, v)) moved = true
       if (!moved) for (const v of PREFERRED) if (tryDisplace(input, st, out, meta, v)) { moved = true; break }
-    }
-    // Phase 2 — LAST RESORT 03-15 / 15-03, only for gaps the pair could not close.
-    for (const v of TWELVE_HOUR_PREFERENCE) {
-      if (PREFERRED.includes(v)) continue
-      while (openPairs(input, st, d.index).length > 0 && tryVariant(input, st, out, meta, v)) { /* loop */ }
     }
   }
   return out

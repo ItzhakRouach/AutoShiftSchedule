@@ -12,9 +12,17 @@ describe('domain constants', () => {
     expect(ROLES).toEqual(['אחמ״ש', 'מוקדן', 'מאבטח'])
     expect(ROLE_META['מאבטח'].color).toBe('#13A98E')
   })
-  it('defines four 12h fallback variants, each 12h and flagged', () => {
-    expect(FALLBACK_12H_ORDER).toHaveLength(4)
+  it('offers only the day/night 12h pair (off-cycle variants removed)', () => {
+    expect(FALLBACK_12H_ORDER).toEqual(['m12_day', 'm12_night'])
     for (const id of FALLBACK_12H_ORDER) {
+      expect(SHIFT_META[id].hours).toBe(12)
+      expect(SHIFT_META[id].isFallback).toBe(true)
+    }
+  })
+  it('keeps 03-15/15-03 as valid historical shift types (not auto-assigned)', () => {
+    // The off-cycle variants are no longer scheduled or offered, but their metadata
+    // stays defined so historical persisted rows still type-check and render.
+    for (const id of ['m12_3to15', 'm12_15to3'] as const) {
       expect(SHIFT_META[id].hours).toBe(12)
       expect(SHIFT_META[id].isFallback).toBe(true)
     }

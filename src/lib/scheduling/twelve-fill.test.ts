@@ -82,29 +82,28 @@ describe('m12_day fills morning AND noon (counts toward each)', () => {
   })
 })
 
-describe('last-resort 03-15/15-03 ONLY when day/night cannot', () => {
-  // m12_3to15 (03–15) FILLS night+morning — the ONLY single-shift way for ONE
-  // person to cover both a morning gap AND a night gap the same day. The day/night
-  // pair (m12_day=morning+noon, m12_night=night) would need TWO people; with a
-  // single eligible person, day/night cannot, so 03-15 is correctly used.
-  it('one person, morning+night gap → forced to m12_3to15 (last resort)', () => {
+describe('off-cycle 03-15/15-03 are never auto-assigned (removed)', () => {
+  // 03–15 (m12_3to15) fills night+morning and 15–03 (m12_15to3) fills noon+night —
+  // the only single-shift ways for ONE person to bridge two non-adjacent gaps. Both
+  // were intentionally removed (only the day/night pair remains), so a lone person
+  // can no longer cover both gaps: one slot is left as an uncovered warning.
+  it('one person, morning+night gap → one slot warns, no off-cycle 12h', () => {
     const p = emp('p')
     const req = mergeReqs(reqFor([0], 'morning', GUARD, 1), reqFor([0], 'night', GUARD, 1))
     const res = generateSchedule(input({ employees: [p], requirements: req, settings: on() }))
-    expect(res.coverage.percent).toBe(100)
-    expect(res.twelveHourAssignments).toEqual<TwelveHourAssignment[]>([
-      { employeeId: 'p', day: 0, variant: 'm12_3to15', rolesByShift: { night: GUARD, morning: GUARD } },
-    ])
+    expect(res.warnings.length).toBe(1)
+    expect(res.coverage.percent).toBeLessThan(100)
+    const variants = res.twelveHourAssignments.map((t) => t.variant)
+    expect(variants).not.toContain('m12_3to15')
+    expect(variants).not.toContain('m12_15to3')
   })
 
-  // When day/night CAN cover (enough people), the last-resort variants are NOT
-  // used even though the same gaps exist — proves the strict preference order.
-  it('two people, same morning+night gap → uses day/night, NOT m12_3to15', () => {
+  // When day/night CAN cover (enough people), no 12h is needed and certainly never
+  // an off-cycle variant.
+  it('two people, same morning+night gap → uses day/night, NOT off-cycle', () => {
     const employees = [emp('a'), emp('b')]
     const req = mergeReqs(reqFor([0], 'morning', GUARD, 1), reqFor([0], 'night', GUARD, 1))
     const res = generateSchedule(input({ employees, requirements: req, settings: on() }))
-    // With 2 people the 8h pass already covers both as plain 8h (no 12h at all),
-    // and certainly never the last-resort variant.
     const variants = res.twelveHourAssignments.map((t) => t.variant)
     expect(variants).not.toContain('m12_3to15')
     expect(variants).not.toContain('m12_15to3')
@@ -112,58 +111,32 @@ describe('last-resort 03-15/15-03 ONLY when day/night cannot', () => {
   })
 })
 
-describe('cross-role 12h: אחמ״ש who also holds מוקדן covers מוקדן noon→night', () => {
-  // User's exact case. A מוקדן (dispatch) does a 12h; an אחמ״ש who ALSO holds
-  // מוקדן does a 12h covering noon as מוקדן continuing into night (as אחמ״ש).
-  it('cross-role pair covers the מוקדן position across the day (user case)', () => {
-    // Requirements day0: noon needs 1 מוקדן, night needs 1 אחמ״ש AND 1 מוקדן.
-    // People (BOTH must hold מוקדן so the cross-role 12h is forced):
-    //  d  = pure מוקדן
-    //  am = אחמ״ש who ALSO holds מוקדן
-    // Make BOTH employees unavailable for a plain 8h night-אחמ״ש except via a 12h
-    // that bridges noon→night: only `am` holds אחמ״ש, and we require am to also
-    // plug the noon מוקדן. With one-shift-per-day, am must do ONE 12h covering
-    // noon (as מוקדן) continuing into night (as אחמ״ש) — the user's exact case —
-    // while d covers the night מוקדן via its own complementary 12h.
-    const d = emp('d', { roleIds: [DISPATCH] })
-    const am = emp('am', {
-      roleIds: [SHIFT_MGR, DISPATCH],
-      // am only available afternoon/night windows → cannot take a morning 8h,
-      // and the noon מוקדן + night אחמ״ש must be bridged by a single 12h.
-      availability: { 0: ['noon', 'night'] },
-    })
-    const req = mergeReqs(
-      reqFor([0], 'noon', DISPATCH, 1),
-      reqFor([0], 'night', SHIFT_MGR, 1),
-      reqFor([0], 'night', DISPATCH, 1),
-    )
-    const res = generateSchedule(input({ employees: [d, am], requirements: req, settings: on() }))
+describe('cross-role 12h with the day/night pair only', () => {
+  it('a multi-role person covers morning+noon as DIFFERENT roles via one m12_day', () => {
+    // am holds both roles; m12_day (07–19) fills morning+noon. Require morning as
+    // מוקדן and noon as אחמ״ש → a single m12_day person fills BOTH windows cross-role.
+    const am = emp('am', { roleIds: [SHIFT_MGR, DISPATCH] })
+    const req = mergeReqs(reqFor([0], 'morning', DISPATCH, 1), reqFor([0], 'noon', SHIFT_MGR, 1))
+    const res = generateSchedule(input({ employees: [am], requirements: req, settings: on() }))
     expect(res.coverage.percent).toBe(100)
-    expect(res.warnings).toEqual([])
-    // A complementary 12h PAIR fully staffs the מוקדן position across noon→night.
-    expect(res.grid[0].noon[DISPATCH].length).toBe(1)
-    expect(res.grid[0].night[DISPATCH].length).toBe(1)
-    expect(res.grid[0].night[SHIFT_MGR]).toEqual(['am'])
-    // The אחמ״ש (am) — who also holds מוקדן — covers night via a 12h, and a 12h
-    // covers the noon מוקדן: cross-role coverage across the position.
-    const variants = res.twelveHourAssignments.map((t) => t.variant)
-    expect(res.twelveHourAssignments.length).toBeGreaterThanOrEqual(1)
-    // night-אחמ״ש is only fillable by am, who is noon/night-only → must be a 12h
-    // (m12_15to3 / m12_night), never a morning-touching variant.
-    expect(variants).not.toContain('m12_3to15')
+    expect(res.grid[0].morning[DISPATCH]).toEqual(['am'])
+    expect(res.grid[0].noon[SHIFT_MGR]).toEqual(['am'])
+    const t = res.twelveHourAssignments.find((x) => x.employeeId === 'am')!
+    expect(t.variant).toBe('m12_day')
+    expect(t.rolesByShift.morning).toBe(DISPATCH)
+    expect(t.rolesByShift.noon).toBe(SHIFT_MGR)
   })
 
-  it('a single multi-role person fills DIFFERENT roles across the two windows', () => {
-    // One m12 person covering noon as מוקדן and night as אחמ״ש (cross-role).
+  it('single person can no longer bridge noon→night cross-role (off-cycle removed)', () => {
+    // Previously m12_15to3 let one person cover noon (מוקדן) + night (אחמ״ש) in one
+    // shift. With it removed, a lone person covers only ONE window; the other warns.
     const am = emp('am', { roleIds: [SHIFT_MGR, DISPATCH] })
     const req = mergeReqs(reqFor([0], 'noon', DISPATCH, 1), reqFor([0], 'night', SHIFT_MGR, 1))
     const res = generateSchedule(input({ employees: [am], requirements: req, settings: on() }))
-    // m12_15to3 fills noon+night; or m12_day(noon)+... — assert both filled by am.
-    expect(res.grid[0].noon[DISPATCH]).toEqual(['am'])
-    expect(res.grid[0].night[SHIFT_MGR]).toEqual(['am'])
-    const t = res.twelveHourAssignments.find((x) => x.employeeId === 'am')!
-    expect(t.rolesByShift.noon).toBe(DISPATCH)
-    expect(t.rolesByShift.night).toBe(SHIFT_MGR)
-    expect(res.coverage.percent).toBe(100)
+    expect(res.warnings.length).toBe(1)
+    expect(res.coverage.percent).toBeLessThan(100)
+    const variants = res.twelveHourAssignments.map((t) => t.variant)
+    expect(variants).not.toContain('m12_15to3')
+    expect(variants).not.toContain('m12_3to15')
   })
 })

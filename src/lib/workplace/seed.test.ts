@@ -12,12 +12,12 @@ describe('buildSeed', () => {
     expect(seed.roles.find(r => r.name === 'מוקדן')!.rank).toBe(2)
     expect(seed.roles.find(r => r.name === 'מאבטח')!.rank).toBe(1)
   })
-  it('seeds 7 shift types: 3 base + 4 fallback, with correct flags/hours', () => {
-    expect(seed.shiftTypes).toHaveLength(7)
+  it('seeds 5 shift types: 3 base + the day/night 12h pair (off-cycle removed)', () => {
+    expect(seed.shiftTypes).toHaveLength(5)
     const base = seed.shiftTypes.filter(s => !s.is_fallback)
     const fb = seed.shiftTypes.filter(s => s.is_fallback)
     expect(base.map(s => s.key)).toEqual(['morning', 'noon', 'night'])
-    expect(fb).toHaveLength(4)
+    expect(fb.map(s => s.key)).toEqual(['m12_day', 'm12_night'])
     expect(base.every(s => s.hours === 8)).toBe(true)
     expect(fb.every(s => s.hours === 12)).toBe(true)
     expect(seed.shiftTypes.find(s => s.key === 'night')!.start_hour).toBe(23)
