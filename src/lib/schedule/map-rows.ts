@@ -56,6 +56,25 @@ export function mapToEngineInput(rows: MapInput): MapResult {
     nameToRoleId[r.name] = r.id
   }
 
+  // The manager role = the single highest-rank role NAME (e.g. אחמ״ש). The
+  // manager-balance pass uses it to give every holder ≥50% of their shifts in
+  // that role. Undefined when there are no roles or the top rank is TIED
+  // (ambiguous → the pass safely no-ops).
+  let managerRoleId: string | undefined
+  let bestRank = -Infinity
+  let topTied = false
+  for (const r of rows.roles) {
+    const rank = r.rank ?? 1
+    if (rank > bestRank) {
+      bestRank = rank
+      managerRoleId = r.name
+      topTied = false
+    } else if (rank === bestRank) {
+      topTied = true
+    }
+  }
+  if (topTied) managerRoleId = undefined
+
   // Group held role IDs per employee, EXPAND by rank (higher role auto-qualifies
   // for all lower) → names. Applies the hierarchy to auto-scheduling AND manual edits.
   const heldIdsByEmp: Record<string, string[]> = {}
@@ -168,6 +187,7 @@ export function mapToEngineInput(rows: MapInput): MapResult {
   return {
     input: {
       employees, days, requests, requirements, settings, seed: rows.seed,
+      managerRoleId,
       priorWeekTail: rows.priorWeekTail,
       nextWeekHead: rows.nextWeekHead,
     },

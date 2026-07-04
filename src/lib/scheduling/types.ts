@@ -79,6 +79,13 @@ export interface EngineInput {
   settings: Settings
   seed: number
   /**
+   * The manager (top-rank) role — e.g. אחמ״ש. Set by map-rows.ts to the
+   * highest-rank role name. The manager-balance post-pass tries to give every
+   * holder of this role ≥50% of their shifts IN this role. Undefined when there
+   * is no role / the top rank is tied → the pass safely no-ops.
+   */
+  managerRoleId?: string
+  /**
    * Cross-week rest carry-over: per-employee list of END abs-hours of shifts
    * worked in the immediately-preceding published period. Reference: current
    * week day 0 starts at abs hour 0, so a prior Saturday night (23–07) ends at

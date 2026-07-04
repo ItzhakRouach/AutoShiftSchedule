@@ -8,6 +8,7 @@ import { runTwelveFill } from './twelve-fill'
 import { runDiversityPass, buildNightThresholds } from './diversity'
 import { runNightUnloadPass } from './night-unload'
 import { runSeniorRolePass } from './senior-role'
+import { runManagerBalancePass } from './manager-balance'
 import { runNightThenOffPass } from './night-then-off'
 import { runCoverageRescue } from './coverage-rescue'
 import { satisfiedCount as recountSatisfied } from './request-gate'
@@ -87,6 +88,18 @@ export function runFill(
     // coverage-neutral same-shift swaps (a role swap keeps the same shifts, so
     // satisfied counts are unchanged — no recount needed).
     timed(st, 'senior-swaps', () => runSeniorRolePass(input, st, metas))
+    // MANAGER BALANCE: give every manager-holder ≥50% of their shifts in the
+    // manager role via the same coverage-neutral same-shift role swaps (senior
+    // managers protected). Same-shift ⇒ satisfied counts unchanged (no recount).
+    timed(st, 'manager-balance', () => runManagerBalancePass(input, st, metas))
+    // NIGHT CAP (re-enforce): the diversity pass optimises rest quality in the
+    // same cost tier as the SOFT night cap, so it can trade the cap away and push
+    // a worker to a 4th night. Run night-unload AGAIN after the swap block to pull
+    // any such worker back to ≤ their threshold via coverage-preserving same-day
+    // swaps. (Senior/manager swaps are night-neutral; only diversity can violate.)
+    timed(st, 'night-unload-2', () =>
+      runNightUnloadPass(input, st, metas, buildNightThresholds(input)),
+    )
   }
   // NIGHT→OFF (hard rule): keep a night worker working the next day (coverage-
   // neutral displacement) rather than leaving them off, unless they requested
