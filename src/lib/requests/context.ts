@@ -72,6 +72,10 @@ export async function getEmployeeRequestsContext(
   if (!emp) return null
 
   const weekStart = upcomingWeekStartISO(new Date())
+  // Hide absences whose range has fully passed — a worker reads as available
+  // again once their vacation/מילואים ends (mirrors the manager side in
+  // vacations/pending.ts). UTC-date slice, matching that call site.
+  const todayISO = new Date().toISOString().slice(0, 10)
 
   // Ensure the period exists (RPC creates it if needed) — employees cannot INSERT directly.
   const { data: periodId, error: rpcError } = await supabase.rpc('ensure_upcoming_period', {
@@ -110,6 +114,7 @@ export async function getEmployeeRequestsContext(
       .from('employee_vacations')
       .select('id, date_from, date_to, status, kind')
       .eq('employee_id', emp.id)
+      .gte('date_to', todayISO)
       .order('date_from'),
     supabase
       .from('request_submissions')

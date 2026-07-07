@@ -11,6 +11,8 @@ import type { SlotCtx } from './SwapEditor'
 import type { CellAssign } from './useCellAssign'
 import type { ShiftKey } from '@/lib/scheduling/types'
 import { TempChip } from './TempChip'
+import { DayTwelveCard } from './DayTwelveCard'
+import { busyDaysOf } from './week-table-helpers'
 
 interface Props {
   view: ScheduleView
@@ -28,8 +30,12 @@ interface Props {
 export function DayGrid({ view, selDay, onSlot, assign, selfId }: Props) {
   const empById = new Map(view.employees.map((e) => [e.id, e]))
   const roleById = new Map(view.roles.map((r) => [r.id, r]))
+  // Held worker already works this day → block quick-placing them again (one
+  // shift/day). Greys the empty add-slots and no-ops their taps.
+  const heldBusy = !!assign?.heldId && busyDaysOf(view, assign.heldId).has(selDay)
   const open = (shift: ShiftKey, roleId: string, assignedIds: string[]) => {
     if (!onSlot) return
+    if (heldBusy) return
     const shiftTypeId = view.shiftTypeIdByKey[shift]
     if (!shiftTypeId) return
     const slot: SlotCtx = { day: selDay, shiftKey: shift as ShiftId, shiftTypeId, roleId, roleName: roleById.get(roleId)?.name ?? '', assignedIds }
@@ -150,8 +156,8 @@ export function DayGrid({ view, selDay, onSlot, assign, selfId }: Props) {
                             color: 'var(--danger)',
                             fontSize: 13,
                             fontWeight: 600,
-                            cursor: onSlot && !busy ? 'pointer' : 'default',
-                            opacity: busy ? 0.55 : 1,
+                            cursor: heldBusy ? 'not-allowed' : onSlot && !busy ? 'pointer' : 'default',
+                            opacity: busy ? 0.55 : heldBusy ? 0.4 : 1,
                           }}
                         >
                           <Icon name="plus" size={15} stroke={2.2} /> לא מאויש
@@ -166,33 +172,7 @@ export function DayGrid({ view, selDay, onSlot, assign, selfId }: Props) {
         )
       })}
 
-      {view.twelve.filter((t) => t.day === selDay).length > 0 && (
-        <Card pad={0} style={{ overflow: 'hidden' }}>
-          <div style={{ padding: '10px 14px', fontSize: 14, fontWeight: 800 }}>משמרות 12 שעות</div>
-          <div style={{ padding: '0 14px 12px', display: 'flex', gap: 7, flexWrap: 'wrap' }}>
-            {view.twelve
-              .filter((t) => t.day === selDay)
-              .map((t, i) => {
-                const e = empById.get(t.employeeId)
-                return (
-                  <span
-                    key={i}
-                    style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 7,
-                      padding: '5px 11px 5px 7px', borderRadius: 99,
-                      border: '1px solid var(--accent)', background: 'var(--accent-soft)',
-                    }}
-                    data-testid="twelve-badge"
-                  >
-                    <Avatar name={e?.name ?? '?'} color={e?.color ?? '#888'} size={24} />
-                    <span style={{ fontSize: 13, fontWeight: 600 }}>{e?.name ?? 'לא ידוע'}</span>
-                    <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--accent)' }}>12ש׳</span>
-                  </span>
-                )
-              })}
-          </div>
-        </Card>
-      )}
+      <DayTwelveCard view={view} selDay={selDay} />
     </div>
   )
 }

@@ -8,7 +8,7 @@ import { TempChip } from './TempChip'
 const S = {
   base: {
     padding: '10px 12px', verticalAlign: 'middle',
-    borderLeft: '1px solid var(--border)', borderBottom: '1px solid var(--border)',
+    borderLeft: '3px solid var(--text)', borderBottom: '1px solid var(--border)',
     fontSize: 13, textAlign: 'center', minWidth: 96,
   } as React.CSSProperties,
 }
@@ -62,6 +62,13 @@ export interface WeekTableCellProps {
    *  in WeekTable.tsx (day/shift/role names are in scope there) so this stays a
    *  plain string prop and React.memo's shallow-equality check keeps working. */
   cellLabel: string
+  /** True for the first role-row of a shift group — paints a thick top divider
+   *  so the boundary between shifts (בוקר/צהריים/לילה) reads clearly across the
+   *  full row (border-collapse:separate means the <tr> border can't do this). */
+  topDivider?: boolean
+  /** True when the held palette worker already works this day — the cell greys
+   *  out and taps/drops are ignored (parent gates the handlers). */
+  heldBlocked?: boolean
 }
 
 const DND_MIME = 'application/x-employee-id'
@@ -75,7 +82,7 @@ const DND_MIME = 'application/x-employee-id'
 function WeekTableCellImpl(props: WeekTableCellProps) {
   const { entries, empById, isFilled, covered, selectedId, onClick, showUnfilled } = props
   const { isPending, isBusy, onDropEmployee, onDragEmployee, onRemoveTemp } = props
-  const { capacityLabel, capacityStatus, cellLabel } = props
+  const { capacityLabel, capacityStatus, cellLabel, topDivider, heldBlocked } = props
   const hasSelected = selectedId !== null
   const cellHasSelected = hasSelected && entries.some((e) => e.employeeId === selectedId)
   const empty = entries.length === 0 && !isFilled && !covered
@@ -93,11 +100,12 @@ function WeekTableCellImpl(props: WeekTableCellProps) {
 
   const cellStyle: React.CSSProperties = {
     ...S.base,
-    background: isPending ? 'var(--accent-soft)' : bg,
-    cursor: onClick ? 'pointer' : 'default',
-    opacity: isBusy ? 0.55 : dimCell ? 0.4 : 1,
+    background: heldBlocked ? 'var(--surface-2)' : isPending ? 'var(--accent-soft)' : bg,
+    cursor: heldBlocked ? 'not-allowed' : onClick ? 'pointer' : 'default',
+    opacity: isBusy ? 0.55 : heldBlocked ? 0.4 : dimCell ? 0.4 : 1,
     outline: highlightCell ? '2px solid var(--accent)' : undefined,
     outlineOffset: highlightCell ? '-2px' : undefined,
+    borderTop: topDivider ? '3px solid var(--text)' : undefined,
     transition: 'opacity 0.15s, outline 0.15s, background 0.15s',
   }
 

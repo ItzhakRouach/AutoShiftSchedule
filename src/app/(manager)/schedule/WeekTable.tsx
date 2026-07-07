@@ -12,7 +12,7 @@ import type { ShiftKey } from '@/lib/scheduling/types'
 import { LtrText } from '@/components/ui/LtrText'
 import { EmpTotalsBar } from './EmpTotalsBar'
 import { WeekTableCell } from './WeekTableCell'
-import { buildCellLabel } from './week-table-helpers'
+import { buildCellLabel, busyDaysOf } from './week-table-helpers'
 
 interface Props {
   view: ScheduleView
@@ -39,7 +39,7 @@ const S = {
   // cells does NOT hold with border-collapse: collapse in most browsers.
   // backfaceVisibility is a safe paint hint (a transform on the cell itself can
   // break stickiness, so the GPU-layer promotion goes on the scroll container).
-  sticky: { position: 'sticky', background: 'var(--surface-2)', fontWeight: 700, borderLeft: '1px solid var(--border)', borderBottom: '1px solid var(--border)', zIndex: 2, WebkitBackfaceVisibility: 'hidden', backfaceVisibility: 'hidden' } as React.CSSProperties,
+  sticky: { position: 'sticky', background: 'var(--surface-2)', fontWeight: 700, borderLeft: '3px solid var(--text)', borderBottom: '1px solid var(--border)', zIndex: 2, WebkitBackfaceVisibility: 'hidden', backfaceVisibility: 'hidden' } as React.CSSProperties,
   dayPairBtn: { marginTop: 4, padding: '2px 8px', fontSize: 10.5, fontWeight: 700, borderRadius: 99, border: '1px solid var(--accent)', background: 'var(--accent-soft)', color: 'var(--accent)', cursor: 'pointer', fontFamily: 'var(--font)' } as React.CSSProperties,
   // iOS WebKit (Safari/iPhone-Chrome) lazily repaints sticky cells during
   // momentum scroll → their TEXT blanks out. Putting the cell's CONTENT on its
@@ -58,6 +58,13 @@ export function WeekTable({ view, onSlot, onDayPair, assign, initialSelectedId, 
   const empTotals = useMemo(() => buildEmpTotals(view, view.employees), [view])
   const empById = useMemo(() => new Map(view.employees.map((e) => [e.id, e])), [view.employees])
   const roleById = useMemo(() => new Map(view.roles.map((r) => [r.id, r])), [view.roles])
+  // Days the currently-held palette worker already works — those cells are
+  // blocked (one shift/day) so a quick tap/drop can't silently move them.
+  const heldId = assign?.heldId ?? null
+  const heldBusyDays = useMemo(
+    () => (heldId ? busyDaysOf(view, heldId) : null),
+    [view, heldId],
+  )
 
   // Roles already arrive active + rank-desc from the view (senior first).
   const orderedRoleIds = view.roles.map((r) => r.id)
@@ -72,6 +79,9 @@ export function WeekTable({ view, onSlot, onDayPair, assign, initialSelectedId, 
   }
   function handleCellClick(day: number, shift: ShiftKey, roleId: string) {
     if (!onSlot) return
+    // Held worker already works this day → don't quick-place (would move them);
+    // the manager can still open the cell (no worker held) to move deliberately.
+    if (assign?.heldId && heldBusyDays?.has(day)) return
     const slot = buildSlot(day, shift, roleId)
     if (!slot) return
     // A held worker (palette tap) assigns straight to this cell; otherwise open
@@ -80,6 +90,8 @@ export function WeekTable({ view, onSlot, onDayPair, assign, initialSelectedId, 
     onSlot(slot)
   }
   function handleDrop(day: number, shift: ShiftKey, roleId: string, employeeId: string) {
+    // Block same-day drops (incl. drag-moves) — one shift/day.
+    if (busyDaysOf(view, employeeId).has(day)) return
     const slot = buildSlot(day, shift, roleId)
     if (slot) assign?.dropOn(slot, employeeId)
   }
@@ -116,20 +128,20 @@ export function WeekTable({ view, onSlot, onDayPair, assign, initialSelectedId, 
                 const role = roleById.get(roleId)
                 const rm = role ? roleMetaFromRow(role) : null
                 const showGroupDivider = ri === 0 && !isFirstShift
-                const groupDividerStyle: React.CSSProperties = showGroupDivider ? { borderTop: '3px solid var(--border-strong, var(--border))' } : {}
+                const groupDividerStyle: React.CSSProperties = showGroupDivider ? { borderTop: '3px solid var(--text)' } : {}
                 const shiftTint = `color-mix(in srgb, ${m.soft} 55%, var(--surface))`
                 const rowBg = ri % 2 === 0 ? shiftTint : 'var(--bg)'
                 return (
                   <tr key={`${shift}-${roleId}`} style={{ background: rowBg, ...groupDividerStyle }}>
                     {ri === 0 && (
-                      <td rowSpan={roles.length} style={{ ...S.sticky, right: 0, padding: '12px 8px', textAlign: 'center', fontSize: 13, color: m.color, background: `color-mix(in srgb, ${m.color} 16%, var(--surface))`, verticalAlign: 'middle', width: SHIFT_W, minWidth: SHIFT_W, maxWidth: SHIFT_W, borderTop: showGroupDivider ? '3px solid var(--border-strong, var(--border))' : undefined }}>
+                      <td rowSpan={roles.length} style={{ ...S.sticky, right: 0, padding: '12px 8px', textAlign: 'center', fontSize: 13, color: m.color, background: `color-mix(in srgb, ${m.color} 16%, var(--surface))`, verticalAlign: 'middle', width: SHIFT_W, minWidth: SHIFT_W, maxWidth: SHIFT_W, borderTop: showGroupDivider ? '3px solid var(--text)' : undefined }}>
                         <div style={S.layer}>
                           <div style={{ fontWeight: 800, whiteSpace: 'nowrap', fontSize: 13 }}>{m.name}</div>
                           <div style={{ fontSize: 11, color: 'var(--text-2)', fontWeight: 600, marginTop: 3 }}><LtrText>{m.time}</LtrText></div>
                         </div>
                       </td>
                     )}
-                    <td style={{ ...S.sticky, right: SHIFT_W, padding: '10px 8px', fontSize: 12.5, color: rm?.color ?? 'var(--text)', whiteSpace: 'nowrap', background: rm ? `color-mix(in srgb, ${rm.color} 16%, var(--surface))` : 'var(--surface-2)', width: ROLE_W, minWidth: ROLE_W, maxWidth: ROLE_W }}>
+                    <td style={{ ...S.sticky, right: SHIFT_W, padding: '10px 8px', fontSize: 12.5, color: rm?.color ?? 'var(--text)', whiteSpace: 'nowrap', background: rm ? `color-mix(in srgb, ${rm.color} 16%, var(--surface))` : 'var(--surface-2)', width: ROLE_W, minWidth: ROLE_W, maxWidth: ROLE_W, borderTop: showGroupDivider ? '3px solid var(--text)' : undefined }}>
                       <span style={S.layer}>{role?.name ?? roleId}</span>
                     </td>
                     {days.map((d) => {
@@ -149,6 +161,10 @@ export function WeekTable({ view, onSlot, onDayPair, assign, initialSelectedId, 
                         && assign.pendingSlot.shiftKey === shift
                         && assign.pendingSlot.roleId === roleId
                       const cellLabel = buildCellLabel(d.index, m.name, role?.name ?? roleId, cellEntries, empById, covered)
+                      // Grey this cell when the held worker already works this
+                      // day (and isn't already in this exact cell).
+                      const heldBlocked = !!heldBusyDays?.has(d.index)
+                        && !cellEntries.some((e) => e.employeeId === assign?.heldId)
                       return (
                         <WeekTableCell key={d.index}
                           entries={cellEntries}
@@ -165,6 +181,8 @@ export function WeekTable({ view, onSlot, onDayPair, assign, initialSelectedId, 
                           capacityLabel={editable ? capacity.label : ''}
                           capacityStatus={editable ? capacity.status : 'unconfigured'}
                           cellLabel={cellLabel}
+                          topDivider={showGroupDivider}
+                          heldBlocked={heldBlocked}
                         />
                       )
                     })}

@@ -70,7 +70,7 @@ export default async function SchedulePage({
   }
 
   // Current period — the live editor.
-  const editMeta = view ? await getEditMeta(supabase, workplace.id, view.periodId) : null
+  const editMeta = view ? await getEditMeta(supabase, workplace.id, view.periodId, view.weekStart) : null
 
   return (
     <main className="schedule-main" style={{ background: 'var(--bg)', direction: 'rtl' }}>

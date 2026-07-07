@@ -47,7 +47,6 @@ export function SwapEditor({ slot, onClose, view, meta, onDone }: Props) {
   const [, start] = useTransition()
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<Msg>(null)
-  const [confirmMove, setConfirmMove] = useState<string | null>(null)
   const closeTimer = useRef<number | null>(null)
 
   // Guard against a pending auto-close timer from a previous open outliving
@@ -63,7 +62,6 @@ export function SwapEditor({ slot, onClose, view, meta, onDone }: Props) {
   const empById = new Map(view.employees.map((e) => [e.id, e]))
 
   function handleClose() {
-    setConfirmMove(null)
     onClose()
   }
 
@@ -74,7 +72,6 @@ export function SwapEditor({ slot, onClose, view, meta, onDone }: Props) {
 
   function run(fn: () => Promise<{ ok: boolean; error?: string; warning?: string; undo?: UndoSnapshot }>) {
     setMsg(null)
-    setConfirmMove(null)
     setBusy(true)
     void (async () => {
       try {
@@ -128,7 +125,6 @@ export function SwapEditor({ slot, onClose, view, meta, onDone }: Props) {
         </div>
       )}
 
-      <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-2)', margin: '6px 0 8px' }}>עובדים זמינים</div>
       {atCapacity && <InlineAlert kind="info">המשמרת מאוישת במלואה לתפקיד זה. הסירו עובד כדי להחליף.</InlineAlert>}
 
       <CandidateList
@@ -137,10 +133,7 @@ export function SwapEditor({ slot, onClose, view, meta, onDone }: Props) {
         slot={slot}
         busy={busy}
         atCapacity={atCapacity}
-        confirmMove={confirmMove}
         onPick={pick}
-        onConfirmMove={setConfirmMove}
-        onCancelMove={() => setConfirmMove(null)}
       />
 
       <TwelveHourAssign slot={slot} view={view} meta={meta} busy={busy} run={run} />

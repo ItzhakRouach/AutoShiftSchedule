@@ -9,6 +9,7 @@ import type { EmployeeEditMeta } from './edit-meta'
 export type CandStatus =
   | 'requested' // ✓ ביקש
   | 'available' // זמין
+  | 'absent' // בהיעדרות (חופשה/מילואים/מחלה — hard)
   | 'assigned_other' // משובץ במשמרת אחרת
   | 'off_soft' // ביקש חופש (overridable — clickable)
   | 'role_override' // לא בתפקיד (overridable — clickable)
@@ -27,6 +28,7 @@ export interface CandResult {
 const LABELS: Record<CandStatus, string> = {
   requested: '✓ ביקש',
   available: 'זמין',
+  absent: 'בהיעדרות',
   assigned_other: 'משובץ במשמרת אחרת',
   off_soft: 'ביקש חופש',
   role_override: 'לא בתפקיד',
@@ -53,15 +55,22 @@ export function candidateStatus(args: CandArgs): CandResult {
   const { emp, day, shiftKey, roleId, minRestHours } = args
   const out = (s: CandStatus, disabled: boolean): CandResult => ({ status: s, label: LABELS[s], disabled })
 
+  // Approved absence (vacation/מילואים/מחלה) is the strongest block — the worker
+  // is off that day, so never offer them (they'd read as "available" otherwise).
+  if (emp.absentDays.includes(day)) return out('absent', true)
+
   // MANAGER AUTHORITY: role-mismatch, availability, and soft off-requests are all
   // OVERRIDABLE — the row stays CLICKABLE with a hint, mirroring the server. Only
   // Shabbat/holiday (observer) and rest/max remain hard-disabled below.
   const roleOverride = !emp.roleIds.includes(roleId)
   const softOff = emp.offDays.includes(day) && !(args.requestedPreferred ?? []).includes(shiftKey)
 
-  // Already assigned a DIFFERENT shift the same day → assigning here REPLACES it.
+  // Already assigned ANYWHERE that day → one-shift-per-day means assigning here
+  // MOVES them. The current cell's own occupants are excluded upstream (see
+  // CandidateList), so any remaining same-day commitment is a different slot —
+  // flag it (even same shift, different role) instead of showing "available".
   const sameDay = emp.committed[day]
-  const sameDayOther = sameDay != null && sameDay !== shiftKey
+  const sameDayOther = sameDay != null
 
   let availOverride = false
   const isTwelve = !BASE.has(shiftKey)

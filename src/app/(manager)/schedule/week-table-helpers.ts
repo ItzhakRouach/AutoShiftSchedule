@@ -1,3 +1,24 @@
+import type { ScheduleView } from '@/lib/schedule/view-data'
+
+/**
+ * Days (0–6) on which `employeeId` already holds an assignment — base (view.grid)
+ * or 12h (view.twelve). Used to block re-placing a held worker on a day they
+ * already work (one shift/day), matching the server-side rule.
+ */
+export function busyDaysOf(view: ScheduleView, employeeId: string): Set<number> {
+  const days = new Set<number>()
+  for (let d = 0; d < 7; d++) {
+    const byShift = view.grid[d] ?? {}
+    for (const byRole of Object.values(byShift)) {
+      for (const ids of Object.values(byRole)) {
+        if (ids.includes(employeeId)) { days.add(d); break }
+      }
+    }
+  }
+  for (const t of view.twelve) if (t.employeeId === employeeId) days.add(t.day)
+  return days
+}
+
 // Full Hebrew weekday names by index (0 = Sunday … 6 = Saturday), matching
 // `DayInfo.index`. Used only for the cell's screen-reader label — the visible
 // header uses the shorter `DayInfo.short` form.
