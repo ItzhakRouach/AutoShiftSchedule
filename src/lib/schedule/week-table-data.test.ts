@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildWeekGrid, buildEmpTotals, cellCapacity, countUncoveredCells } from './week-table-data'
+import { buildWeekGrid, buildEmpTotals, cellCapacity, countUncoveredCells, buildDayHealth } from './week-table-data'
 import type { ScheduleView } from './view-data'
 
 function makeView(overrides: Partial<ScheduleView> = {}): ScheduleView {
@@ -141,6 +141,32 @@ describe('cellCapacity', () => {
 
   it('3/2 (over-staffed) → over', () => {
     expect(cellCapacity(3, 2)).toEqual({ label: '3/2', status: 'over' })
+  })
+})
+
+describe('buildDayHealth', () => {
+  it('day 0 partially filled (2 of 9), other days have no requirements → ratio 1', () => {
+    const health = buildDayHealth(makeView())
+    expect(health[0]).toEqual({ required: 9, filled: 2, ratio: 2 / 9 })
+    // Days 1–6 have no requirements in the default fixture → treated as full.
+    for (let d = 1; d < 7; d++) expect(health[d]).toEqual({ required: 0, filled: 0, ratio: 1 })
+  })
+
+  it('caps filled at required per slot (over-staffing does not exceed 1)', () => {
+    const view = makeView({
+      requirements: { 0: { morning: { 'r-achm': 1 }, noon: {}, night: {} } },
+      grid: { 0: { morning: { 'r-achm': ['e1', 'e2'] } } }, // 2 assigned, 1 required
+    })
+    expect(buildDayHealth(view)[0]).toEqual({ required: 1, filled: 1, ratio: 1 })
+  })
+
+  it('12h coverage counts toward the day fill', () => {
+    const view = makeView({
+      requirements: { 0: { morning: { 'r-guard': 1 }, noon: { 'r-guard': 1 }, night: {} } },
+      grid: { 0: { morning: {}, noon: {}, night: {} } },
+      twelve: [{ day: 0, variant: 'm12_day', roleId: 'r-guard', employeeId: 'e1' }],
+    })
+    expect(buildDayHealth(view)[0]).toEqual({ required: 2, filled: 2, ratio: 1 })
   })
 })
 

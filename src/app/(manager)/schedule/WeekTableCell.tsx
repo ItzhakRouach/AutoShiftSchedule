@@ -44,8 +44,7 @@ export interface WeekTableCellProps {
   showUnfilled: boolean
   /** True when this cell is the pending target for click-to-assign. */
   isPending?: boolean
-  /** True when this cell's own dispatch (assign/remove) is in flight — dims the
-   *  cell and blocks further taps/drops until the server responds. */
+  /** This cell's own dispatch is in flight — dims + blocks taps/drops. */
   isBusy?: boolean
   /** A worker chip was dragged onto this cell (employeeId from dataTransfer). */
   onDropEmployee?: (employeeId: string) => void
@@ -55,20 +54,18 @@ export interface WeekTableCellProps {
   onRemoveTemp?: (assignmentId: string) => void
   /** "X/Y" capacity readout (manager-only, edit mode) — blank hides the badge. */
   capacityLabel?: string
-  /** Badge renders ONLY for 'under' (soft warning tint) and 'over' (danger
-   *  tint) — 'full'/'unconfigured' show no badge at all (it doesn't matter). */
+  /** Badge renders ONLY for 'under'/'over' — 'full'/'unconfigured' show none. */
   capacityStatus?: 'under' | 'full' | 'over' | 'unconfigured'
-  /** Screen-reader label: "<day>, <shift>, <role>: <names | לא מאויש>" — composed
-   *  in WeekTable.tsx (day/shift/role names are in scope there) so this stays a
-   *  plain string prop and React.memo's shallow-equality check keeps working. */
+  /** SR label "<day>, <shift>, <role>: <names|לא מאויש>" — composed in WeekTable. */
   cellLabel: string
-  /** True for the first role-row of a shift group — paints a thick top divider
-   *  so the boundary between shifts (בוקר/צהריים/לילה) reads clearly across the
-   *  full row (border-collapse:separate means the <tr> border can't do this). */
+  /** First role-row of a shift group → thick top divider across the row. */
   topDivider?: boolean
-  /** True when the held palette worker already works this day — the cell greys
-   *  out and taps/drops are ignored (parent gates the handlers). */
+  /** Held palette worker already works this day → cell greys, taps ignored. */
   heldBlocked?: boolean
+  /** Set when an occupant of this cell has a rest/over-max conflict — draws a
+   *  red inset border + tooltip so invalid states (e.g. from undo/copy) show. */
+  conflictReason?: 'rest' | 'overmax'
+  conflictTitle?: string
 }
 
 const DND_MIME = 'application/x-employee-id'
@@ -83,6 +80,7 @@ function WeekTableCellImpl(props: WeekTableCellProps) {
   const { entries, empById, isFilled, covered, selectedId, onClick, showUnfilled } = props
   const { isPending, isBusy, onDropEmployee, onDragEmployee, onRemoveTemp } = props
   const { capacityLabel, capacityStatus, cellLabel, topDivider, heldBlocked } = props
+  const { conflictReason, conflictTitle } = props
   const hasSelected = selectedId !== null
   const cellHasSelected = hasSelected && entries.some((e) => e.employeeId === selectedId)
   const empty = entries.length === 0 && !isFilled && !covered
@@ -106,6 +104,8 @@ function WeekTableCellImpl(props: WeekTableCellProps) {
     outline: highlightCell ? '2px solid var(--accent)' : undefined,
     outlineOffset: highlightCell ? '-2px' : undefined,
     borderTop: topDivider ? '3px solid var(--text)' : undefined,
+    // Red inset ring for a rest/over-max conflict (coexists with the accent outline).
+    boxShadow: conflictReason ? 'inset 0 0 0 2px var(--danger)' : undefined,
     transition: 'opacity 0.15s, outline 0.15s, background 0.15s',
   }
 
@@ -146,7 +146,7 @@ function WeekTableCellImpl(props: WeekTableCellProps) {
   const dragHandler = isBusy ? undefined : onDragEmployee
   const removeHandler = isBusy ? undefined : onRemoveTemp
   return (
-    <td style={cellStyle} onClick={clickHandler} aria-busy={isBusy || undefined} aria-label={cellLabel} {...dropProps}>
+    <td style={cellStyle} onClick={clickHandler} aria-busy={isBusy || undefined} aria-label={cellLabel} title={conflictTitle} {...dropProps}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {entries.map((en, i) => {
           // Ad-hoc temp worker: distinct dashed chip + remove (×).

@@ -1,6 +1,7 @@
 'use client'
 
 import { Btn } from '@/components/ui/Btn'
+import { countUncoveredCells } from '@/lib/schedule/week-table-data'
 import type { ScheduleView } from '@/lib/schedule/view-data'
 import type { TwelveHourSuggestion } from '@/lib/scheduling/types'
 import { TwelveHourList } from './parts'
@@ -21,6 +22,14 @@ interface Props {
 /** Publish / share / unpublish / delete controls beneath the schedule grid.
  *  Split out of ScheduleClient to keep that orchestrator ≤200 lines. */
 export function PublishControls({ view, suggestions, published, publishing, onPublish, onUnpublished, onDeleted }: Props) {
+  // Guard against publishing an incomplete schedule — confirm when gaps remain.
+  function handlePublish() {
+    if (!published) {
+      const gaps = countUncoveredCells(view)
+      if (gaps > 0 && !window.confirm(`נשארו ${gaps} משמרות לא מאוישות. לפרסם בכל זאת?`)) return
+    }
+    onPublish()
+  }
   return (
     <div className="schedule-controls">
       <TwelveHourList suggestions={suggestions} roles={view.roles} />
@@ -31,7 +40,7 @@ export function PublishControls({ view, suggestions, published, publishing, onPu
         icon="check"
         style={{ width: '100%' }}
         disabled={publishing}
-        onClick={onPublish}
+        onClick={handlePublish}
       >
         {published ? 'פורסם ✓' : publishing ? 'מפרסם…' : 'פרסם סידור'}
       </Btn>

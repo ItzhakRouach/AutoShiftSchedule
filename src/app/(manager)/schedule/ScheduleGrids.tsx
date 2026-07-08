@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Segmented } from '@/components/ui/Segmented'
 import type { ScheduleView } from '@/lib/schedule/view-data'
+import type { EditMeta } from '@/lib/schedule/edit-meta'
 import type { SlotCtx } from './SwapEditor'
 import type { CellAssign } from './useCellAssign'
 import { WeekTable } from './WeekTable'
@@ -20,6 +21,8 @@ interface Props {
   onDayPair?: (day: number) => void
   /** Fast drag / tap-to-assign interactions (edit mode only). */
   assign?: CellAssign
+  /** Manager edit metadata — enables inline conflict flags + coverage heatmap. */
+  editMeta?: EditMeta | null
   /** Employee viewing their OWN schedule — their shifts are highlighted. */
   selfId?: string
 }
@@ -31,7 +34,7 @@ interface Props {
  * The week table renders ONCE — CSS classes decide where it's visible — so the
  * DOM (and test ids) stay unique.
  */
-export function ScheduleGrids({ view, onSlot, onDayPair, assign, selfId }: Props) {
+export function ScheduleGrids({ view, onSlot, onDayPair, assign, editMeta, selfId }: Props) {
   const [layout, setLayout] = useState<'week' | 'day'>('week')
   const [selDay, setSelDay] = useState(0)
 
@@ -39,7 +42,7 @@ export function ScheduleGrids({ view, onSlot, onDayPair, assign, selfId }: Props
     <>
       {/* Week table: always on desktop; on mobile only when 'week' is picked. */}
       <div className={layout === 'week' ? 'sched-week-on' : 'sched-week-deskonly'}>
-        <WeekTable view={view} onSlot={onSlot} onDayPair={onDayPair} assign={assign} initialSelectedId={selfId} />
+        <WeekTable view={view} onSlot={onSlot} onDayPair={onDayPair} assign={assign} editMeta={editMeta} initialSelectedId={selfId} />
       </div>
 
       {/* Mobile-only: layout toggle + (in day mode) a day selector + DayGrid. */}

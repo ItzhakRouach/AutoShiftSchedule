@@ -16,6 +16,8 @@ interface Props {
   onOpenDayNotes: () => void
   onGenerateClick: () => void
   onCompleteTwelveHour: () => void
+  onCopyLastWeek: () => void
+  copying: boolean
 }
 
 /**
@@ -27,7 +29,7 @@ interface Props {
  */
 export function GenerateControls({
   view, editMeta, status, hasResult, checking, running,
-  onOpenDayNotes, onGenerateClick, onCompleteTwelveHour,
+  onOpenDayNotes, onGenerateClick, onCompleteTwelveHour, onCopyLastWeek, copying,
 }: Props) {
   const showComplete = hasResult && status !== 'published' && countUncoveredCells(view) > 0
 
@@ -47,6 +49,15 @@ export function GenerateControls({
         {checking ? <Spinner size={18} color="#fff" /> : null}
         {checking ? 'רגע…' : 'צור סידור אוטומטי'}
       </Btn>
+
+      {editMeta && status !== 'published' && (
+        <>
+          <div style={{ height: 10 }} />
+          <Btn variant="outline" size="md" icon="calendar" style={{ width: '100%' }} disabled={copying} onClick={onCopyLastWeek} data-testid="copy-last-week">
+            {copying ? 'מעתיק…' : 'העתק מהשבוע הקודם'}
+          </Btn>
+        </>
+      )}
 
       {showComplete && (
         <>

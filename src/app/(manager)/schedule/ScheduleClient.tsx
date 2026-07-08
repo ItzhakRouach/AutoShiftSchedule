@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/Card'
 import { Segmented } from '@/components/ui/Segmented'
 import type { ScheduleView } from '@/lib/schedule/view-data'
@@ -22,6 +23,9 @@ import { WorkerPalette } from './WorkerPalette'
 import { AssignToast } from './AssignToast'
 import { useCellAssign } from './useCellAssign'
 import { GenerateControls } from './GenerateControls'
+import { ScheduleHeader } from './ScheduleHeader'
+import { copyLastWeekSchedule } from './copy-actions'
+import { UndoRedoBar } from './UndoRedoBar'
 
 interface Props {
   view: ScheduleView
@@ -42,8 +46,20 @@ export function ScheduleClient({ view, editMeta, workerVacations }: Props) {
   const [pairDay, setPairDay] = useState<number | null>(null)
   const [showDayNotes, setShowDayNotes] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('schedule')
+  const router = useRouter()
+  const [copying, startCopy] = useTransition()
   // Fast drag / tap-to-assign (edit mode only).
   const assign = useCellAssign(view)
+
+  function handleCopyLastWeek() {
+    if (!window.confirm('להעתיק את השיבוצים מהשבוע הקודם שפורסם? שיבוצים קיימים לאותם ימים יוחלפו.')) return
+    startCopy(async () => {
+      const res = await copyLastWeekSchedule(view.periodId)
+      if (!res.ok) { assign.setToast({ text: res.error ?? 'שגיאה', kind: 'err' }); return }
+      assign.setToast({ text: 'הועתק מהשבוע הקודם ✓', kind: 'ok' })
+      router.refresh()
+    })
+  }
 
   const {
     coverage, suggestions, overriddenOff, uncovered, showIssues, setShowIssues,
@@ -67,25 +83,7 @@ export function ScheduleClient({ view, editMeta, workerVacations }: Props) {
       )}
 
       <div className="schedule-controls">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <h1 style={{ margin: 0, fontSize: 'var(--text-h1)', fontWeight: 800 }}>סידור עבודה</h1>
-        {pct !== null && (
-          <div style={{
-            textAlign: 'center',
-            background: pct >= 95 ? 'rgba(19,169,142,0.12)' : 'rgba(235,106,78,0.12)',
-            borderRadius: 'var(--r-md)',
-            padding: '8px 13px',
-          }}>
-            <div
-              style={{ fontSize: 20, fontWeight: 800, color: pct >= 95 ? '#13A98E' : '#EB6A4E', lineHeight: 1 }}
-              data-testid="coverage"
-            >
-              {pct}%
-            </div>
-            <div style={{ fontSize: 10.5, color: 'var(--text-2)', fontWeight: 600, marginTop: 2 }}>כיסוי</div>
-          </div>
-        )}
-      </div>
+      <ScheduleHeader view={view} pct={pct} />
 
       <FeasibilityBanner feasibility={view.feasibility} />
 
@@ -124,6 +122,8 @@ export function ScheduleClient({ view, editMeta, workerVacations }: Props) {
         onOpenDayNotes={() => setShowDayNotes(true)}
         onGenerateClick={handleGenerateClick}
         onCompleteTwelveHour={completeTwelveHour}
+        onCopyLastWeek={handleCopyLastWeek}
+        copying={copying}
       />
 
       <div style={{ height: 14 }} />
@@ -146,13 +146,17 @@ export function ScheduleClient({ view, editMeta, workerVacations }: Props) {
       {viewMode === 'schedule' && (hasResult || !!editMeta) && (
         <>
           {editMeta && (
-            <WorkerPalette employees={view.employees} heldId={assign.heldId} onHold={assign.hold} disabled={!!assign.pendingSlot} />
+            <>
+              <WorkerPalette employees={view.employees} heldId={assign.heldId} onHold={assign.hold} disabled={!!assign.pendingSlot} />
+              <UndoRedoBar history={assign.history} />
+            </>
           )}
           <ScheduleGrids
             view={view}
             onSlot={editMeta ? setSlot : undefined}
             onDayPair={editMeta ? setPairDay : undefined}
             assign={editMeta ? assign : undefined}
+            editMeta={editMeta}
           />
           <DayNotesSummary view={view} />
           {hasResult && (
@@ -179,13 +183,11 @@ export function ScheduleClient({ view, editMeta, workerVacations }: Props) {
             meta={editMeta}
             onDone={(undo) => {
               if (!undo) return
-              // The sheet already shows its own inline "שובץ ✓"/warning message;
-              // once it closes (or immediately, for a warning that stays up) also
-              // surface the shared בטל toast so sheet-made edits are reversible
-              // the same way fast tap/drag assigns are. Removals (unassign/
-              // temp-remove) get 'הוסר ✓' instead of 'שובץ ✓'.
+              // Push sheet edits onto the shared undo stack (undo-only — the sheet
+              // doesn't carry enough context to cleanly redo). Removals get 'הוסר ✓'.
               const removed = undo.kind === 'unassign' || undo.kind === 'temp-remove'
-              assign.setToast({ text: removed ? 'הוסר ✓' : 'שובץ ✓', kind: 'ok', onUndo: () => assign.runUndo(undo) })
+              assign.history.push({ undo, redo: null, label: removed ? 'הסרה' : 'שיבוץ' })
+              assign.setToast({ text: removed ? 'הוסר ✓' : 'שובץ ✓', kind: 'ok' })
             }}
           />
           <TwelvePairEditor day={pairDay} onClose={() => setPairDay(null)} view={view} meta={editMeta} />
