@@ -136,11 +136,33 @@ export interface TwelveHourAssignment {
 /** grid[day][shift][roleId] = employeeId[] */
 export type Grid = Record<number, Record<ShiftKey, Record<string, string[]>>>
 
+/** Why a required slot couldn't be filled (dominant cause among role-holders). */
+export type GapReason =
+  | 'no_role'            // nobody holds this role
+  | 'off'               // blocked by off-requests (soft ones are askable)
+  | 'rest'              // all candidates violate min-rest
+  | 'at_max'            // all candidates already at their weekly max
+  | 'sacred'            // Shabbat/holiday blocks all observers
+  | 'availability'      // outside everyone's recurring availability
+  | 'assigned_elsewhere'// all candidates already work that day
+  | 'available'         // eligible workers exist — can be assigned directly
+  | 'mixed'             // no single dominant cause
+
+/** A worker the manager could place/ask to fill the gap. */
+export interface GapAskCandidate {
+  employeeId: string
+  /** 'available' = assignable now; 'soft_off' = asked off but could waive it. */
+  reason: 'available' | 'soft_off'
+}
+
 export interface Warning {
   day: number
   shift: ShiftKey
   roleId: string
   missing: number
+  /** Diagnosis (added by collectWarnings) — why this slot is empty + who to ask. */
+  reason?: GapReason
+  askCandidates?: GapAskCandidate[]
 }
 
 export interface TwelveHourSuggestion {

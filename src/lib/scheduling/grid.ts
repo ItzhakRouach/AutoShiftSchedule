@@ -11,6 +11,7 @@ import {
   type ShiftKey,
   type Warning,
 } from './types'
+import { committedByEmpFromGrid, diagnoseGap } from './diagnose'
 
 /**
  * All role identifiers (names) present in the input — derived from the
@@ -61,9 +62,13 @@ export function forEachRequirement(
 
 export function collectWarnings(input: EngineInput, grid: Grid): Warning[] {
   const warnings: Warning[] = []
+  const committedByEmp = committedByEmpFromGrid(grid)
   forEachRequirement(input, (day, shift, roleId, need) => {
     const have = grid[day][shift][roleId].length
-    if (have < need) warnings.push({ day, shift, roleId, missing: need - have })
+    if (have < need) {
+      const { reason, askCandidates } = diagnoseGap(input, committedByEmp, day, shift, roleId)
+      warnings.push({ day, shift, roleId, missing: need - have, reason, askCandidates })
+    }
   })
   return warnings
 }

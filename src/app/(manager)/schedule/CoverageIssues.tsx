@@ -3,9 +3,21 @@
 import { Btn } from '@/components/ui/Btn'
 import { SHIFT_META, type ShiftId } from '@/lib/domain/constants'
 import type { ScheduleView } from '@/lib/schedule/view-data'
-import type { OverriddenOff, Warning } from '@/lib/scheduling/types'
+import type { GapReason, OverriddenOff, Warning } from '@/lib/scheduling/types'
 
 const DAY_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
+
+const REASON_LABEL: Record<GapReason, string> = {
+  no_role: 'אין עובד עם ההרשאה לתפקיד זה',
+  off: 'כל המתאימים ביקשו חופש — אפשר לבקש לוותר',
+  rest: 'כל המתאימים חסומים בשעות מנוחה',
+  at_max: 'כל המתאימים הגיעו למקסימום המשמרות',
+  sacred: 'כל המתאימים שומרי שבת/חג ביום זה',
+  availability: 'מחוץ לזמינות של כל המתאימים',
+  assigned_elsewhere: 'כל המתאימים כבר משובצים ביום זה',
+  available: 'יש עובדים זמינים — אפשר לשבץ ישירות',
+  mixed: 'שילוב של סיבות',
+}
 
 function shiftName(shift: string): string {
   return SHIFT_META[shift as ShiftId]?.name ?? shift
@@ -64,6 +76,14 @@ export function CoverageIssues({
               <li key={i}>
                 {DAY_NAMES[w.day]} · {shiftName(w.shift)} · {w.roleId}
                 {w.missing > 1 ? ` ×${w.missing}` : ''}
+                {w.reason && (
+                  <div style={{ fontSize: 11.5, color: 'var(--text-3)', marginTop: 2, lineHeight: 1.5 }}>
+                    {REASON_LABEL[w.reason]}
+                    {w.askCandidates && w.askCandidates.length > 0 && (
+                      <> — אפשר לשאול: <strong style={{ color: 'var(--text-2)' }}>{w.askCandidates.map((a) => nameOf(a.employeeId)).join(', ')}</strong></>
+                    )}
+                  </div>
+                )}
               </li>
             ))}
           </Section>
