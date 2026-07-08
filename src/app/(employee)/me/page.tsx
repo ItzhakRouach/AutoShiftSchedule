@@ -12,6 +12,7 @@ import { deadlineLabel } from '@/lib/deadline/compute'
 import { deleteMyAccount } from './actions'
 import { MeSummary } from './MeSummary'
 import { MeStats } from './MeStats'
+import { PushToggle } from './PushToggle'
 
 function NavCard({ href, icon, title, subtitle }: { href: string; icon: IconName; title: string; subtitle: string }) {
   return (
@@ -82,6 +83,8 @@ export default async function MePage() {
           </Card>
         </Link>
       )}
+
+      <PushToggle />
 
       {summaryData && <MeSummary summary={summaryData.summary} roles={summaryData.roles} />}
 

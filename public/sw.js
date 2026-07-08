@@ -62,3 +62,37 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
+
+// --- Web Push: show incoming notifications and focus the app on click. ---
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = {};
+  }
+  const title = data.title || 'מִשְׁמֶרֶת';
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: data.body || '',
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      dir: 'rtl',
+      lang: 'he',
+      data: { url: data.url || '/' },
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || '/';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url.includes(target) && 'focus' in client) return client.focus();
+      }
+      return self.clients.openWindow(target);
+    })
+  );
+});

@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getActiveWorkplace } from '@/lib/workplace/current'
 import { buildAndUploadScheduleImage } from '@/lib/publish/image'
+import { notifyWorkplacePublished } from '@/lib/push/send'
 import { unpublishPeriod } from '@/lib/publish/unpublish'
 import { statusForDeadline } from '@/lib/publish/period-status'
 import { GENERIC_ERROR, MANUAL_SOURCES, type RunResult } from './run-actions-shared'
@@ -29,12 +30,14 @@ export async function publishSchedule(periodId: string): Promise<RunResult> {
   if (!updated || updated.length === 0) return { ok: false, error: GENERIC_ERROR }
 
   // Best-effort: render + upload the schedule image so the WhatsApp share link
-  // works. Uses the admin client (storage upload). Never fails the publish.
+  // works, and push a "schedule published" notification to employees. Uses the
+  // admin client. Never fails the publish.
   try {
     const admin = createAdminClient()
     await buildAndUploadScheduleImage(admin, periodId)
+    await notifyWorkplacePublished(admin, workplace.id)
   } catch {
-    // swallow — the schedule is published regardless of image upload
+    // swallow — the schedule is published regardless of image/push
   }
 
   revalidatePath('/schedule')

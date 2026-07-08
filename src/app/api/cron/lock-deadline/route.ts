@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { lockExpiredPeriods } from '@/lib/deadline/lock'
+import { remindMissingRequests } from '@/lib/push/remind'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -26,13 +27,24 @@ export async function GET(req: NextRequest) {
 
   try {
     const admin = createAdminClient()
-    const result = await lockExpiredPeriods(admin, new Date())
+    const now = new Date()
+    const result = await lockExpiredPeriods(admin, now)
 
-    if (result.errors.length > 0) {
-      console.error('[lock-deadline] errors:', result.errors)
+    // Best-effort: also nudge employees whose deadline is within ~24h and who
+    // haven't submitted yet — folded into this daily cron (Hobby caps at 2).
+    // Isolated so a reminder failure never breaks the (critical) lock step.
+    let reminded = 0
+    try {
+      const remind = await remindMissingRequests(admin, now)
+      reminded = remind.reminded
+      if (remind.errors.length > 0) console.error('[remind] errors:', remind.errors)
+    } catch (err) {
+      console.error('[remind] failed:', err)
     }
 
-    return NextResponse.json({ locked: result.locked, errors: result.errors })
+    if (result.errors.length > 0) console.error('[lock-deadline] errors:', result.errors)
+
+    return NextResponse.json({ locked: result.locked, reminded, errors: result.errors })
   } catch (err) {
     console.error('[lock-deadline] unexpected error:', err)
     return NextResponse.json({ error: 'lock failed' }, { status: 500 })

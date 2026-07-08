@@ -7,6 +7,7 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { isPublishDue } from './compute'
 import { buildAndUploadScheduleImage } from './image'
+import { notifyWorkplacePublished } from '@/lib/push/send'
 
 export interface PublishResult {
   published: number
@@ -75,6 +76,8 @@ export async function publishDuePeriods(
 
     // Render + upload the schedule image (best-effort) so the share link works.
     await buildAndUploadScheduleImage(admin, period.id)
+    // Notify employees their schedule is out (best-effort; no-ops without push).
+    await notifyWorkplacePublished(admin, workplace_id)
   }
 
   return { published, errors }
