@@ -22,8 +22,10 @@ interface Props {
 const BASE_KEYS = ['morning', 'noon', 'night'] as const
 
 export function RequestsOverview({ view, workerVacations }: Props) {
-  // Local copy so manager edits reflect instantly WITHOUT a full page refresh
-  // (which would bounce off the requests tab) — lets them enter many in a row.
+  // Local mirror so manager edits reflect instantly (patched via onSaved) without
+  // a page refresh. The component is kept mounted across tab switches (see
+  // ScheduleClient), so this state — and the entered requests — survive moving to
+  // the סידור tab and back.
   const [requests, setRequests] = useState<ViewRequest[]>(view.requests)
   const [editing, setEditing] = useState<RequestEditTarget | null>(null)
   const [confirmClear, setConfirmClear] = useState(false)

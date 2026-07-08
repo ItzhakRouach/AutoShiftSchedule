@@ -135,9 +135,11 @@ export function ScheduleClient({ view, editMeta, workerVacations }: Props) {
       </div>{/* schedule-controls */}
       <div style={{ height: 14 }} />
 
-      {viewMode === 'requests' && (
+      {/* Kept mounted (hidden when inactive) so manager-entered requests aren't
+          lost when switching to the סידור tab — the local grid mirror survives. */}
+      <div style={{ display: viewMode === 'requests' ? undefined : 'none' }}>
         <RequestsOverview view={view} workerVacations={workerVacations} />
-      )}
+      </div>
 
       {/* Managers can open the grid to build by hand even before the auto-run
           (empty cells are fillable via drag/tap/temp workers). */}

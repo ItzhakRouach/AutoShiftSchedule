@@ -56,7 +56,8 @@ export function VacationSection({ employeeId, vacations, isReadOnly }: VacationS
   }
 
   const inputStyle: React.CSSProperties = {
-    flex: 1,
+    width: '100%',
+    boxSizing: 'border-box',
     padding: '10px 12px',
     borderRadius: 'var(--r-md)',
     border: '1px solid var(--border-strong)',
@@ -66,6 +67,7 @@ export function VacationSection({ employeeId, vacations, isReadOnly }: VacationS
     fontFamily: 'var(--font)',
     minWidth: 0,
   }
+  const fieldLabel: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: 'var(--text-2)', marginBottom: 4 }
 
   return (
     <div style={{ marginTop: 28 }}>
@@ -113,26 +115,32 @@ export function VacationSection({ employeeId, vacations, isReadOnly }: VacationS
             הוספת חופשה
           </div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => {
-                setDateFrom(e.target.value)
-                // Keep "to" ≥ "from": if the chosen start is after the current
-                // end (or no end yet), snap the end to the start.
-                if (e.target.value && (!dateTo || dateTo < e.target.value)) setDateTo(e.target.value)
-              }}
-              style={inputStyle}
-              aria-label="תאריך התחלה"
-            />
-            <input
-              type="date"
-              value={dateTo}
-              min={dateFrom || undefined}
-              onChange={(e) => setDateTo(e.target.value)}
-              style={inputStyle}
-              aria-label="תאריך סיום"
-            />
+            <label style={{ flex: 1, minWidth: 0 }}>
+              <div style={fieldLabel}>מתאריך</div>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => {
+                  setDateFrom(e.target.value)
+                  // Keep "to" ≥ "from": if the chosen start is after the current
+                  // end (or no end yet), snap the end to the start.
+                  if (e.target.value && (!dateTo || dateTo < e.target.value)) setDateTo(e.target.value)
+                }}
+                style={inputStyle}
+                aria-label="מתאריך"
+              />
+            </label>
+            <label style={{ flex: 1, minWidth: 0 }}>
+              <div style={fieldLabel}>עד תאריך</div>
+              <input
+                type="date"
+                value={dateTo}
+                min={dateFrom || undefined}
+                onChange={(e) => setDateTo(e.target.value)}
+                style={inputStyle}
+                aria-label="עד תאריך"
+              />
+            </label>
           </div>
           {addError && <InlineAlert kind="error">{addError}</InlineAlert>}
           <Btn

@@ -35,10 +35,12 @@ function rangeLabel(dateFrom: string, dateTo: string): string {
 }
 
 const inputStyle: React.CSSProperties = {
-  flex: 1, padding: '10px 12px', borderRadius: 'var(--r-md)',
+  width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 'var(--r-md)',
   border: '1px solid var(--border-strong)', background: 'var(--surface)',
   color: 'var(--text)', fontSize: 14, fontFamily: 'var(--font)', minWidth: 0,
 }
+
+const fieldLabel: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: 'var(--text-2)', marginBottom: 4 }
 
 interface Props {
   employeeId: string
@@ -143,24 +145,30 @@ export function WorkerVacationSheet({ employeeId, employeeName, vacations, onClo
         <Segmented options={ABSENCE_KIND_OPTIONS} value={kind} onChange={(v) => setKind(v as VacationKind)} />
       </div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-        <input
-          type="date"
-          value={dateFrom}
-          onChange={(e) => {
-            setDateFrom(e.target.value)
-            if (e.target.value && (!dateTo || dateTo < e.target.value)) setDateTo(e.target.value)
-          }}
-          style={inputStyle}
-          aria-label="תאריך התחלה"
-        />
-        <input
-          type="date"
-          value={dateTo}
-          min={dateFrom || undefined}
-          onChange={(e) => setDateTo(e.target.value)}
-          style={inputStyle}
-          aria-label="תאריך סיום"
-        />
+        <label style={{ flex: 1, minWidth: 0 }}>
+          <div style={fieldLabel}>מתאריך</div>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => {
+              setDateFrom(e.target.value)
+              if (e.target.value && (!dateTo || dateTo < e.target.value)) setDateTo(e.target.value)
+            }}
+            style={inputStyle}
+            aria-label="מתאריך"
+          />
+        </label>
+        <label style={{ flex: 1, minWidth: 0 }}>
+          <div style={fieldLabel}>עד תאריך</div>
+          <input
+            type="date"
+            value={dateTo}
+            min={dateFrom || undefined}
+            onChange={(e) => setDateTo(e.target.value)}
+            style={inputStyle}
+            aria-label="עד תאריך"
+          />
+        </label>
       </div>
       {error && <InlineAlert kind="error">{error}</InlineAlert>}
       {saved && !error && <InlineAlert kind="success">נשמר ✓</InlineAlert>}
