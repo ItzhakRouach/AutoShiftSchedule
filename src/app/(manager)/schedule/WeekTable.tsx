@@ -103,20 +103,17 @@ export function WeekTable({ view, onSlot, onDayPair, assign, initialSelectedId, 
         <table style={{ borderCollapse: 'separate', borderSpacing: 0, minWidth: 700, tableLayout: 'auto', width: '100%' }}>
           <thead>
             <tr style={{ background: 'var(--surface-2)' }}>
-              <th style={{ ...S.sticky, right: 0, zIndex: 3, padding: '10px 8px', fontSize: 13, width: SHIFT_W, minWidth: SHIFT_W, maxWidth: SHIFT_W }}><span style={S.layer}>משמרת</span></th>
-              <th style={{ ...S.sticky, right: SHIFT_W, zIndex: 3, padding: '10px 8px', fontSize: 13, width: ROLE_W, minWidth: ROLE_W, maxWidth: ROLE_W }}><span style={S.layer}>תפקיד</span></th>
+              <th style={{ ...S.sticky, right: 0, zIndex: 3, padding: '10px 8px', fontSize: 13, width: SHIFT_W, minWidth: SHIFT_W, maxWidth: SHIFT_W, borderBottom: '3px solid var(--text)' }}><span style={S.layer}>משמרת</span></th>
+              <th style={{ ...S.sticky, right: SHIFT_W, zIndex: 3, padding: '10px 8px', fontSize: 13, width: ROLE_W, minWidth: ROLE_W, maxWidth: ROLE_W, borderBottom: '3px solid var(--text)' }}><span style={S.layer}>תפקיד</span></th>
               {days.map((d) => {
                 const dh = dayHealth[d.index]
                 // Heatmap tint only when the day has required slots (manager view);
                 // read-only/no-requirement days keep the neutral header.
                 const tint = dh.required > 0 ? healthTint(dh.ratio) : undefined
                 return (
-                  <th key={d.index} style={{ ...S.sticky, position: undefined, padding: '10px 8px', fontSize: 12, textAlign: 'center', minWidth: 96, background: tint ?? 'var(--surface-2)' }}>
+                  <th key={d.index} style={{ ...S.sticky, position: undefined, padding: '10px 8px', fontSize: 12, textAlign: 'center', minWidth: 96, background: tint ?? 'var(--surface-2)', borderBottom: '3px solid var(--text)' }}>
                     <div style={{ fontWeight: 800, fontSize: 13 }}>{d.short}</div>
                     <div style={{ fontWeight: 500, color: 'var(--text-2)', fontSize: 11, marginTop: 2 }}>{d.date}</div>
-                    {dh.required > 0 && (
-                      <div style={{ fontSize: 10.5, fontWeight: 700, marginTop: 2, color: dh.ratio >= 1 ? 'var(--success)' : dh.ratio >= 0.5 ? 'var(--warning)' : 'var(--danger)' }}>{dh.filled}/{dh.required}</div>
-                    )}
                     {onDayPair && (
                       <button data-testid="day-pair-btn" aria-label="החל צמד משמרת 12 שעות ליום זה" title="החל צמד משמרת 12 שעות ליום זה" onClick={() => onDayPair(d.index)} style={S.dayPairBtn}>12ש׳</button>
                     )}
