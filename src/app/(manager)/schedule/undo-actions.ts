@@ -14,6 +14,14 @@ const rowShapeSchema = z.object({
 
 const daySchema = z.number().int().min(0).max(6)
 
+const swapSideSchema = z.object({
+  employeeId: z.string().uuid(),
+  fromDay: daySchema,
+  fromRow: rowShapeSchema,
+  toDay: daySchema,
+  toRow: rowShapeSchema,
+})
+
 const undoSnapshotSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('assign'),
@@ -35,6 +43,11 @@ const undoSnapshotSchema = z.discriminatedUnion('kind', [
     kind: z.literal('temp-remove'),
     day: daySchema,
     row: rowShapeSchema.extend({ tempName: z.string().trim().min(1).max(40) }),
+  }),
+  z.object({
+    kind: z.literal('swap'),
+    a: swapSideSchema,
+    b: swapSideSchema.nullable(),
   }),
 ])
 
@@ -67,20 +80,41 @@ export async function undoEdit(periodId: string, snapshot: UndoSnapshot): Promis
 
   const plan = planUndo(parsed.data)
 
-  // Guard: every plan that references an employeeId must have that employee
-  // scoped to the authed workplace — undo must never write/delete rows for an
-  // employee outside it (same pattern as request-actions.ts).
-  if ('employeeId' in plan) {
-    const { data: employee } = await supabase
+  // Guard: every plan that references employee ids must have them scoped to the
+  // authed workplace — undo must never write/delete rows for an employee
+  // outside it (same pattern as request-actions.ts).
+  const guardIds = plan.op === 'apply-swap'
+    ? [plan.a.employeeId, ...(plan.b ? [plan.b.employeeId] : [])]
+    : 'employeeId' in plan ? [plan.employeeId] : []
+  if (guardIds.length > 0) {
+    const { data: emps } = await supabase
       .from('employees')
       .select('id')
-      .eq('id', plan.employeeId)
+      .in('id', guardIds)
       .eq('workplace_id', workplace.id)
-      .maybeSingle()
-    if (!employee) return { ok: false, error: GENERIC_ERROR }
+    if ((emps?.length ?? 0) !== new Set(guardIds).size) return { ok: false, error: GENERIC_ERROR }
   }
 
-  if (plan.op === 'restore-emp-day-row') {
+  if (plan.op === 'apply-swap') {
+    // Re-apply the (reversed) exchange atomically via the swap RPC — restores
+    // each side's original row incl. its original source.
+    const { error } = await supabase.rpc('swap_assignments', {
+      p_period: periodId,
+      a_employee: plan.a.employeeId,
+      a_from_day: plan.a.fromDay,
+      a_to_day: plan.a.toDay,
+      a_to_shift: plan.a.toRow.shiftTypeId,
+      a_to_role: plan.a.toRow.roleId,
+      a_source: plan.a.toRow.source,
+      b_employee: plan.b?.employeeId ?? null,
+      b_from_day: plan.b?.fromDay ?? null,
+      b_to_day: plan.b?.toDay ?? null,
+      b_to_shift: plan.b?.toRow.shiftTypeId ?? null,
+      b_to_role: plan.b?.toRow.roleId ?? null,
+      b_source: plan.b?.toRow.source ?? 'manual',
+    })
+    if (error) return { ok: false, error: GENERIC_ERROR }
+  } else if (plan.op === 'restore-emp-day-row') {
     // twelve_fills: null — undoing back to a snapshotted row degrades any 12h
     // fill plan to the legacy heuristic; the snapshot only ever captured base
     // shift_type_id/role_id, never a fills plan, so this is accepted.

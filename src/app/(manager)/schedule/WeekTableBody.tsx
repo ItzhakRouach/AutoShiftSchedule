@@ -11,6 +11,7 @@ import { WeekTableCell } from './WeekTableCell'
 import { buildCellLabel } from './week-table-helpers'
 import { BASE_SHIFTS, SHIFT_W, ROLE_W, S } from './week-table-style'
 import type { CellAssign } from './useCellAssign'
+import type { SrcSlot } from './dnd'
 
 interface Props {
   view: ScheduleView
@@ -26,14 +27,16 @@ interface Props {
   assign?: CellAssign
   heldBusyDays: Set<number> | null
   onCellClick: (day: number, shift: ShiftKey, roleId: string) => void
-  onDrop: (day: number, shift: ShiftKey, roleId: string, employeeId: string) => void
+  onDrop: (day: number, shift: ShiftKey, roleId: string, employeeId: string, src?: SrcSlot) => void
+  /** Over-capacity cleanup: unassign a worker straight from the cell ×. */
+  onRemoveEmployee?: (day: number, employeeId: string) => void
 }
 
 /** The week table's <tbody> — one shift-group of role rows per base shift.
  *  Split out of WeekTable to keep both files ≤200 lines. */
 export function WeekTableBody(props: Props) {
   const { view, orderedRoleIds, roleById, empById, weekGrid, coveredMap, conflictFlags } = props
-  const { selectedId, editable, showUnfilled, assign, heldBusyDays, onCellClick, onDrop } = props
+  const { selectedId, editable, showUnfilled, assign, heldBusyDays, onCellClick, onDrop, onRemoveEmployee } = props
   const days = view.days
   return (
     <tbody>
@@ -89,9 +92,10 @@ export function WeekTableBody(props: Props) {
                     onClick={editable ? () => onCellClick(d.index, shift, roleId) : undefined}
                     showUnfilled={showUnfilled}
                     isBusy={isBusy}
-                    onDropEmployee={assign ? (id) => onDrop(d.index, shift, roleId, id) : undefined}
+                    onDropEmployee={assign ? (id, src) => onDrop(d.index, shift, roleId, id, src) : undefined}
                     onDragEmployee={assign ? assign.clearHeld : undefined}
                     onRemoveTemp={assign ? assign.removeTemp : undefined}
+                    onRemoveEmployee={assign && onRemoveEmployee ? (id) => onRemoveEmployee(d.index, id) : undefined}
                     capacityLabel={editable ? capacity.label : ''}
                     capacityStatus={editable ? capacity.status : 'unconfigured'}
                     cellLabel={cellLabel}
@@ -99,6 +103,7 @@ export function WeekTableBody(props: Props) {
                     heldBlocked={heldBlocked}
                     conflictReason={conflict}
                     conflictTitle={conflict ? conflictLabel(conflict) : undefined}
+                    srcSlot={assign ? { day: d.index, shift, roleId } : undefined}
                   />
                 )
               })}

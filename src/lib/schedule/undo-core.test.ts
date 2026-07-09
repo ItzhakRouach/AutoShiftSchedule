@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { planUndo, type UndoSnapshot } from './undo-core'
+import { planUndo, reverseSwap, type UndoSnapshot } from './undo-core'
 
 describe('planUndo', () => {
   it('assign with a prior row → restores the prior row with its original source', () => {
@@ -98,5 +98,41 @@ describe('planUndo', () => {
     if (plan.op === 'restore-emp-day-row') {
       expect(plan.source).toBe('fallback_12h')
     }
+  })
+})
+
+describe('swap snapshots', () => {
+  const a = {
+    employeeId: 'A', fromDay: 0,
+    fromRow: { shiftTypeId: 'st-m', roleId: 'r1', source: 'auto' },
+    toDay: 2,
+    toRow: { shiftTypeId: 'st-n', roleId: 'r2', source: 'manual' },
+  }
+  const b = {
+    employeeId: 'B', fromDay: 2,
+    fromRow: { shiftTypeId: 'st-n', roleId: 'r2', source: 'manual' },
+    toDay: 0,
+    toRow: { shiftTypeId: 'st-m', roleId: 'r1', source: 'manual' },
+  }
+
+  it('planUndo(swap) applies the reversed exchange with original sources', () => {
+    const plan = planUndo({ kind: 'swap', a, b })
+    expect(plan.op).toBe('apply-swap')
+    if (plan.op !== 'apply-swap') return
+    // A moves back 2→0 restoring its ORIGINAL row (source auto preserved).
+    expect(plan.a).toEqual({ employeeId: 'A', fromDay: 2, fromRow: a.toRow, toDay: 0, toRow: a.fromRow })
+    expect(plan.a.toRow.source).toBe('auto')
+    expect(plan.b?.employeeId).toBe('B')
+  })
+
+  it('move (b null) reverses to a move back', () => {
+    const plan = planUndo({ kind: 'swap', a, b: null })
+    expect(plan.op).toBe('apply-swap')
+    if (plan.op === 'apply-swap') expect(plan.b).toBeNull()
+  })
+
+  it('reverseSwap twice yields the forward swap (redo semantics)', () => {
+    const snap = { kind: 'swap' as const, a, b }
+    expect(reverseSwap(reverseSwap(snap))).toEqual(snap)
   })
 })

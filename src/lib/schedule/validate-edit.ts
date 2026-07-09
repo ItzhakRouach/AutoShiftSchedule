@@ -20,6 +20,9 @@ interface ValidateArgs {
   dayIndex: number
   shiftKey: ShiftId
   roleId: string
+  /** Extra days whose committed rows are treated as VACATED (swap validation:
+   *  validate A into B's cell as-if A's own source-day row is already gone). */
+  excludeDays?: number[]
 }
 
 /**
@@ -40,7 +43,7 @@ interface ValidateArgs {
 export async function validateManualAssignment(
   args: ValidateArgs,
 ): Promise<Verdict> {
-  const { supabase, periodId, employeeId, dayIndex, shiftKey, roleId } = args
+  const { supabase, periodId, employeeId, dayIndex, shiftKey, roleId, excludeDays } = args
 
   const built = await buildEngineInput(supabase, periodId)
   if (!built) return { ok: false, severity: 'hard', reason: 'לא נמצאו נתוני שיבוץ' }
@@ -70,6 +73,7 @@ export async function validateManualAssignment(
   const others: CommittedSlot[] = []
   for (const r of rows ?? []) {
     if (r.day_of_week === dayIndex) continue
+    if (excludeDays?.includes(r.day_of_week as number)) continue // vacated by the swap
     const key = idToKey[r.shift_type_id as string]
     if (!key) continue
     others.push({ day: r.day_of_week as number, shiftKey: key, roleId: r.role_id as string })

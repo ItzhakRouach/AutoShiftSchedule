@@ -15,6 +15,7 @@ import { EmpTotalsBar } from './EmpTotalsBar'
 import { WeekTableBody } from './WeekTableBody'
 import { busyDaysOf } from './week-table-helpers'
 import { SHIFT_W, ROLE_W, S, healthTint } from './week-table-style'
+import type { SrcSlot } from './dnd'
 
 interface Props {
   view: ScheduleView
@@ -64,7 +65,30 @@ export function WeekTable({ view, onSlot, onDayPair, assign, initialSelectedId, 
     if (assign?.assignTo(slot)) return
     onSlot(slot)
   }
-  function handleDrop(day: number, shift: ShiftKey, roleId: string, employeeId: string) {
+  function handleDrop(day: number, shift: ShiftKey, roleId: string, employeeId: string, src?: SrcSlot) {
+    // Cell-origin drag → swap with the single occupant, or move to an empty
+    // cell (vacating the source). Multi-occupant / 12h / temp targets fall
+    // through to the legacy assign path.
+    if (src && assign) {
+      const sameCell = src.day === day && src.shift === shift && src.roleId === roleId
+      const targetEntries = weekGrid[day]?.[shift]?.[roleId] ?? []
+      const shiftTypeId = view.shiftTypeIdByKey[shift]
+      const srcShiftTypeId = view.shiftTypeIdByKey[src.shift]
+      if (!sameCell && shiftTypeId && srcShiftTypeId && !targetEntries.some((e) => e.employeeId === employeeId)) {
+        const a = { employeeId, day: src.day, shiftTypeId: srcShiftTypeId, roleId: src.roleId }
+        const target = { day, shiftKey: shift as ShiftId, shiftTypeId, roleId }
+        const swappable = targetEntries.length === 1 && !targetEntries[0].is12h && targetEntries[0].tempName == null
+        if (swappable) {
+          assign.swapWith(a, target, { employeeId: targetEntries[0].employeeId, day, shiftTypeId, roleId })
+          return
+        }
+        if (targetEntries.length === 0) {
+          assign.swapWith(a, target, null)
+          return
+        }
+      }
+      if (sameCell) return
+    }
     if (busyDaysOf(view, employeeId).has(day)) return
     const slot = buildSlot(day, shift, roleId)
     if (slot) assign?.dropOn(slot, employeeId)
