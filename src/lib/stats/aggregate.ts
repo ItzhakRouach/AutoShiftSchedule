@@ -1,5 +1,5 @@
 import type { PeriodKPIs, EmployeeStat, FairnessStat, CoverageColor } from './types'
-import { groupRequestsByEmployee, indexAssignments, reqIsHonored } from './aggregate-index'
+import { coveredKeysOf, groupRequestsByEmployee, indexAssignments, reqIsHonored } from './aggregate-index'
 
 export interface AssignmentRow {
   employee_id: string
@@ -46,8 +46,10 @@ export function computeTwoRequestsHonored(
   periodAssignments: AssignmentRow[],
   requests: RequestRow[],
   employees: EmployeeRow[],
+  /** shift_type_id → key; enables 12h-covers matching (m12_day honors a requested morning). */
+  keyById?: Map<string, string>,
 ): { count: number; total: number } {
-  const index = indexAssignments(periodAssignments)
+  const index = indexAssignments(periodAssignments, keyById)
   const reqsByEmp = groupRequestsByEmployee(requests)
 
   let count = 0
@@ -69,6 +71,8 @@ export function aggregateKPIs(
   employees: EmployeeRow[],
   requirementSummary: RequirementCount | null,
   requests: RequestRow[],
+  /** shift_type_id → key; enables 12h-covers request matching. */
+  keyById?: Map<string, string>,
 ): PeriodKPIs {
   const filled = requirementSummary?.filled ?? 0
   const required = requirementSummary?.required ?? 0
@@ -90,7 +94,7 @@ export function aggregateKPIs(
   ).length
 
   const { count: twoRequestsHonoredCount, total: twoRequestsHonoredTotal } =
-    computeTwoRequestsHonored(periodAssignments, requests, employees)
+    computeTwoRequestsHonored(periodAssignments, requests, employees, keyById)
 
   return {
     coveragePct,
@@ -140,6 +144,7 @@ export function aggregateFairness(
   employees: EmployeeRow[],
   shiftKeyById: Map<string, string>,
 ): FairnessStat[] {
+  const idByKey = new Map([...shiftKeyById].map(([id, k]) => [k, id]))
   const perEmp = new Map<string, { night: number; weekend: number; daysShifts: Set<string> }>()
   for (const e of employees) {
     perEmp.set(e.id, { night: 0, weekend: 0, daysShifts: new Set() })
@@ -147,9 +152,17 @@ export function aggregateFairness(
   for (const a of assignments) {
     const agg = perEmp.get(a.employee_id)
     if (!agg) continue
-    if (NIGHT_SHIFT_KEYS.has(shiftKeyById.get(a.shift_type_id) ?? '')) agg.night += 1
+    const key = shiftKeyById.get(a.shift_type_id) ?? ''
+    if (NIGHT_SHIFT_KEYS.has(key)) agg.night += 1
     if (a.day_of_week === 5 || a.day_of_week === 6) agg.weekend += 1
     agg.daysShifts.add(`${a.day_of_week}:${a.shift_type_id}`)
+    // 12h-covers: register the base ids the variant physically covers so a
+    // requested base shift matched by a 12h counts as honored.
+    for (const base of coveredKeysOf(key)) {
+      if (base === key) continue
+      const baseId = idByKey.get(base)
+      if (baseId) agg.daysShifts.add(`${a.day_of_week}:${baseId}`)
+    }
   }
 
   const reqsByEmp = groupRequestsByEmployee(requests)

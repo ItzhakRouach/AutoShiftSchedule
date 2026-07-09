@@ -37,6 +37,17 @@ export function twelveFillsOf(t: ViewTwelve): ViewTwelveFill[] {
 }
 
 /**
+ * The base windows a 12h row PHYSICALLY COVERS (the worker is on duty then) —
+ * for "requested" matching: an m12_night satisfies a noon OR night request even
+ * though it only FILLS night. Falls back to the fill plan for unknown variants.
+ */
+export function twelveCoversOf(t: ViewTwelve): string[] {
+  const covers = TWELVE_HOUR_COVERS[t.variant as TwelveHourKey]
+  if (covers) return [...covers]
+  return twelveFillsOf(t).map((f) => f.shift)
+}
+
+/**
  * Which fill shows the 12h person's NAME: the first fill whose (day, shift,
  * fill.roleId) cell has no BASE occupant — i.e. the actual gap it's covering.
  * Falls back to fills[0] when every fill's cell is base-occupied (or there's

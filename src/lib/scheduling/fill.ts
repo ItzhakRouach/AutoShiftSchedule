@@ -126,6 +126,13 @@ export function runFill(
   // staff (a genuine shortage). day/night pair preferred, 03-15/15-03 last.
   timed(st, 'twelve-fill', () => {
     st.twelve = skipTwelve ? [] : runTwelveFill(input, st)
+    if (!skipTwelve) {
+      // A 12h COVERS requested base windows (e.g. m12_night satisfies a noon or
+      // night request) — recount so stats.requestsSatisfied reflects it.
+      for (const e of input.employees) {
+        st.satisfied[e.id] = recountSatisfied(input, e.id, st.committed[e.id])
+      }
+    }
   })
   return st
 }

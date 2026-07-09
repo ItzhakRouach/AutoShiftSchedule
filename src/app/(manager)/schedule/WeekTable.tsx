@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from 'react'
 import { type ShiftId } from '@/lib/domain/constants'
-import { buildWeekGrid, buildEmpTotals, buildEmpHours, buildDayHealth } from '@/lib/schedule/week-table-data'
+import { buildWeekGrid, buildEmpTotals } from '@/lib/schedule/week-table-data'
+import { buildEmpHours, buildDayHealth } from '@/lib/schedule/week-table-metrics'
 import { coveredByTwelve } from '@/lib/schedule/week-table-twelve'
 import { buildConflictFlags } from '@/lib/schedule/conflict-flags'
 import type { ScheduleView } from '@/lib/schedule/view-data'

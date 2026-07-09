@@ -142,6 +142,7 @@ export async function fetchDashboardStats(
       employees,
       requirementSummary,
       latestRequests,
+      keyById,
     ),
     employees: aggregateEmployees(allAssignments, employees),
     fairness: aggregateFairness(allAssignments, requests, employees, keyById),

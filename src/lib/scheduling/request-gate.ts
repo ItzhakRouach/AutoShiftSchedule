@@ -8,9 +8,16 @@
 //
 // Satisfaction is recomputed from `input.requests` vs the PROPOSED assignments,
 // so it stays correct after occupants are exchanged. Pure & deterministic.
-import type { Assignment, EngineInput } from './types'
+import type { Assignment, EngineInput, ShiftKey } from './types'
+import { TWELVE_HOUR_COVERS } from './fallback'
 
-/** How many of `emp`'s daily preferred shifts are met by these assignments. */
+/**
+ * How many of `emp`'s daily preferred shifts are met by these assignments.
+ * A 12h assignment satisfies every base window it PHYSICALLY COVERS
+ * (TWELVE_HOUR_COVERS — e.g. m12_night covers noon+night), because the worker
+ * is on duty during that requested window. Counted per (day, preferred window)
+ * so m12_day's two committed rows (one variant) never double-count a request.
+ */
 export function satisfiedCount(
   input: EngineInput,
   empId: string,
@@ -18,10 +25,18 @@ export function satisfiedCount(
 ): number {
   const reqs = input.requests[empId]
   if (!reqs) return 0
-  let n = 0
+  // day → set of base windows the employee actually works.
+  const coveredByDay = new Map<number, Set<ShiftKey>>()
   for (const a of assignments) {
-    const r = reqs[a.day]
-    if (r && r.preferred.includes(a.shift)) n++
+    const set = coveredByDay.get(a.day) ?? coveredByDay.set(a.day, new Set()).get(a.day)!
+    if (a.is12h && a.variant) for (const s of TWELVE_HOUR_COVERS[a.variant]) set.add(s)
+    else set.add(a.shift)
+  }
+  let n = 0
+  for (const [day, covered] of coveredByDay) {
+    const r = reqs[day]
+    if (!r) continue
+    for (const p of r.preferred) if (covered.has(p)) n++
   }
   return n
 }

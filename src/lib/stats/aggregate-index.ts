@@ -1,7 +1,17 @@
 // PURE indexing helpers shared between the request-honored and fairness
 // rollups. Building these once turns the per-employee × per-request work in
 // `aggregate.ts` from O(R × A) into O(R + A).
+import { TWELVE_HOUR_COVERS } from '@/lib/scheduling/fallback'
+import type { TwelveHourKey } from '@/lib/scheduling/types'
 import type { AssignmentRow } from './aggregate'
+
+/** Base windows a shift KEY physically covers: a base key covers itself; a 12h
+ *  variant covers per TWELVE_HOUR_COVERS (m12_night → noon+night). */
+export function coveredKeysOf(key: string | undefined | null): string[] {
+  if (!key) return []
+  const twelve = TWELVE_HOUR_COVERS[key as TwelveHourKey]
+  return twelve ? [...twelve] : [key]
+}
 
 interface RequestRow {
   employee_id: string
@@ -14,13 +24,32 @@ interface RequestRow {
 /** Per-employee `${day}:${shiftTypeId}` set — O(1) request-honored lookup. */
 export type AssignmentIndex = Map<string, Set<string>>
 
-/** Single O(n) pass building per-employee day:shift_type sets. */
-export function indexAssignments(rows: AssignmentRow[]): AssignmentIndex {
+/**
+ * Single O(n) pass building per-employee day:shift_type sets. When `keyById`
+ * (shift_type_id → key) is provided, a 12h variant row ALSO registers the base
+ * shift ids it physically covers — so a requested morning matched by an
+ * m12_day (or a requested noon by an m12_night) counts as honored.
+ */
+export function indexAssignments(
+  rows: AssignmentRow[],
+  keyById?: Map<string, string>,
+): AssignmentIndex {
+  const idByKey = keyById ? new Map([...keyById].map(([id, k]) => [k, id])) : null
   const index: AssignmentIndex = new Map()
   for (const a of rows) {
     let perEmp = index.get(a.employee_id)
     if (!perEmp) { perEmp = new Set(); index.set(a.employee_id, perEmp) }
     perEmp.add(`${a.day_of_week}:${a.shift_type_id}`)
+    if (keyById && idByKey) {
+      const key = keyById.get(a.shift_type_id)
+      const covers = key ? TWELVE_HOUR_COVERS[key as TwelveHourKey] : undefined
+      if (covers) {
+        for (const base of covers) {
+          const baseId = idByKey.get(base)
+          if (baseId) perEmp.add(`${a.day_of_week}:${baseId}`)
+        }
+      }
+    }
   }
   return index
 }

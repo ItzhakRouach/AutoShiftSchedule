@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { buildWeekGrid, buildEmpTotals, cellCapacity, countUncoveredCells, buildDayHealth } from './week-table-data'
+import { buildWeekGrid, buildEmpTotals, cellCapacity, countUncoveredCells } from './week-table-data'
+import { buildDayHealth } from './week-table-metrics'
 import type { ScheduleView } from './view-data'
 
 function makeView(overrides: Partial<ScheduleView> = {}): ScheduleView {

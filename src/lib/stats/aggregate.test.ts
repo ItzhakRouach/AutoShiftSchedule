@@ -107,3 +107,49 @@ describe('aggregateFairness', () => {
     expect(e1.honoredCount).toBe(2)
   })
 })
+
+// ─── 12h-covers request matching ─────────────────────────────────────────────
+describe('aggregateFairness — 12h covers requested base shifts', () => {
+  const keyById = new Map([
+    ['st_morning', 'morning'],
+    ['st_noon', 'noon'],
+    ['st_night', 'night'],
+    ['st_m12day', 'm12_day'],
+    ['st_m12night', 'm12_night'],
+  ])
+
+  it('m12_day honors a requested morning', () => {
+    const assignments = [mkAssign('e1', 0, 'st_m12day', 'r1', 12, true)]
+    const requests = [
+      { employee_id: 'e1', period_id: 'p1', day_of_week: 0, is_off: false, preferred_shift_ids: ['st_morning'] },
+    ]
+    const e1 = aggregateFairness(assignments, requests, employees, keyById).find((f) => f.id === 'e1')!
+    expect(e1.honoredCount).toBe(1)
+  })
+
+  it('m12_night honors a requested NOON (covers, not fills)', () => {
+    const assignments = [mkAssign('e1', 2, 'st_m12night', 'r1', 12, true)]
+    const requests = [
+      { employee_id: 'e1', period_id: 'p1', day_of_week: 2, is_off: false, preferred_shift_ids: ['st_noon'] },
+    ]
+    const e1 = aggregateFairness(assignments, requests, employees, keyById).find((f) => f.id === 'e1')!
+    expect(e1.honoredCount).toBe(1)
+  })
+
+  it('m12_night does NOT honor a requested morning', () => {
+    const assignments = [mkAssign('e1', 2, 'st_m12night', 'r1', 12, true)]
+    const requests = [
+      { employee_id: 'e1', period_id: 'p1', day_of_week: 2, is_off: false, preferred_shift_ids: ['st_morning'] },
+    ]
+    const e1 = aggregateFairness(assignments, requests, employees, keyById).find((f) => f.id === 'e1')!
+    expect(e1.honoredCount).toBe(0)
+  })
+
+  it('granted off-day still counts as honored (unchanged)', () => {
+    const requests = [
+      { employee_id: 'e1', period_id: 'p1', day_of_week: 3, is_off: true, preferred_shift_ids: [] },
+    ]
+    const e1 = aggregateFairness([], requests, employees, keyById).find((f) => f.id === 'e1')!
+    expect(e1.honoredCount).toBe(1)
+  })
+})

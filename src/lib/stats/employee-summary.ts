@@ -1,8 +1,10 @@
 /**
  * Pure helper: summarize one employee's published shifts for their personal area.
  * No IO — unit-testable. Counts by role and by shift type, and how many of the
- * employee's requests were honored (same match rule as the manager dashboard).
+ * employee's requests were honored (same match rule as the manager dashboard,
+ * incl. 12h-covers: an m12_day honors a requested morning).
  */
+import { coveredKeysOf } from './aggregate-index'
 
 export interface SummaryAssignment {
   day_of_week: number
@@ -61,10 +63,17 @@ export function summarizeEmployee(
     if (!r.is_off && !hasPref) continue // empty (no real ask)
     requestedCount += 1
     // A request may offer alternatives ("morning OR off"). It's honored if the
-    // worker got ANY preferred shift, OR (off was acceptable) they didn't work.
-    const gotPreferred = hasPref && assignments.some(
-      (a) => a.day_of_week === r.day_of_week && r.preferred_shift_ids!.includes(a.shift_type_id),
-    )
+    // worker got ANY preferred shift — a 12h counts for every base window it
+    // physically covers — OR (off was acceptable) they didn't work.
+    const gotPreferred = hasPref && assignments.some((a) => {
+      if (a.day_of_week !== r.day_of_week) return false
+      if (r.preferred_shift_ids!.includes(a.shift_type_id)) return true
+      const covers = coveredKeysOf(shiftKeyById.get(a.shift_type_id))
+      return r.preferred_shift_ids!.some((sid) => {
+        const prefKey = shiftKeyById.get(sid)
+        return !!prefKey && covers.includes(prefKey)
+      })
+    })
     const worksThatDay = assignments.some((a) => a.day_of_week === r.day_of_week)
     if (gotPreferred || (r.is_off && !worksThatDay)) honoredCount += 1
   }
