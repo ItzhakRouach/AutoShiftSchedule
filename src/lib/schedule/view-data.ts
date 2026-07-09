@@ -3,6 +3,15 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { upcomingWeekStartISO } from '@/lib/dates/week'
 import { checkFeasibility } from '@/lib/scheduling'
 import { buildEngineInput } from './build-input'
+import {
+  ensureUpcomingPeriodId,
+  fetchApprovedVacations,
+  fetchAssignmentRows,
+  fetchEmployeesFull,
+  fetchRequests,
+  fetchRolesAll,
+  fetchShiftTypes,
+} from './cached-reads'
 import { weekDatesFrom } from './map-rows'
 import { shiftMetaFromRow, type ShiftDisplay } from '@/lib/domain/meta'
 import { buildNightBeforeByDay, toSerializable } from './night-before'
@@ -21,11 +30,9 @@ export async function getScheduleView(
   workplaceId: string,
 ): Promise<ScheduleView | null> {
   const weekStart = upcomingWeekStartISO(new Date())
-  const { data: periodId, error: rpcError } = await supabase.rpc('ensure_upcoming_period', {
-    wp: workplaceId,
-    wk: weekStart,
-  })
-  if (rpcError || !periodId) return null
+  // Cached per-request (page.tsx resolves the same id for getEditMeta in parallel).
+  const periodId = await ensureUpcomingPeriodId(supabase, workplaceId, weekStart)
+  if (!periodId) return null
 
   const built = await buildEngineInput(supabase, periodId)
   if (!built) return null
@@ -33,42 +40,34 @@ export async function getScheduleView(
   const idToKey: Record<string, ShiftKey> = {}
   for (const [key, id] of Object.entries(built.keyToShiftTypeId)) idToKey[id] = key as ShiftKey
 
+  // Shared tables via the per-request cached readers (deduped with
+  // buildEngineInput above and edit-meta); period-only queries stay direct.
   const [
-    { data: rolesRaw },
-    { data: empsRaw },
-    { data: assignsRaw },
+    rolesAll,
+    empsRaw,
+    assignsRaw,
     { data: reqRaw },
-    { data: allShiftTypes },
-    { data: requestsRaw },
+    allShiftTypes,
+    requestsRaw,
     { data: dayNotesRaw },
-    { data: vacationsRaw },
+    vacationsRaw,
   ] = await Promise.all([
-    supabase.from('roles').select('id, name, color, rank').eq('workplace_id', workplaceId).eq('is_active', true).order('rank', { ascending: false }),
-    supabase.from('employees').select('id, name, color').eq('workplace_id', workplaceId).order('name'),
-    supabase
-      .from('assignments')
-      .select('id, employee_id, temp_name, day_of_week, shift_type_id, role_id, twelve_fills')
-      .eq('period_id', periodId),
+    fetchRolesAll(supabase, workplaceId),
+    fetchEmployeesFull(supabase, workplaceId),
+    fetchAssignmentRows(supabase, periodId),
     supabase
       .from('shift_requirements')
       .select('day_of_week, shift_type_id, role_id, count')
       .eq('workplace_id', workplaceId),
-    supabase.from('shift_types').select('id, key, name, color, start_hour, hours').eq('workplace_id', workplaceId),
-    supabase
-      .from('requests')
-      .select('employee_id, day_of_week, is_off, preferred_shift_ids')
-      .eq('period_id', periodId),
+    fetchShiftTypes(supabase, workplaceId),
+    fetchRequests(supabase, periodId),
     supabase
       .from('day_notes')
       .select('employee_id, day_of_week, label')
       .eq('period_id', periodId),
-    // RLS (vacations_manager_select / owns_employee) scopes this to employees
-    // owned by the manager — no explicit workplace filter needed.
-    supabase
-      .from('employee_vacations')
-      .select('employee_id, date_from, date_to, kind')
-      .eq('status', 'approved'), // only APPROVED vacations count (match the engine)
+    fetchApprovedVacations(supabase, workplaceId),
   ])
+  const rolesRaw = rolesAll.filter((r) => r.is_active)
 
   // All shift-type keys (base + 12h) so manual 12h assignments can be surfaced.
   const idToAnyKey: Record<string, string> = {}
@@ -95,11 +94,17 @@ export async function getScheduleView(
 
   const days = buildDayInfos(weekDatesFrom(weekStart))
 
+  // PERF: checkFeasibility runs the FULL engine solve (twice when short) purely
+  // for the pre-generate guidance banner. Once the period has assignments, the
+  // live gaps counter + coverage issues carry that story — so skip the solve on
+  // every built-schedule load AND on every post-edit router.refresh().
   let feasibility: FeasibilityResult | null = null
-  try {
-    feasibility = checkFeasibility(built.input)
-  } catch {
-    feasibility = null
+  if ((assignsRaw ?? []).length === 0) {
+    try {
+      feasibility = checkFeasibility(built.input)
+    } catch {
+      feasibility = null
+    }
   }
 
   // Build requests list + requestedSet for "ביקש" badge.

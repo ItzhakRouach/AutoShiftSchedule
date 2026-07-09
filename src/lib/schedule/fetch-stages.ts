@@ -4,28 +4,16 @@ import { computePriorWeekTail } from './prior-tail'
 import { findPriorPublishedPeriod, findAdjacentPeriod, type PriorPeriodRow } from './prior-period'
 import { computePriorMetrics } from './prior-metrics'
 import { computeNextWeekHead } from './next-head'
-
-/**
- * Fetch employee↔role links WITH per-role seniority. `is_senior` is an additive
- * column (migration 20260608000002); if it isn't present yet (code deployed
- * ahead of the migration, or an older DB), fall back to the seniority-free
- * select so scheduling keeps working — everyone is treated as a regular holder.
- */
-async function fetchEmployeeRoles(
-  supabase: SupabaseClient,
-  employeeIds: string[],
-): Promise<{ data: { employee_id: string; role_id: string; is_senior?: boolean }[] | null }> {
-  const withSenior = await supabase
-    .from('employee_roles')
-    .select('employee_id, role_id, is_senior')
-    .in('employee_id', employeeIds)
-  if (!withSenior.error) return { data: withSenior.data }
-  const base = await supabase
-    .from('employee_roles')
-    .select('employee_id, role_id')
-    .in('employee_id', employeeIds)
-  return { data: base.data }
-}
+import {
+  fetchApprovedVacations,
+  fetchAvailability,
+  fetchEmployeeRoles,
+  fetchEmployeesFull,
+  fetchRequests,
+  fetchRolesAll,
+  fetchSettings,
+  fetchShiftTypes,
+} from './cached-reads'
 
 /** Everything that depends ONLY on workplace_id / week_start_date / period_id —
  *  i.e. is knowable right after the `schedule_periods` row loads. Includes the
@@ -39,40 +27,30 @@ export async function fetchWorkplaceScoped(
   weekDatesArr: string[],
   dayAfterISO: string,
 ) {
+  // Shared tables go through the per-request cached readers (deduped with
+  // view-data / edit-meta); period-specific + range queries stay direct.
   const [
-    { data: shiftTypes },
-    { data: roles },
-    { data: employees },
+    shiftTypes,
+    roles,
+    employees,
     { data: requirements },
-    { data: settings },
-    { data: requests },
+    settings,
+    requests,
     { data: holidayRows },
     { data: dayNotesRaw },
     prior,
     priorAdjacent,
     nextAdjacent,
   ] = await Promise.all([
-    supabase.from('shift_types').select('id, key, is_fallback').eq('workplace_id', workplaceId),
-    supabase.from('roles').select('id, name, rank').eq('workplace_id', workplaceId),
-    supabase
-      .from('employees')
-      .select(
-        'id, employment_type, min_shifts_per_week, max_shifts_per_week, observes_shabbat, observes_holidays, must_accept',
-      )
-      .eq('workplace_id', workplaceId),
+    fetchShiftTypes(supabase, workplaceId),
+    fetchRolesAll(supabase, workplaceId),
+    fetchEmployeesFull(supabase, workplaceId),
     supabase
       .from('shift_requirements')
       .select('day_of_week, shift_type_id, role_id, count')
       .eq('workplace_id', workplaceId),
-    supabase
-      .from('workplace_settings')
-      .select('min_rest_hours, ideal_rest_hours, allow_12h_fallback')
-      .eq('workplace_id', workplaceId)
-      .maybeSingle(),
-    supabase
-      .from('requests')
-      .select('employee_id, day_of_week, is_off, preferred_shift_ids')
-      .eq('period_id', periodId),
+    fetchSettings(supabase, workplaceId),
+    fetchRequests(supabase, periodId),
     supabase
       .from('holidays')
       .select('date')
@@ -123,25 +101,21 @@ export interface FetchEmployeeScopedArgs {
 export async function fetchEmployeeScoped(args: FetchEmployeeScopedArgs) {
   const { supabase, workplaceId, employeeIds, employees, prior, priorAdjacent, nextAdjacent, weekStart } = args
   const [
-    [{ data: employeeRoles }, { data: availability }, { data: vacations }],
+    [employeeRoles, availability, vacations],
     { deficit: priorDeficit, extras: priorExtras },
     priorWeekTail,
     nextWeekHead,
   ] = await Promise.all([
     employeeIds.length > 0
       ? Promise.all([
-          fetchEmployeeRoles(supabase, employeeIds),
-          supabase
-            .from('employee_availability')
-            .select('employee_id, day_of_week, shift_type_id')
-            .in('employee_id', employeeIds),
-          supabase
-            .from('employee_vacations')
-            .select('employee_id, date_from, date_to')
-            .in('employee_id', employeeIds)
-            .eq('status', 'approved'), // only manager-approved vacations are time off
+          // Cached per-request readers, shared with view-data/edit-meta. Rows
+          // come back roster-wide (same set as employeeIds — both derive from
+          // the workplace's employees); vacations are approved-only there too.
+          fetchEmployeeRoles(supabase, workplaceId),
+          fetchAvailability(supabase, workplaceId),
+          fetchApprovedVacations(supabase, workplaceId),
         ])
-      : Promise.resolve([{ data: [] as never[] }, { data: [] as never[] }, { data: [] as never[] }]),
+      : Promise.resolve([[] as never[], [] as never[], [] as never[]]),
     // fairness counts only the PUBLISHED prior period.
     computePriorMetrics(supabase, prior, employees),
     // rest tail/head use the ADJACENT periods regardless of status.

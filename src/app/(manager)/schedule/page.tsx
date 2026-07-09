@@ -3,6 +3,8 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getAuthUser } from '@/lib/auth/user'
 import { getActiveWorkplace } from '@/lib/workplace/current'
+import { upcomingWeekStartISO } from '@/lib/dates/week'
+import { ensureUpcomingPeriodId } from '@/lib/schedule/cached-reads'
 import { getScheduleView } from '@/lib/schedule/view-data'
 import { getPublishedScheduleView, listPublishedWeeks } from '@/lib/schedule/published-view'
 import { getEditMeta } from '@/lib/schedule/edit-meta'
@@ -30,7 +32,12 @@ export default async function SchedulePage({
 
   const sp = await searchParams
   const todayISO = new Date().toISOString().slice(0, 10)
-  const [view, weeks, workerVacations] = await Promise.all([
+  // Resolve the period id ONCE (cached per-request; getScheduleView reuses it)
+  // so getEditMeta can run inside the same Promise.all instead of serially
+  // after the view — its ~9 reads are also served from the cached readers.
+  const weekStart = upcomingWeekStartISO(new Date())
+  const periodId = await ensureUpcomingPeriodId(supabase, workplace.id, weekStart)
+  const [view, weeks, workerVacations, editMetaRaw] = await Promise.all([
     getScheduleView(supabase, workplace.id),
     listPublishedWeeks(supabase, workplace.id),
     // Upcoming vacations of ANY status/kind for the "בקשות עובדים" per-worker
@@ -39,6 +46,7 @@ export default async function SchedulePage({
     // now permits managers to SELECT directly — no service-role needed here,
     // unlike the dashboard's pre-existing admin-client call to this same helper.
     getWorkplaceVacations(supabase, workplace.id, todayISO),
+    periodId ? getEditMeta(supabase, workplace.id, periodId, weekStart) : Promise.resolve(null),
   ])
   const currentPeriodId = view?.periodId
 
@@ -69,8 +77,8 @@ export default async function SchedulePage({
     )
   }
 
-  // Current period — the live editor.
-  const editMeta = view ? await getEditMeta(supabase, workplace.id, view.periodId, view.weekStart) : null
+  // Current period — the live editor (meta already fetched in the parallel block).
+  const editMeta = view ? editMetaRaw : null
 
   return (
     <main className="schedule-main" style={{ background: 'var(--bg)', direction: 'rtl' }}>

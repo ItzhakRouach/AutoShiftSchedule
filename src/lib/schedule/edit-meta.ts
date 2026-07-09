@@ -4,6 +4,17 @@ import type { ShiftId } from '@/lib/domain/constants'
 import { expandRolesByRank } from './role-rank'
 import { weekDatesFrom } from './map-rows'
 import { isInVacationRange } from '@/lib/dates/week'
+import {
+  fetchApprovedVacations,
+  fetchAssignmentRows,
+  fetchAvailability,
+  fetchEmployeeRoles,
+  fetchEmployeesFull,
+  fetchRequests,
+  fetchRolesAll,
+  fetchSettings,
+  fetchShiftTypes,
+} from './cached-reads'
 
 /** Client-side data needed to drive the SwapEditor (candidate statuses + 12h). */
 export interface EmployeeEditMeta {
@@ -39,27 +50,26 @@ export async function getEditMeta(
   periodId: string,
   weekStart: string,
 ): Promise<EditMeta | null> {
-  const { data: emps } = await supabase
-    .from('employees')
-    .select('id, max_shifts_per_week, observes_shabbat')
-    .eq('workplace_id', workplaceId)
-  if (!emps) return null
-  const ids = emps.map((e) => e.id)
-
-  const [{ data: shiftTypes }, { data: settings }, { data: roles }, { data: workplaceRoles }, { data: avail }, { data: reqs }, { data: assigns }, { data: vacs }] =
+  // Everything here comes from the per-request cached readers — on a /schedule
+  // load these rows were already fetched by getScheduleView/buildEngineInput,
+  // so getEditMeta adds ~zero extra round-trips.
+  const [emps, shiftTypes, settings, workplaceRoles, roleLinks, avail, reqs, assigns, vacs] =
     await Promise.all([
-      supabase.from('shift_types').select('id, key').eq('workplace_id', workplaceId),
-      supabase.from('workplace_settings').select('min_rest_hours').eq('workplace_id', workplaceId).maybeSingle(),
-      ids.length ? supabase.from('employee_roles').select('employee_id, role_id').in('employee_id', ids) : Promise.resolve({ data: [] }),
+      fetchEmployeesFull(supabase, workplaceId),
+      fetchShiftTypes(supabase, workplaceId),
+      fetchSettings(supabase, workplaceId),
       // Workplace roles WITH rank → expand each employee's held roles so a senior
       // (e.g. אחמ״ש) qualifies for every lower-ranked role, matching the engine.
-      supabase.from('roles').select('id, rank').eq('workplace_id', workplaceId),
-      ids.length ? supabase.from('employee_availability').select('employee_id, day_of_week, shift_type_id').in('employee_id', ids) : Promise.resolve({ data: [] }),
-      supabase.from('requests').select('employee_id, day_of_week, is_off, preferred_shift_ids').eq('period_id', periodId),
-      supabase.from('assignments').select('employee_id, day_of_week, shift_type_id').eq('period_id', periodId),
+      fetchRolesAll(supabase, workplaceId),
+      fetchEmployeeRoles(supabase, workplaceId),
+      fetchAvailability(supabase, workplaceId),
+      fetchRequests(supabase, periodId),
+      fetchAssignmentRows(supabase, periodId),
       // APPROVED absences (vacation/מילואים/מחלה) → a hard block on their days.
-      ids.length ? supabase.from('employee_vacations').select('employee_id, date_from, date_to').in('employee_id', ids).eq('status', 'approved') : Promise.resolve({ data: [] }),
+      fetchApprovedVacations(supabase, workplaceId),
     ])
+  if (!emps) return null
+  const roles = roleLinks
 
   const idToKey: Record<string, ShiftId> = {}
   const keyToShiftTypeId: Record<string, string> = {}

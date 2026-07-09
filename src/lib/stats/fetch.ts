@@ -33,12 +33,18 @@ export async function fetchDashboardStats(
   workplaceId: string,
   scope: Scope,
 ): Promise<DashboardStats | null> {
-  // 1. Employees
-  const { data: empRaw } = await supabase
-    .from('employees')
-    .select('id, name, color, min_shifts_per_week')
-    .eq('workplace_id', workplaceId)
-    .order('name')
+  // 1+2. Employees + shift types — independent, fetched in parallel.
+  const [{ data: empRaw }, { data: shiftTypesRaw }] = await Promise.all([
+    supabase
+      .from('employees')
+      .select('id, name, color, min_shifts_per_week')
+      .eq('workplace_id', workplaceId)
+      .order('name'),
+    supabase
+      .from('shift_types')
+      .select('id, key, hours, is_fallback')
+      .eq('workplace_id', workplaceId),
+  ])
 
   const employees = empRaw ?? []
   if (employees.length === 0) {
@@ -49,11 +55,6 @@ export async function fetchDashboardStats(
     }
   }
 
-  // 2. Shift types (id → key, id → hours, id → is_fallback)
-  const { data: shiftTypesRaw } = await supabase
-    .from('shift_types')
-    .select('id, key, hours, is_fallback')
-    .eq('workplace_id', workplaceId)
   const shiftTypes = shiftTypesRaw ?? []
   const hoursById = new Map<string, number>(shiftTypes.map((s) => [s.id, s.hours]))
   const keyById = new Map<string, string>(shiftTypes.map((s) => [s.id, s.key]))
