@@ -2,12 +2,12 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Card } from '@/components/ui/Card'
 import { Segmented } from '@/components/ui/Segmented'
 import type { ScheduleView } from '@/lib/schedule/view-data'
 import type { EditMeta } from '@/lib/schedule/edit-meta'
 import type { WorkplaceVacation } from '@/lib/vacations/pending'
 import { useScheduleActions } from './useScheduleActions'
+import { EmptyStateCard } from './EmptyStateCard'
 import { FeasibilityBanner } from './FeasibilityBanner'
 import { CoverageIssues } from './CoverageIssues'
 import { ScheduleGrids } from './ScheduleGrids'
@@ -103,14 +103,7 @@ export function ScheduleClient({ view, editMeta, workerVacations }: Props) {
         </div>
       )}
 
-      {!hasResult && (
-        <Card style={{ textAlign: 'center', padding: '24px 20px', marginBottom: 14 }}>
-          <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)' }}>בונים את הסידור עבורכם</div>
-          <div style={{ fontSize: 13.5, color: 'var(--text-2)', marginTop: 6, lineHeight: 1.5 }}>
-            צרו סידור אוטומטי לפי הבקשות והתפקידים — או בנו אותו ידנית בטבלה למטה, תא אחר תא.
-          </div>
-        </Card>
-      )}
+      {!hasResult && <EmptyStateCard view={view} />}
 
       <GenerateControls
         view={view}

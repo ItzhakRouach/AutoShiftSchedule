@@ -6,6 +6,7 @@ import {
   aggregateEmployees,
   aggregateFairness,
 } from './aggregate'
+import { buildWeeklyTrends } from './trends'
 
 function scopeStartDate(scope: Scope): string {
   const d = new Date()
@@ -52,6 +53,7 @@ export async function fetchDashboardStats(
       kpis: EMPTY_KPIS,
       employees: [],
       fairness: [],
+      trends: [],
     }
   }
 
@@ -99,6 +101,7 @@ export async function fetchDashboardStats(
         requestedCount: 0,
         honoredCount: 0,
       })),
+      trends: [],
     }
   }
 
@@ -120,11 +123,13 @@ export async function fetchDashboardStats(
   // Period assignments = latest period only (for KPI accuracy)
   const periodAssignments = allAssignments.filter((a) => a.period_id === latestPeriodId)
 
-  // 5. Coverage from latest period requirements
+  // 5. Weekly required headcount. shift_requirements is WEEK-shaped and keyed
+  // by workplace_id (it has NO period_id column — the old .eq('period_id', …)
+  // filter errored and silently zeroed the coverage KPI).
   const { data: reqRaw } = await supabase
     .from('shift_requirements')
     .select('count')
-    .eq('period_id', latestPeriodId)
+    .eq('workplace_id', workplaceId)
 
   const required = (reqRaw ?? []).reduce((s: number, r: { count: number }) => s + r.count, 0)
   const requirementSummary = { filled: periodAssignments.length, required }
@@ -147,5 +152,6 @@ export async function fetchDashboardStats(
     ),
     employees: aggregateEmployees(allAssignments, employees),
     fairness: aggregateFairness(allAssignments, requests, employees, keyById),
+    trends: buildWeeklyTrends(periods, allAssignments, requests, required, keyById),
   }
 }

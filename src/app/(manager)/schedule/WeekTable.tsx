@@ -140,6 +140,7 @@ export function WeekTable({ view, onSlot, onDayPair, assign, initialSelectedId, 
             heldBusyDays={heldBusyDays}
             onCellClick={handleCellClick}
             onDrop={handleDrop}
+            onRemoveEmployee={assign ? (day, id) => assign.removeFrom(id, day) : undefined}
           />
         </table>
       </div>

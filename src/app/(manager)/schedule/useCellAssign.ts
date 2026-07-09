@@ -6,7 +6,7 @@ import type { ShiftId } from '@/lib/domain/constants'
 import type { ScheduleView } from '@/lib/schedule/view-data'
 import { reverseSwap } from '@/lib/schedule/undo-core'
 import type { SlotCtx } from './SwapEditor'
-import { assignSlot } from './edit-actions'
+import { assignSlot, unassignSlot } from './edit-actions'
 import { swapSlots, type SwapCell } from './swap-actions'
 import { removeAssignmentById } from './temp-actions'
 import { useUndoStack } from './useUndoStack'
@@ -65,6 +65,27 @@ export function useCellAssign(view: ScheduleView) {
   const hold = useCallback((id: string) => setHeldId((cur) => (cur === id ? null : id)), [])
   const clearHeld = useCallback(() => setHeldId(null), [])
   const dismissToast = useCallback(() => setToast(null), [])
+
+  /** Over-capacity ×: unassign a worker straight from the cell (undoable). */
+  const removeFrom = useCallback(
+    (employeeId: string, day: number) => {
+      if (pendingSlot) return
+      setToast(null)
+      setPendingSlot({ assignmentId: `unassign:${employeeId}:${day}` })
+      void (async () => {
+        try {
+          const res = await unassignSlot(view.periodId, employeeId, day)
+          if (!res.ok) { setToast({ text: res.error ?? 'שגיאה', kind: 'err' }); return }
+          if (res.undo) history.push({ undo: res.undo, redo: null, label: 'הסרה' })
+          setToast({ text: 'הוסר ✓', kind: 'ok' })
+          start(() => router.refresh())
+        } finally {
+          setPendingSlot(null)
+        }
+      })()
+    },
+    [view.periodId, router, pendingSlot, history],
+  )
 
   /** Remove an ad-hoc temp entry by its assignment id (undoable, not redoable). */
   const removeTemp = useCallback(
@@ -132,7 +153,7 @@ export function useCellAssign(view: ScheduleView) {
     [view.periodId, router, pendingSlot, history],
   )
 
-  return { heldId, toast, pendingSlot, hold, clearHeld, assignTo, dropOn, swapWith, removeTemp, dismissToast, setToast, history }
+  return { heldId, toast, pendingSlot, hold, clearHeld, assignTo, dropOn, swapWith, removeFrom, removeTemp, dismissToast, setToast, history }
 }
 
 export type CellAssign = ReturnType<typeof useCellAssign>

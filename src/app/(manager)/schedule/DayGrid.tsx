@@ -87,8 +87,14 @@ export function DayGrid({ view, selDay, onSlot, assign, selfId }: Props) {
                   && assign.pendingSlot.day === selDay
                   && assign.pendingSlot.shiftKey === shift
                   && assign.pendingSlot.roleId === roleId
+                // Desktop-parity capacity tint: under → warning, over → danger.
+                const rowTint = need > 0 && filled.length > need
+                  ? 'var(--danger-soft)'
+                  : need > 0 && filled.length < need
+                    ? 'var(--warning-soft)'
+                    : undefined
                 return (
-                  <div key={roleId} style={{ padding: '9px 0', borderBottom: '1px solid var(--border)' }}>
+                  <div key={roleId} style={{ padding: '9px 8px', margin: '0 -8px', borderBottom: '1px solid var(--border)', background: rowTint, borderRadius: rowTint ? 'var(--r-sm)' : undefined }}>
                     <div
                       style={{
                         display: 'flex',
@@ -112,6 +118,9 @@ export function DayGrid({ view, selDay, onSlot, assign, selfId }: Props) {
                       {filled.map((eid) => {
                         const e = empById.get(eid)
                         const isSelf = !!selfId && eid === selfId
+                        // Desktop-parity ✓ badge: this worker requested this shift.
+                        const stId = view.shiftTypeIdByKey[shift] ?? ''
+                        const requested = view.requestedSet?.has(`${eid}:${selDay}:${stId}`) ?? false
                         return (
                           <span
                             key={eid}
@@ -129,6 +138,9 @@ export function DayGrid({ view, selDay, onSlot, assign, selfId }: Props) {
                             }}
                           >
                             <Avatar name={e?.name ?? '?'} color={e?.color ?? '#888'} size={24} />
+                            {requested && (
+                              <span title="ביקש משמרת זו" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 14, height: 14, borderRadius: '50%', background: 'var(--success-soft)', color: 'var(--success)', fontSize: 9, fontWeight: 800, flexShrink: 0 }}>✓</span>
+                            )}
                             <span style={{ fontSize: 13, fontWeight: isSelf ? 800 : 600, color: isSelf ? 'var(--accent)' : 'var(--text)' }}>
                               {e?.name ?? 'לא ידוע'}{isSelf ? ' (אני)' : ''}
                             </span>

@@ -131,7 +131,7 @@ export function aggregateEmployees(
     .sort((a, b) => b.hours - a.hours)
 }
 
-const NIGHT_SHIFT_KEYS = new Set(['night', 'm12_night'])
+export const NIGHT_SHIFT_KEYS = new Set(['night', 'm12_night'])
 
 /**
  * Per-employee fairness rollup: night count, weekend count, and request honor

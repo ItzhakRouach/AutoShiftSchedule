@@ -16,6 +16,7 @@ import { ScopeToggle } from './ScopeToggle'
 import { DashNav } from './DashNav'
 import { CoverageCard } from './CoverageCard'
 import { DashPanels } from './DashPanels'
+import { TrendsCard } from './TrendsCard'
 import { OnboardingSteps } from './OnboardingSteps'
 import type { Scope } from '@/lib/stats/types'
 
@@ -128,6 +129,8 @@ export default async function DashboardPage({
               </div>
             </Card>
           </div>
+
+          <TrendsCard trends={stats.trends} />
 
           <DashPanels
             employees={stats.employees}

@@ -45,4 +45,6 @@ export interface DashboardStats {
   kpis: PeriodKPIs
   employees: EmployeeStat[]
   fairness: FairnessStat[]
+  /** Per-published-week series (oldest → newest) for the trends card. */
+  trends: import('./trends').WeeklyTrend[]
 }
