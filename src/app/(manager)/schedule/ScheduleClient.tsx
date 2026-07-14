@@ -51,8 +51,8 @@ export function ScheduleClient({ view, editMeta, workerVacations }: Props) {
   // Fast drag / tap-to-assign (edit mode only).
   const assign = useCellAssign(view)
 
+  // Confirmation is a two-step inline flow owned by GenerateControls' button.
   function handleCopyLastWeek() {
-    if (!window.confirm('להעתיק את השיבוצים מהשבוע הקודם שפורסם? שיבוצים קיימים לאותם ימים יוחלפו.')) return
     startCopy(async () => {
       const res = await copyLastWeekSchedule(view.periodId)
       if (!res.ok) { assign.setToast({ text: res.error ?? 'שגיאה', kind: 'err' }); return }

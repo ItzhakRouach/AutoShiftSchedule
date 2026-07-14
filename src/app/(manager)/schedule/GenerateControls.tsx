@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { Btn } from '@/components/ui/Btn'
 import { Spinner } from '@/components/ui/Spinner'
 import { countUncoveredCells } from '@/lib/schedule/week-table-data'
@@ -33,6 +34,20 @@ export function GenerateControls({
 }: Props) {
   const showComplete = hasResult && status !== 'published' && countUncoveredCells(view) > 0
 
+  // Two-step inline confirm for copy-last-week (replaces existing same-day
+  // assignments) — no window.confirm: clunky on mobile, breaks RTL, and is
+  // auto-dismissed in e2e.
+  const [confirmCopy, setConfirmCopy] = useState(false)
+  function handleCopyClick() {
+    if (!confirmCopy) {
+      setConfirmCopy(true)
+      window.setTimeout(() => setConfirmCopy(false), 6000)
+      return
+    }
+    setConfirmCopy(false)
+    onCopyLastWeek()
+  }
+
   return (
     <>
       {editMeta && (
@@ -53,8 +68,8 @@ export function GenerateControls({
       {editMeta && status !== 'published' && (
         <>
           <div style={{ height: 10 }} />
-          <Btn variant="outline" size="md" icon="calendar" style={{ width: '100%' }} disabled={copying} onClick={onCopyLastWeek} data-testid="copy-last-week">
-            {copying ? 'מעתיק…' : 'העתק מהשבוע הקודם'}
+          <Btn variant={confirmCopy ? 'danger' : 'outline'} size="md" icon="calendar" style={{ width: '100%' }} disabled={copying} onClick={handleCopyClick} data-testid="copy-last-week">
+            {copying ? 'מעתיק…' : confirmCopy ? 'שיבוצים קיימים יוחלפו — לחצו שוב לאישור' : 'העתק מהשבוע הקודם'}
           </Btn>
         </>
       )}

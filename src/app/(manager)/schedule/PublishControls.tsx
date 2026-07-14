@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { Btn } from '@/components/ui/Btn'
 import { countUncoveredCells } from '@/lib/schedule/week-table-data'
 import type { ScheduleView } from '@/lib/schedule/view-data'
@@ -22,27 +23,46 @@ interface Props {
 /** Publish / share / unpublish / delete controls beneath the schedule grid.
  *  Split out of ScheduleClient to keep that orchestrator ≤200 lines. */
 export function PublishControls({ view, suggestions, published, publishing, onPublish, onUnpublished, onDeleted }: Props) {
-  // Guard against publishing an incomplete schedule — confirm when gaps remain.
+  // Guard against publishing an incomplete schedule — inline two-step confirm
+  // when gaps remain (same pattern as UnpublishButton; no window.confirm,
+  // which is clunky on mobile, breaks RTL, and is auto-dismissed in e2e).
+  const [confirmGaps, setConfirmGaps] = useState<number | null>(null)
+
   function handlePublish() {
-    if (!published) {
+    if (!published && confirmGaps === null) {
       const gaps = countUncoveredCells(view)
-      if (gaps > 0 && !window.confirm(`נשארו ${gaps} משמרות לא מאוישות. לפרסם בכל זאת?`)) return
+      if (gaps > 0) {
+        setConfirmGaps(gaps)
+        // Reset confirm-state after 6s so a stray click doesn't linger.
+        window.setTimeout(() => setConfirmGaps(null), 6000)
+        return
+      }
     }
+    setConfirmGaps(null)
     onPublish()
   }
+
+  const publishLabel = published
+    ? 'פורסם ✓'
+    : publishing
+    ? 'מפרסם…'
+    : confirmGaps !== null
+    ? `נשארו ${confirmGaps} לא מאוישות — לחצו שוב לפרסום`
+    : 'פרסם סידור'
+
   return (
     <div className="schedule-controls">
       <TwelveHourList suggestions={suggestions} roles={view.roles} />
       <div style={{ height: 14 }} />
       <Btn
-        variant={published ? 'soft' : 'primary'}
+        variant={published ? 'soft' : confirmGaps !== null ? 'danger' : 'primary'}
         size="md"
         icon="check"
         style={{ width: '100%' }}
         disabled={publishing}
         onClick={handlePublish}
       >
-        {published ? 'פורסם ✓' : publishing ? 'מפרסם…' : 'פרסם סידור'}
+        {publishLabel}
       </Btn>
       {published && (
         <>
