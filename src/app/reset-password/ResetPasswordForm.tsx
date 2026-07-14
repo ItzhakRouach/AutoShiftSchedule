@@ -2,7 +2,7 @@
 
 import { useActionState } from 'react'
 import { updatePassword, type AuthState } from '@/app/(auth)/actions'
-import { Field } from '@/app/(auth)/_components/Field'
+import { PasswordField } from '@/app/(auth)/_components/PasswordField'
 
 const initialState: AuthState = {}
 
@@ -24,7 +24,8 @@ export function ResetPasswordForm() {
         </p>
 
         <form action={action} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <Field id="password" label="סיסמה חדשה" type="password" name="password" autoComplete="new-password" error={state.fieldErrors?.password} />
+          <PasswordField id="password" label="סיסמה חדשה" name="password" autoComplete="new-password" error={state.fieldErrors?.password} />
+          <PasswordField id="passwordConfirm" label="אימות סיסמה חדשה" name="passwordConfirm" autoComplete="new-password" blockPaste error={state.fieldErrors?.passwordConfirm} />
 
           {state.error && (
             <p role="alert" style={{ margin: 0, fontSize: 13, color: '#D4373A', background: 'rgba(212,55,58,0.08)', border: '1px solid rgba(212,55,58,0.2)', borderRadius: 'var(--r-sm)', padding: '8px 12px' }}>

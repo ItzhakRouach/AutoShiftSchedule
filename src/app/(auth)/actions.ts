@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getBaseUrl } from '@/lib/auth/base-url'
 import { resolveUserRole } from '@/lib/auth/role'
 import { isExistingUserSignUp } from '@/lib/auth/signup-result'
-import { signInSchema, signUpSchema } from '@/lib/validation/auth'
+import { resetPasswordSchema, signInSchema, signUpSchema } from '@/lib/validation/auth'
 
 export type AuthState = {
   error?: string
@@ -135,15 +135,24 @@ export async function updatePassword(
   prevState: AuthState,
   formData: FormData,
 ): Promise<AuthState> {
-  const password = (formData.get('password') as string) ?? ''
-  const parsed = z.string().min(8, 'הסיסמה חייבת להכיל לפחות 8 תווים').safeParse(password)
-  if (!parsed.success) return { fieldErrors: { password: parsed.error.issues[0].message } }
+  const parsed = resetPasswordSchema.safeParse({
+    password: (formData.get('password') as string) ?? '',
+    passwordConfirm: (formData.get('passwordConfirm') as string) ?? '',
+  })
+  if (!parsed.success) {
+    const fieldErrors: Record<string, string> = {}
+    for (const issue of parsed.error.issues) {
+      const field = String(issue.path[0])
+      if (!fieldErrors[field]) fieldErrors[field] = issue.message
+    }
+    return { fieldErrors }
+  }
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'הקישור פג תוקף או אינו תקין. בקשו קישור חדש לאיפוס.' }
 
-  const { error } = await supabase.auth.updateUser({ password: parsed.data })
+  const { error } = await supabase.auth.updateUser({ password: parsed.data.password })
   if (error) return { error: 'שגיאה בעדכון הסיסמה, נסו שוב' }
 
   return redirectByRole(supabase)
