@@ -1,9 +1,9 @@
 'use server'
 
-import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { getBaseUrl } from '@/lib/auth/base-url'
 import { getActiveWorkplace } from '@/lib/workplace/current'
 import { normalizeIsraeliPhone } from '@/lib/whatsapp/phone'
 
@@ -70,11 +70,7 @@ export async function createInvite(): Promise<InviteActionResult> {
 /** Build the public join URL for a code, using the request host (or
  *  NEXT_PUBLIC_BASE_URL when set). Server-only — called from server actions. */
 async function resolveJoinUrl(code: string): Promise<string> {
-  const headerList = await headers()
-  const host = headerList.get('host') ?? 'localhost:3000'
-  const proto = host.startsWith('localhost') ? 'http' : 'https'
-  const base = process.env.NEXT_PUBLIC_BASE_URL ?? `${proto}://${host}`
-  return `${base}/join/${code}`
+  return `${await getBaseUrl()}/join/${code}`
 }
 
 /** Get-or-create an active invite for a workplace. Reuses the most-recent

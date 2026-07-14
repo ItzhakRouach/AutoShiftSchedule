@@ -1,9 +1,11 @@
 'use server'
 
 import { redirect } from 'next/navigation'
-import { headers } from 'next/headers'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { getBaseUrl } from '@/lib/auth/base-url'
+import { resolveUserRole } from '@/lib/auth/role'
+import { isExistingUserSignUp } from '@/lib/auth/signup-result'
 import { signInSchema, signUpSchema } from '@/lib/validation/auth'
 
 export type AuthState = {
@@ -12,11 +14,12 @@ export type AuthState = {
   fieldErrors?: Record<string, string>
 }
 
-async function getBaseUrl(): Promise<string> {
-  const h = await headers()
-  const host = h.get('host') ?? 'localhost:3000'
-  const proto = host.startsWith('localhost') ? 'http' : 'https'
-  return process.env.NEXT_PUBLIC_BASE_URL ?? `${proto}://${host}`
+/** Land each role on its own home, skipping the /dashboard bounce. */
+async function redirectByRole(supabase: Awaited<ReturnType<typeof createClient>>): Promise<never> {
+  const { role } = await resolveUserRole(supabase)
+  if (role === 'employee') redirect('/me')
+  if (role === 'none') redirect('/onboarding')
+  redirect('/dashboard')
 }
 
 export async function signIn(prevState: AuthState, formData: FormData): Promise<AuthState> {
@@ -45,7 +48,7 @@ export async function signIn(prevState: AuthState, formData: FormData): Promise<
     return { error: 'אימייל או סיסמה שגויים' }
   }
 
-  redirect('/dashboard')
+  return redirectByRole(supabase)
 }
 
 export async function signUp(prevState: AuthState, formData: FormData): Promise<AuthState> {
@@ -65,9 +68,15 @@ export async function signUp(prevState: AuthState, formData: FormData): Promise<
   }
 
   const supabase = await createClient()
+  const baseUrl = await getBaseUrl()
   const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
+    options: {
+      // With email confirmations on (hosted default) the verification link
+      // must land back in the app, not on the dashboard Site URL.
+      emailRedirectTo: `${baseUrl}/auth/callback?next=${encodeURIComponent('/onboarding')}`,
+    },
   })
 
   if (error) {
@@ -76,6 +85,12 @@ export async function signUp(prevState: AuthState, formData: FormData): Promise<
       error.message.includes('already registered') ||
       error.message.includes('already been registered')
     return { error: isDuplicate ? 'משתמש עם אימייל זה כבר קיים' : 'שגיאה בהרשמה, נסה שוב' }
+  }
+
+  // With confirmations on, Supabase obfuscates duplicate emails as a fake
+  // "success" — detect it so existing users aren't told to check their inbox.
+  if (isExistingUserSignUp(data)) {
+    return { error: 'משתמש עם אימייל זה כבר קיים' }
   }
 
   if (!data.session) {
@@ -131,5 +146,5 @@ export async function updatePassword(
   const { error } = await supabase.auth.updateUser({ password: parsed.data })
   if (error) return { error: 'שגיאה בעדכון הסיסמה, נסו שוב' }
 
-  redirect('/dashboard')
+  return redirectByRole(supabase)
 }

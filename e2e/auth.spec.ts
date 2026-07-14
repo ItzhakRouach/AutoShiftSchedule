@@ -45,9 +45,18 @@ test('forgot-password: reachable from login, submitting shows a success message'
   await expect(page.getByText(/נשלח אליו קישור לאיפוס/)).toBeVisible({ timeout: 10000 })
 })
 
-test('reset-password page renders the new-password form', async ({ page }) => {
+test('reset-password without a recovery session shows the expired-link card, not the form', async ({ page }) => {
   await page.goto('/reset-password')
-  await expect(page.getByRole('heading', { name: 'בחירת סיסמה חדשה' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'הקישור אינו תקף' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'בקשת קישור חדש' })).toBeVisible()
+  await expect(page.getByLabel('סיסמה חדשה')).not.toBeVisible()
+})
+
+test('failed reset-link exchange surfaces an explanation on /forgot-password', async ({ page }) => {
+  // /auth/callback redirects here with ?error=1 when the code exchange fails
+  // (expired link, or opened in a browser without the PKCE verifier cookie).
+  await page.goto('/forgot-password?error=1')
+  await expect(page.getByText(/הקישור לאיפוס פג תוקף/)).toBeVisible()
 })
 
 // ── Existing auth tests ────────────────────────────────────────────────────
