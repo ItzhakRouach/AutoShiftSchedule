@@ -21,9 +21,10 @@ export interface ResolvedRole {
  * Pass a pre-resolved `user` to skip the internal `auth.getUser()` call.
  *
  * NOTE: we intentionally use `.limit(1)` + array length instead of
- * `.maybeSingle()`. A user may legitimately have rows in MORE THAN ONE
- * workplace (multi-workplace employee), in which case `.maybeSingle()` throws
- * PGRST116 and the role would wrongly resolve to 'none', locking the user.
+ * `.maybeSingle()`. An account belongs to at most one workplace (enforced by
+ * the `employees_user_unique` index), but if legacy/dirty data ever holds two
+ * rows, `.maybeSingle()` would throw PGRST116 and wrongly resolve to 'none',
+ * locking the user out.
  */
 export const resolveUserRole = cache(async (
   supabase: SupabaseClient,
