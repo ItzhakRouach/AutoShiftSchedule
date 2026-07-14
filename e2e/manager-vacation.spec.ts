@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { futureRange } from './heb-dates'
 
 /** Mirrors src/lib/dates/week.ts#upcomingWeekStartISO — the requests grid
  *  only ever shows the upcoming week, so regression coverage for a day cell
@@ -73,14 +74,16 @@ test('manager sets a vacation, a מילואים and a מחלה range for workers
   await danaRow.getByRole('button', { name: 'היעדרות' }).click()
 
   await expect(page.getByRole('heading', { name: /היעדרות — דנה כהן/ })).toBeVisible({ timeout: 8000 })
-  await page.getByLabel('תאריך התחלה').fill('2026-07-10')
-  await page.getByLabel('תאריך סיום').fill('2026-07-12')
+  // Future dates only — fully-past ranges are filtered out of the sheet list,
+  // so hardcoded dates rot the test the day after they pass.
+  const danaVac = futureRange(10, 2)
+  await page.getByLabel('מתאריך').fill(danaVac.fromISO)
+  await page.getByLabel('עד תאריך').fill(danaVac.toISO)
   await page.getByRole('button', { name: 'הוסף היעדרות' }).click()
 
   // Server round-trip via router.refresh() — the range appears in the sheet's
   // existing-entries list, already approved (manager IS the approver).
-  const vacationRangeText = 'יום שישי 10.7 — יום ראשון 12.7'
-  await expect(page.getByText(vacationRangeText)).toBeVisible({ timeout: 10000 })
+  await expect(page.getByText(danaVac.text)).toBeVisible({ timeout: 10000 })
   await expect(page.getByText('אושר ✓')).toBeVisible()
 
   // Close the sheet via backdrop click before opening the next one (Sheet.tsx
@@ -95,11 +98,12 @@ test('manager sets a vacation, a מילואים and a מחלה range for workers
   await expect(page.getByRole('heading', { name: /היעדרות — יוסי לוי/ })).toBeVisible({ timeout: 8000 })
 
   await page.getByRole('button', { name: 'מילואים', exact: true }).click()
-  await page.getByLabel('תאריך התחלה').fill('2026-08-01')
-  await page.getByLabel('תאריך סיום').fill('2026-08-05')
+  const yossiVac = futureRange(18, 4)
+  await page.getByLabel('מתאריך').fill(yossiVac.fromISO)
+  await page.getByLabel('עד תאריך').fill(yossiVac.toISO)
   await page.getByRole('button', { name: 'הוסף היעדרות' }).click()
 
-  await expect(page.getByText('יום שבת 1.8 — יום רביעי 5.8')).toBeVisible({ timeout: 10000 })
+  await expect(page.getByText(yossiVac.text)).toBeVisible({ timeout: 10000 })
   // The מילואים kind chip appears alongside the approved-status chip (scoped
   // to the sheet panel — the row itself ALSO shows a מילואים week-marker badge
   // behind the sheet, so an unscoped locator would match both).
@@ -120,11 +124,12 @@ test('manager sets a vacation, a מילואים and a מחלה range for workers
   await expect(page.getByRole('heading', { name: /היעדרות — מאיה בר/ })).toBeVisible({ timeout: 8000 })
 
   await page.getByRole('button', { name: 'מחלה', exact: true }).click()
-  await page.getByLabel('תאריך התחלה').fill('2026-07-15')
-  await page.getByLabel('תאריך סיום').fill('2026-07-16')
+  const mayaVac = futureRange(8, 1)
+  await page.getByLabel('מתאריך').fill(mayaVac.fromISO)
+  await page.getByLabel('עד תאריך').fill(mayaVac.toISO)
   await page.getByRole('button', { name: 'הוסף היעדרות' }).click()
 
-  await expect(page.getByText('יום רביעי 15.7 — יום חמישי 16.7')).toBeVisible({ timeout: 10000 })
+  await expect(page.getByText(mayaVac.text)).toBeVisible({ timeout: 10000 })
   // The מחלה kind chip appears alongside the approved-status chip (scoped to
   // the sheet panel — see the מילואים note above for why this must be scoped).
   const mayaSheet = page.getByRole('heading', { name: /היעדרות — מאיה בר/ }).locator('..')
@@ -153,8 +158,8 @@ test('manager sets a vacation, a מילואים and a מחלה range for workers
   await expect(ronHeading).toBeVisible({ timeout: 8000 })
 
   await page.getByRole('button', { name: 'מילואים', exact: true }).click()
-  await page.getByLabel('תאריך התחלה').fill(tuesday)
-  await page.getByLabel('תאריך סיום').fill(tuesday)
+  await page.getByLabel('מתאריך').fill(tuesday)
+  await page.getByLabel('עד תאריך').fill(tuesday)
   await page.getByRole('button', { name: 'הוסף היעדרות' }).click()
   const ronSheet = ronHeading.locator('..')
   await expect(ronSheet.locator('span').filter({ hasText: 'מילואים' })).toBeVisible({ timeout: 10000 })
