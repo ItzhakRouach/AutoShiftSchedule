@@ -25,6 +25,7 @@ const CurrentUserJoinSchema = z.object({
  */
 export async function joinAsCurrentUser(
   code: string,
+  pendingEmployeeId: string | undefined,
   prevState: JoinState,
   formData: FormData,
 ): Promise<JoinState> {
@@ -100,6 +101,7 @@ export async function joinAsCurrentUser(
     phone,
     employmentType,
     observesShabbat,
+    pendingEmployeeId,
   })
   if (claimError) return { error: claimError }
 

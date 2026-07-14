@@ -54,8 +54,8 @@ test('manager creates invite, employee joins via /join/[code] and lands on /me',
   const code = (await codeEl.textContent())?.trim() ?? ''
   expect(code).toMatch(/^[A-Z2-9]{8}$/)
 
-  // Derive the join URL
-  const joinUrl = `http://localhost:3000/join/${code}`
+  // Derive the join URL (relative — resolved against the configured baseURL)
+  const joinUrl = `/join/${code}`
 
   // ── 3. Fresh employee context visits /join/[code] ───────────────────────
   const employeeContext = await browser.newContext()
@@ -123,7 +123,7 @@ test('authenticated none-role user sees "join with current account" panel and jo
   await expect(codeEl).toBeVisible({ timeout: 10000 })
   const code = (await codeEl.textContent())?.trim() ?? ''
   expect(code).toMatch(/^[A-Z2-9]{8}$/)
-  const joinUrl = `http://localhost:3000/join/${code}`
+  const joinUrl = `/join/${code}`
 
   // ── 2. A fresh user signs up (lands on /onboarding, role = none) ─────────
   const empUuid = crypto.randomUUID().replace(/-/g, '').slice(0, 10)
@@ -167,6 +167,75 @@ test('authenticated none-role user sees "join with current account" panel and jo
   await managerContext.close()
 })
 
+test('manager-created employee is claimed via the ?e= link even when the invitee changes name AND phone — no duplicate row', async ({
+  browser,
+}) => {
+  const uuid = crypto.randomUUID().replace(/-/g, '').slice(0, 10)
+  const managerGivenName = `דנה מהמנהל ${uuid}`
+  const typedName = `דנה כהן ${uuid}`
+
+  // ── 1. Manager sets up a workplace and pre-creates a pending employee ─────
+  const { page: managerPage, context: managerContext } = await signupAndOnboard(
+    browser,
+    `mgr+${uuid}@example.com`,
+    'TestPass123!',
+    `ארגון ${uuid}`,
+    `מקום עבודה ${uuid}`,
+  )
+  await managerPage.goto('/team')
+  await managerPage.getByRole('button', { name: 'הוסף עובד' }).click()
+  await managerPage.getByLabel('שם מלא').fill(managerGivenName)
+  await managerPage.getByLabel(/טלפון/).fill('0529999999')
+  await managerPage.getByText('מאבטח', { exact: true }).first().click()
+  await managerPage.getByRole('button', { name: 'הוספת עובד' }).click()
+  await expect(managerPage.getByText(managerGivenName)).toBeVisible({ timeout: 10000 })
+  await expect(managerPage.getByText('טרם הצטרף')).toBeVisible()
+
+  // ── 2. Capture the personal wa.me invite and extract the ?e= join link ────
+  await managerPage.evaluate(() => {
+    ;(window as unknown as { __wa?: string }).__wa = undefined
+    window.open = ((url: string) => {
+      ;(window as unknown as { __wa?: string }).__wa = String(url)
+      return null
+    }) as typeof window.open
+  })
+  await managerPage.getByTestId('resend-invite').click()
+  await expect
+    .poll(async () => managerPage.evaluate(() => (window as unknown as { __wa?: string }).__wa), {
+      timeout: 10000,
+    })
+    .toBeTruthy()
+  const waUrl = await managerPage.evaluate(() => (window as unknown as { __wa?: string }).__wa!)
+  const joinPath = decodeURIComponent(new URL(waUrl).searchParams.get('text') ?? '').match(
+    /\/join\/[A-Z2-9]{8}\?e=[0-9a-f-]{36}/,
+  )?.[0]
+  expect(joinPath).toBeTruthy()
+
+  // ── 3. Invitee opens the link, sees the prefill, then changes BOTH fields ─
+  const employeeContext = await browser.newContext()
+  const employeePage = await employeeContext.newPage()
+  await employeePage.goto(joinPath!)
+  await expect(employeePage.getByLabel('שם מלא')).toHaveValue(managerGivenName)
+  // The manager-side action stores the phone normalized (E.164 sans '+')
+  await expect(employeePage.getByLabel('טלפון נייד')).toHaveValue('972529999999')
+
+  await employeePage.getByLabel('שם מלא').fill(typedName)
+  await employeePage.getByLabel('אימייל').fill(`emp+${uuid}@example.com`)
+  await employeePage.getByLabel('סיסמה').fill('EmpPass456!')
+  await employeePage.getByLabel('טלפון נייד').fill('0521111111') // different phone!
+  await employeePage.getByRole('button', { name: 'הצטרפות' }).click()
+  await expect(employeePage).toHaveURL(/\/me/, { timeout: 15000 })
+
+  // ── 4. Manager sees ONE row: the claimed one, no pending leftover ─────────
+  await managerPage.reload()
+  await expect(managerPage.getByText(typedName)).toBeVisible({ timeout: 10000 })
+  await expect(managerPage.getByText(managerGivenName)).not.toBeVisible()
+  await expect(managerPage.getByText('טרם הצטרף')).not.toBeVisible()
+
+  await employeeContext.close()
+  await managerContext.close()
+})
+
 test('employee joins as student + Shabbat observer and lands on /me', async ({ browser }) => {
   const uuid = crypto.randomUUID().replace(/-/g, '').slice(0, 10)
   const managerEmail = `mgr+${uuid}@example.com`
@@ -193,7 +262,7 @@ test('employee joins as student + Shabbat observer and lands on /me', async ({ b
   const code = (await codeEl.textContent())?.trim() ?? ''
   expect(code).toMatch(/^[A-Z2-9]{8}$/)
 
-  const joinUrl = `http://localhost:3000/join/${code}`
+  const joinUrl = `/join/${code}`
 
   // ── 3. Fresh employee context ─────────────────────────────────────────────
   const employeeContext = await browser.newContext()

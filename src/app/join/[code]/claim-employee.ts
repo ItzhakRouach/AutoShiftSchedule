@@ -10,6 +10,9 @@ export interface ClaimParams {
   phone: string // already normalized E.164
   employmentType: EmploymentType
   observesShabbat: boolean
+  /** Pending-row id carried by the wa.me link (?e=). Claimed by id first, so
+   *  the right row is linked even if the employee typed a different phone. */
+  pendingEmployeeId?: string
 }
 
 /**
@@ -41,7 +44,17 @@ export async function claimOrCreateEmployee(
     .maybeSingle()
   if (linked) return null
 
-  // 2. Claim an UNCLAIMED pending row the manager pre-created for this phone.
+  // 2. Claim by the id carried in the invite link (?e=) — scoped to this
+  //    workplace and only while unclaimed, so the param can't touch anything
+  //    else. Beats phone matching: the row is linked even when the employee
+  //    typed a different phone than the manager saved.
+  if (p.pendingEmployeeId) {
+    const claimed = await claimPendingRow(admin, p, p.pendingEmployeeId)
+    if (claimed === 'error') return 'שגיאה בהצטרפות למקום העבודה'
+    if (claimed) return null
+  }
+
+  // 3. Claim an UNCLAIMED pending row the manager pre-created for this phone.
   const { data: pending } = await admin
     .from('employees')
     .select('id')
@@ -53,25 +66,13 @@ export async function claimOrCreateEmployee(
     .maybeSingle()
 
   if (pending) {
-    const { data: claimed, error: claimErr } = await admin
-      .from('employees')
-      .update({
-        user_id: p.userId,
-        status: 'active',
-        name: p.name,
-        observes_shabbat: p.observesShabbat,
-        observes_holidays: p.observesShabbat,
-      })
-      .eq('id', pending.id)
-      .is('user_id', null) // race guard: only claim if still unclaimed
-      .select('id')
-      .maybeSingle()
-    if (claimErr) return 'שגיאה בהצטרפות למקום העבודה'
+    const claimed = await claimPendingRow(admin, p, pending.id)
+    if (claimed === 'error') return 'שגיאה בהצטרפות למקום העבודה'
     if (claimed) return null
     // Lost the claim race — fall through and create a fresh row.
   }
 
-  // 3. No pending row to claim (pure self-signup): create one fresh.
+  // 4. No pending row to claim (pure self-signup): create one fresh.
   const { data: existingEmployees } = await admin
     .from('employees')
     .select('color')
@@ -95,6 +96,47 @@ export async function claimOrCreateEmployee(
     observes_shabbat: p.observesShabbat,
     observes_holidays: p.observesShabbat,
   })
-  if (empError) return 'שגיאה בהצטרפות למקום העבודה'
+  if (empError) {
+    // Double submit: the racing request already linked this user. The unique
+    // index rejects the insert — if the linked row is in THIS workplace, the
+    // join actually succeeded.
+    if (empError.code === '23505') {
+      const { data: nowLinked } = await admin
+        .from('employees')
+        .select('id')
+        .eq('workplace_id', p.workplaceId)
+        .eq('user_id', p.userId)
+        .maybeSingle()
+      if (nowLinked) return null
+    }
+    return 'שגיאה בהצטרפות למקום העבודה'
+  }
   return null
+}
+
+/** Atomically claim one unclaimed pending row by id within the workplace.
+ *  Returns the claimed row id, null when the row was missing/already claimed,
+ *  or 'error' on a query failure. */
+async function claimPendingRow(
+  admin: SupabaseClient,
+  p: ClaimParams,
+  pendingId: string,
+): Promise<string | null | 'error'> {
+  const { data: claimed, error } = await admin
+    .from('employees')
+    .update({
+      user_id: p.userId,
+      status: 'active',
+      name: p.name,
+      phone: p.phone,
+      observes_shabbat: p.observesShabbat,
+      observes_holidays: p.observesShabbat,
+    })
+    .eq('id', pendingId)
+    .eq('workplace_id', p.workplaceId)
+    .is('user_id', null) // race guard: only claim if still unclaimed
+    .select('id')
+    .maybeSingle()
+  if (error) return 'error'
+  return claimed?.id ?? null
 }

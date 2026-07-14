@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getBaseUrl } from '@/lib/auth/base-url'
+import { isExistingUserSignUp } from '@/lib/auth/signup-result'
 import { normalizeIsraeliPhone } from '@/lib/whatsapp/phone'
 import { claimOrCreateEmployee } from './claim-employee'
 
@@ -30,6 +32,7 @@ const JoinSchema = z.object({
 
 export async function joinWithInvite(
   code: string,
+  pendingEmployeeId: string | undefined,
   prevState: JoinState,
   formData: FormData,
 ): Promise<JoinState> {
@@ -58,13 +61,18 @@ export async function joinWithInvite(
   if (!phone) return { fieldErrors: { phone: 'מספר טלפון לא תקין' } }
 
   // Defensive: this flow creates a brand-new account. If someone is already
-  // authenticated, refuse — they should be routed by their role, not join here.
+  // authenticated, refuse — they should be routed by their role, not join
+  // here. (Also hit after a partial failure: signup succeeded, claim failed —
+  // a refresh renders the authenticated join panel, so say exactly that.)
   const supabaseAuth = await createClient()
   const {
     data: { user: currentUser },
   } = await supabaseAuth.auth.getUser()
   if (currentUser) {
-    return { error: 'אתה כבר מחובר. התנתק כדי להצטרף עם חשבון אחר.' }
+    return {
+      error:
+        'אתה כבר מחובר לחשבון. רענן/י את הדף כדי להצטרף עם החשבון המחובר, או התנתק/י כדי להצטרף עם חשבון אחר.',
+    }
   }
 
   const admin = createAdminClient()
@@ -85,9 +93,16 @@ export async function joinWithInvite(
   const workplaceId = invite.workplace_id
   const supabase = supabaseAuth
 
+  // With email confirmations on, the verification link must come back to THIS
+  // invite (keeping ?e= so the pending row is still claimed after verifying).
+  const baseUrl = await getBaseUrl()
+  const joinPath = `/join/${code}${pendingEmployeeId ? `?e=${pendingEmployeeId}` : ''}`
   const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
     email,
     password,
+    options: {
+      emailRedirectTo: `${baseUrl}/auth/callback?next=${encodeURIComponent(joinPath)}`,
+    },
   })
 
   let userId: string | undefined
@@ -112,8 +127,16 @@ export async function joinWithInvite(
         'אימייל זה כבר רשום במערכת. התחבר/י תחילה דרך מסך ההתחברות וחזור/י לקישור ההזמנה כדי להצטרף למקום העבודה.',
     }
   } else {
+    if (isExistingUserSignUp(signUpData)) {
+      // Confirmations-on obfuscation of a duplicate email — same guidance as
+      // the explicit user_already_exists branch above.
+      return {
+        error:
+          'אימייל זה כבר רשום במערכת. התחבר/י תחילה דרך מסך ההתחברות וחזור/י לקישור ההזמנה כדי להצטרף למקום העבודה.',
+      }
+    }
     if (!signUpData.session) {
-      return { error: 'נשלח אימייל אימות. אנא אשרו את האימייל ואז התחברו.' }
+      return { error: 'נשלח אימייל אימות. אנא אשרו את האימייל, הקישור יחזיר אתכם לכאן להשלמת ההצטרפות.' }
     }
     userId = signUpData.user?.id
   }
@@ -129,6 +152,7 @@ export async function joinWithInvite(
     phone,
     employmentType,
     observesShabbat,
+    pendingEmployeeId,
   })
   if (claimError) return { error: claimError }
 

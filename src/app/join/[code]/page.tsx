@@ -88,6 +88,9 @@ export default async function JoinPage({ params, searchParams }: JoinPageProps) 
   // THIS workplace is used, so the link can't leak another workplace's data.
   let prefillName = ''
   let prefillPhone = ''
+  // Only a validated id (this workplace, still unclaimed) is passed on to the
+  // join actions, where it claims the manager-created row by id.
+  let validPendingId: string | undefined
   if (pendingEmployeeId) {
     const { data: pending } = await admin
       .from('employees')
@@ -97,6 +100,7 @@ export default async function JoinPage({ params, searchParams }: JoinPageProps) 
     if (pending && pending.workplace_id === invite.workplace_id && !pending.user_id) {
       prefillName = pending.name ?? ''
       prefillPhone = pending.phone ?? ''
+      validPendingId = pendingEmployeeId
     }
   }
 
@@ -112,14 +116,29 @@ export default async function JoinPage({ params, searchParams }: JoinPageProps) 
     // Already in this workplace → just go to /me
     if (existing) redirect('/me')
 
-    // Employee of another workplace — fall through to the authenticated panel
-    // so they can join this one too (multi-workplace support).
+    // Employee of ANOTHER workplace — an account can belong to one workplace
+    // only (employees_user_unique). Say so up front instead of letting them
+    // fill a form that joinAsCurrentUser will always reject.
+    return (
+      <main style={pageStyle}>
+        <div style={{ ...cardStyle, padding: 40, maxWidth: 400, textAlign: 'center' }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
+          <h1 style={{ margin: '0 0 10px', fontSize: 22, fontWeight: 800 }}>
+            החשבון כבר משויך
+          </h1>
+          <p style={{ color: 'var(--text-2)', fontSize: 14, lineHeight: 1.6 }}>
+            חשבון זה משויך כבר למקום עבודה אחר, וניתן להיות עובד במקום אחד בלבד.
+            כדי להצטרף ל{workplaceName} התנתקו וצרו חשבון נפרד עם אימייל אחר.
+          </p>
+        </div>
+      </main>
+    )
   }
 
-  // Authenticated, role `none` (or employee of another workplace) → show join
-  // panel that reuses their existing account (no email/password fields).
+  // Authenticated, role `none` → show join panel that reuses their existing
+  // account (no email/password fields).
   if (user) {
-    const boundAction = joinAsCurrentUser.bind(null, code)
+    const boundAction = joinAsCurrentUser.bind(null, code, validPendingId)
     return (
       <main style={pageStyle}>
         <div style={cardStyle}>
@@ -136,7 +155,7 @@ export default async function JoinPage({ params, searchParams }: JoinPageProps) 
   }
 
   // Not authenticated → classic signup form
-  const boundAction = joinWithInvite.bind(null, code)
+  const boundAction = joinWithInvite.bind(null, code, validPendingId)
   return (
     <main style={pageStyle}>
       <div style={cardStyle}>
