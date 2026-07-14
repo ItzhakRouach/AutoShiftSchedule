@@ -29,7 +29,9 @@ All tables: **RLS** scoped by org/workplace membership. Migrations are forward-o
 Defaults (roles, shift_types) are seeded on workplace creation, not via migration.
 
 ## Production auth checklist (hosted Supabase)
-Email flows depend on dashboard config the repo can't pin — verify before launch:
+Email flows depend on dashboard config the repo can't pin — verify before launch.
+**Status: all items configured 2026-07-14** (Site URL + redirects set, NEXT_PUBLIC_BASE_URL on
+Vercel, Brevo SMTP live with branded sender, rate limit raised; templates in docs/email-templates/).
 1. **Site URL + Redirect URLs** (Auth → URL Configuration): set the production domain, and allow
    `https://<domain>/**` so `/auth/callback?next=…` links (password reset, email confirmation) validate.
 2. **`NEXT_PUBLIC_BASE_URL`**: set on Vercel so emails/wa.me links never depend on host-header guessing.
