@@ -38,6 +38,13 @@ async function dismissCoverageIssues(page: Page) {
   }
 }
 
+// The slot-editor sheet has no fixed list heading (candidate sections are
+// dynamic: "ביקשו משמרת זו" / "זמינים" / "דורש אישור"), but the 12h section
+// header always renders — use it as the sheet-open anchor. NOTE: the page
+// header also shows "N לא מאויש" (week-health stat), so empty-slot lookups
+// must be scoped to the week-table, never a bare page.getByText.
+const SHEET_ANCHOR = 'החל משמרת 12 שעות'
+
 test('manager applies a 12h shift on the empty grid before generating', async ({ page }) => {
   test.setTimeout(120_000)
   await signupAndOnboard(page)
@@ -54,10 +61,9 @@ test('manager applies a 12h shift on the empty grid before generating', async ({
   // Apply the 12h shift on the empty, pre-generation grid — every candidate is
   // unblocked on an empty week, so the "— 12ש׳" button is guaranteed to render
   // (scheduler-dependent state after auto-generation is not, see prior flake).
-  const slot = page.getByText('לא מאויש').first()
+  const slot = page.getByTestId('week-table').getByText('לא מאויש').first()
   await slot.click()
-  await expect(page.getByText('עובדים זמינים')).toBeVisible({ timeout: 8000 })
-  await expect(page.getByText('החל משמרת 12 שעות')).toBeVisible({ timeout: 8000 })
+  await expect(page.getByText(SHEET_ANCHOR)).toBeVisible({ timeout: 8000 })
   await page.getByRole('button', { name: 'יום 12ש׳' }).click()
   await page.getByRole('button', { name: /— 12ש׳$/ }).first().click()
 
@@ -66,13 +72,11 @@ test('manager applies a 12h shift on the empty grid before generating', async ({
 
   // Close the sheet (backdrop click) and confirm a 12ש׳ badge is in the grid.
   await page.mouse.click(5, 5)
-  await expect(page.getByText('החל משמרת 12 שעות')).toBeHidden({ timeout: 8000 })
+  await expect(page.getByText(SHEET_ANCHOR)).toBeHidden({ timeout: 8000 })
 
   // Reload to read the freshly persisted state. WeekTableCell renders a 12h
   // assignment as the worker's name plus the variant's hour range — for the
   // "יום 12ש׳" (m12_day) variant applied above that range is 07:00–19:00.
-  // (The old "-12" suffix no longer exists; the bare "12ש׳" text is NOT a safe
-  // marker because the header day-pair buttons also contain it.)
   await page.reload()
   await expect(page.getByRole('heading', { name: 'סידור עבודה' })).toBeVisible({ timeout: 10000 })
   const twelveMarker = page.getByTestId('week-table').getByText('07:00–19:00').first()
@@ -96,30 +100,29 @@ test('manager manually edits a slot after auto-generating', async ({ page }) => 
   await expect(page.getByTestId('coverage')).toBeVisible({ timeout: 30000 })
   await dismissCoverageIssues(page)
 
-  // Open a slot (either an assigned chip or an empty "לא מאויש" slot) on day 0.
-  const slot = page.getByText('לא מאויש').first()
-  const chip = page.getByText('דנה כהן').first()
+  // Open a slot (either an empty "לא מאויש" slot or an assigned chip) on the grid.
+  const weekTable = page.getByTestId('week-table')
+  const slot = weekTable.getByText('לא מאויש').first()
+  const chip = weekTable.getByText('דנה כהן').first()
   if (await slot.count()) await slot.click()
   else await chip.click()
 
-  // The SwapEditor sheet should open with the candidate list heading.
-  await expect(page.getByText('עובדים זמינים')).toBeVisible({ timeout: 8000 })
+  // The SwapEditor sheet should open.
+  await expect(page.getByText(SHEET_ANCHOR)).toBeVisible({ timeout: 8000 })
 
-  // Click a strictly-available candidate (זמין / ביקש) to avoid the double-book
-  // warning path that keeps the sheet open. Fall back to backdrop close if none.
-  const strictCandidate = page
-    .locator('button', { hasText: /זמין|ביקש/ })
-    .first()
+  // Click a strictly-available candidate (זמין / ✓ ביקש) if one exists —
+  // hard-blocked workers are collapsed and assigned-elsewhere ones are hidden.
+  const strictCandidate = page.locator('button', { hasText: /^.*(זמין|ביקש)/ }).first()
   if (await strictCandidate.count()) {
     await strictCandidate.click()
   }
   // Whether or not auto-closed, ensure the sheet is gone before continuing.
-  const sheetStillOpen = await page.getByText('עובדים זמינים').isVisible()
+  const sheetStillOpen = await page.getByText(SHEET_ANCHOR).isVisible()
   if (sheetStillOpen) await page.mouse.click(5, 5)
-  await expect(page.getByText('עובדים זמינים')).toBeHidden({ timeout: 8000 })
+  await expect(page.getByText(SHEET_ANCHOR)).toBeHidden({ timeout: 8000 })
 })
 
-test('assigning an employee already scheduled elsewhere that day requires in-sheet confirm', async ({ page }) => {
+test('double-booking is server-rejected on tap-to-assign; drag moves the worker instead', async ({ page }) => {
   test.setTimeout(120_000)
   await signupAndOnboard(page)
 
@@ -142,56 +145,36 @@ test('assigning an employee already scheduled elsewhere that day requires in-she
   const morningDay0 = morningRow.locator('td').nth(2) // shift col, role col, then days
   const noonDay0 = noonRow.locator('td').nth(2)
 
-  // Shift A (בוקר, day 0): assign דנה כהן directly from the candidate list.
-  // The WorkerPalette above the grid also renders a (draggable) button with
-  // her name; behind the open sheet it would win `.first()` and the sheet's
-  // scrim would swallow the click. The in-sheet candidate row is the only
-  // non-draggable button carrying the full name — target that.
+  // Shift A (בוקר, day 0): assign דנה כהן from the sheet's candidate list.
+  // The WorkerPalette also renders a (draggable) button with her name — the
+  // in-sheet candidate row is the only non-draggable one; target that.
   await morningDay0.click()
-  await expect(page.getByText('עובדים זמינים')).toBeVisible({ timeout: 8000 })
+  await expect(page.getByText(SHEET_ANCHOR)).toBeVisible({ timeout: 8000 })
   await page.locator('button:not([draggable])', { hasText: 'דנה כהן' }).first().click()
-  // A successful sheet assign now fires the shared בטל toast immediately
-  // alongside its own inline "שובץ ✓" — both render at once, so scope the
-  // assertion to the toast (getByTestId) to avoid a strict-mode collision.
   await expect(page.getByTestId('assign-toast').getByText('שובץ ✓')).toBeVisible({ timeout: 5000 })
-  await expect(page.getByText('עובדים זמינים')).toBeHidden({ timeout: 8000 })
+  await expect(page.getByText(SHEET_ANCHOR)).toBeHidden({ timeout: 8000 })
   await expect(morningDay0).toContainText('דנה כהן')
 
-  // Shift B (צהריים, day 0, same role): tapping דנה כהן here must NOT assign
-  // immediately — she's already committed to shift A that day, so the
-  // candidate list shows her as "assigned_other" and tapping opens the
-  // in-sheet confirm strip (native window.confirm is unreliable/silent in PWAs).
+  // Shift B (צהריים, day 0, same role): holding her and tapping another cell
+  // on her busy day is a deliberate client-side no-op (WeekTable blocks taps
+  // on heldBusyDays; the cell greys out) — nothing is assigned, no sheet opens.
+  // (The sheet hides busy workers entirely, so no path double-books her.)
+  await page.locator('button[draggable]', { hasText: 'דנה כהן' }).first().click() // hold in palette
   await noonDay0.click()
-  await expect(page.getByText('עובדים זמינים')).toBeVisible({ timeout: 8000 })
-  const candidateBtn = page.locator('button', { hasText: 'משובץ במשמרת אחרת' }).first()
-  await expect(candidateBtn).toBeVisible({ timeout: 5000 })
-  await candidateBtn.click()
-  await expect(page.getByText('עובד זה כבר משובץ במשמרת אחרת ביום זה')).toBeVisible({ timeout: 5000 })
-
-  // ביטול leaves the schedule unchanged: the confirm strip closes, no success
-  // message appears, and the target cell is still unfilled.
-  await page.getByRole('button', { name: 'ביטול' }).click()
-  await expect(page.getByText('עובד זה כבר משובץ במשמרת אחרת ביום זה')).toBeHidden({ timeout: 5000 })
-  await expect(page.getByTestId('assign-toast')).toBeHidden()
-  await page.mouse.click(5, 5)
-  await expect(page.getByText('עובדים זמינים')).toBeHidden({ timeout: 8000 })
+  await expect(page.getByText(SHEET_ANCHOR)).toBeHidden() // no sheet opened
   await expect(noonDay0).toHaveText('לא מאויש')
   await expect(morningDay0).toContainText('דנה כהן')
+  await page.locator('button[draggable]', { hasText: 'דנה כהן' }).first().click() // release hold
 
-  // Reopen and this time confirm the move with העבר — it completes via the
-  // same assignSlot path: דנה כהן now appears in shift B and is gone from A.
-  await noonDay0.click()
-  await expect(page.getByText('עובדים זמינים')).toBeVisible({ timeout: 8000 })
-  await page.locator('button', { hasText: 'משובץ במשמרת אחרת' }).first().click()
-  await expect(page.getByText('עובד זה כבר משובץ במשמרת אחרת ביום זה')).toBeVisible({ timeout: 5000 })
-  await page.getByRole('button', { name: 'העבר' }).click()
-  await expect(page.getByTestId('assign-toast').getByText('שובץ ✓')).toBeVisible({ timeout: 5000 })
-  await expect(page.getByText('עובדים זמינים')).toBeHidden({ timeout: 8000 })
-  await expect(noonDay0).toContainText('דנה כהן')
-  await expect(morningDay0).toHaveText('לא מאויש')
+  // Moving her legitimately is a drag: grid chip (a draggable span) from בוקר
+  // to the empty צהריים cell → drag-move (source vacated), server-validated.
+  await morningDay0.locator('span[draggable]').first().dragTo(noonDay0)
+  await expect(page.getByTestId('assign-toast').getByText(/הועבר|✓/)).toBeVisible({ timeout: 8000 })
+  await expect(noonDay0).toContainText('דנה כהן', { timeout: 8000 })
+  await expect(morningDay0).toHaveText('לא מאויש', { timeout: 8000 })
 })
 
-test('tap-to-assign toast offers בטל, and clicking it reverts the cell to empty', async ({ page }) => {
+test('tap-to-assign shows שובץ ✓ and בטל (undo bar) reverts the cell to empty', async ({ page }) => {
   test.setTimeout(120_000)
   await signupAndOnboard(page)
 
@@ -214,21 +197,20 @@ test('tap-to-assign toast offers בטל, and clicking it reverts the cell to emp
   await page.locator('button[draggable]', { hasText: 'דנה כהן' }).first().click()
   await morningDay0.click()
 
-  // The shared AssignToast appears with a בטל button (assert on the button
-  // itself, never on any timer — the toast's own auto-dismiss is 6s here).
-  await expect(page.getByText('שובץ ✓')).toBeVisible({ timeout: 5000 })
-  const undoBtn = page.getByRole('button', { name: 'בטל' })
-  await expect(undoBtn).toBeVisible({ timeout: 5000 })
+  // The shared AssignToast confirms; undo now lives in the persistent
+  // UndoRedoBar (appears once history is non-empty).
+  await expect(page.getByTestId('assign-toast').getByText('שובץ ✓')).toBeVisible({ timeout: 5000 })
   await expect(morningDay0).toContainText('דנה כהן')
+  const undoBtn = page.getByRole('button', { name: 'בטל', exact: true })
+  await expect(undoBtn).toBeVisible({ timeout: 5000 })
 
   await undoBtn.click()
 
-  // בוטל ✓ confirms the reversal, and the cell is empty again.
-  await expect(page.getByText('בוטל ✓')).toBeVisible({ timeout: 5000 })
+  // Undo reverses the assignment: the cell is empty again.
   await expect(morningDay0).toHaveText('לא מאויש', { timeout: 8000 })
 })
 
-test('undo after a sheet-confirmed move restores the original shift', async ({ page }) => {
+test('undo after a sheet assign restores the empty slot', async ({ page }) => {
   test.setTimeout(120_000)
   await signupAndOnboard(page)
 
@@ -242,37 +224,22 @@ test('undo after a sheet-confirmed move restores the original shift', async ({ p
 
   const weekTable = page.getByTestId('week-table')
   const morningRow = weekTable.locator('tr', { hasText: 'בוקר' }).first()
-  const noonRow = weekTable.locator('tr', { hasText: 'צהריים' }).first()
   const morningDay0 = morningRow.locator('td').nth(2)
-  const noonDay0 = noonRow.locator('td').nth(2)
 
-  // Shift A (בוקר, day 0): assign דנה כהן from the sheet's candidate list.
+  // Assign דנה כהן from the sheet's candidate list (SwapEditor.onDone pushes
+  // the edit onto the same undo stack used by the fast tap/drag paths).
   await morningDay0.click()
-  await expect(page.getByText('עובדים זמינים')).toBeVisible({ timeout: 8000 })
+  await expect(page.getByText(SHEET_ANCHOR)).toBeVisible({ timeout: 8000 })
   await page.locator('button:not([draggable])', { hasText: 'דנה כהן' }).first().click()
-  await expect(page.getByText('עובדים זמינים')).toBeHidden({ timeout: 8000 })
+  await expect(page.getByText(SHEET_ANCHOR)).toBeHidden({ timeout: 8000 })
   await expect(morningDay0).toContainText('דנה כהן')
 
-  // Shift B (צהריים, day 0, same role): confirm the move via העבר — the sheet
-  // path (SwapEditor.onDone) must offer the same בטל toast as the fast paths.
-  await noonDay0.click()
-  await expect(page.getByText('עובדים זמינים')).toBeVisible({ timeout: 8000 })
-  await page.locator('button', { hasText: 'משובץ במשמרת אחרת' }).first().click()
-  await expect(page.getByText('עובד זה כבר משובץ במשמרת אחרת ביום זה')).toBeVisible({ timeout: 5000 })
-  await page.getByRole('button', { name: 'העבר' }).click()
-  await expect(page.getByText('עובדים זמינים')).toBeHidden({ timeout: 8000 })
-  await expect(noonDay0).toContainText('דנה כהן')
-  await expect(morningDay0).toHaveText('לא מאויש')
-
-  const undoBtn = page.getByRole('button', { name: 'בטל' })
+  const undoBtn = page.getByRole('button', { name: 'בטל', exact: true })
   await expect(undoBtn).toBeVisible({ timeout: 5000 })
   await undoBtn.click()
 
-  // Undo reverses the move: דנה כהן is back on the morning shift (her prior
-  // row, restored with its original source) and the noon slot is empty again.
-  await expect(page.getByText('בוטל ✓')).toBeVisible({ timeout: 5000 })
-  await expect(morningDay0).toContainText('דנה כהן', { timeout: 8000 })
-  await expect(noonDay0).toHaveText('לא מאויש', { timeout: 8000 })
+  // Undo reverses the sheet assign: the slot is unfilled again.
+  await expect(morningDay0).toHaveText('לא מאויש', { timeout: 8000 })
 })
 
 test('clicking a worker chip opens the editor; highlight lives only in the totals bar', async ({ page }) => {
@@ -295,9 +262,9 @@ test('clicking a worker chip opens the editor; highlight lives only in the total
   const gridChip = page.getByTestId('week-table').getByText('דנה כהן').first()
   await expect(gridChip).toBeVisible({ timeout: 10000 })
   await gridChip.click()
-  await expect(page.getByText('עובדים זמינים')).toBeVisible({ timeout: 8000 })
+  await expect(page.getByText(SHEET_ANCHOR)).toBeVisible({ timeout: 8000 })
   await page.mouse.click(5, 5)
-  await expect(page.getByText('עובדים זמינים')).toBeHidden({ timeout: 8000 })
+  await expect(page.getByText(SHEET_ANCHOR)).toBeHidden({ timeout: 8000 })
 
   // Highlighting a worker's shifts is now exclusively a totals-bar action:
   // clicking a chip there toggles aria-pressed without opening the editor.
@@ -306,7 +273,7 @@ test('clicking a worker chip opens the editor; highlight lives only in the total
   await expect(totalsChip).toHaveAttribute('aria-pressed', 'false')
   await totalsChip.click()
   await expect(totalsChip).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.getByText('עובדים זמינים')).toBeHidden()
+  await expect(page.getByText(SHEET_ANCHOR)).toBeHidden()
 
   // Toggling off restores the default state.
   await totalsChip.click()

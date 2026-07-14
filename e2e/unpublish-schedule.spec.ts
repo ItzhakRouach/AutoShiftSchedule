@@ -65,6 +65,9 @@ test('manager can publish, unpublish, and see the publish button return', async 
   // router.refresh which holds the transition open). The unpublish flow does
   // not depend on that transition settling, so we don't wait for it here.
   await page.getByRole('button', { name: 'פרסם סידור' }).click()
+  // Incomplete coverage arms an inline two-step confirm — click again to publish.
+  const confirmPublish = page.getByRole('button', { name: /לחצו שוב לפרסום/ })
+  await confirmPublish.click({ timeout: 3000 }).catch(() => {}) // absent when coverage is full
   await expect(page.getByRole('button', { name: /פורסם/ })).toBeVisible({ timeout: 15000 })
 
   // Unpublish — two-step confirm.

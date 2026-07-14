@@ -60,8 +60,10 @@ test('schedule image route returns a valid PNG for a published period', async ({
   await expect(page.getByTestId('coverage')).toBeVisible({ timeout: 30000 })
   await dismissCoverageIssues(page)
 
-  // Publish
+  // Publish. Incomplete coverage arms an inline two-step confirm — click again.
   await page.getByRole('button', { name: 'פרסם סידור' }).click()
+  const confirmPublish = page.getByRole('button', { name: /לחצו שוב לפרסום/ })
+  await confirmPublish.click({ timeout: 3000 }).catch(() => {}) // absent when coverage is full
   await expect(page.getByRole('button', { name: /פורסם/ })).toBeVisible({ timeout: 15000 })
 
   // The share button should now appear
