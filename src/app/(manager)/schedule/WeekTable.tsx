@@ -100,7 +100,10 @@ export function WeekTable({ view, onSlot, onDayPair, assign, initialSelectedId, 
         <span>מוצג: <strong style={{ color: empById.get(selectedId)?.color }}>{empById.get(selectedId)?.name}</strong></span>
         <button onClick={() => setSelectedId(null)} style={{ fontSize: 11, padding: '2px 8px', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface)', cursor: 'pointer', color: 'var(--text-2)' }}>נקה</button></div>}
       <div data-testid="week-table" style={{ overflowX: 'auto', direction: 'rtl', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', transform: 'translateZ(0)' }}>
-        <table style={{ borderCollapse: 'separate', borderSpacing: 0, minWidth: 700, tableLayout: 'auto', width: '100%' }}>
+        {/* Fixed layout: day columns split the available width evenly, so the
+            whole week fits the screen without horizontal dragging on desktop.
+            The 640px floor keeps cells usable on phones (scroll only there). */}
+        <table style={{ borderCollapse: 'separate', borderSpacing: 0, minWidth: 640, tableLayout: 'fixed', width: '100%' }}>
           <thead>
             <tr style={{ background: 'var(--surface-2)' }}>
               <th style={{ ...S.sticky, right: 0, zIndex: 3, padding: '10px 8px', fontSize: 13, width: SHIFT_W, minWidth: SHIFT_W, maxWidth: SHIFT_W, borderBottom: '3px solid var(--text)' }}><span style={S.layer}>משמרת</span></th>
@@ -111,7 +114,7 @@ export function WeekTable({ view, onSlot, onDayPair, assign, initialSelectedId, 
                 // read-only/no-requirement days keep the neutral header.
                 const tint = dh.required > 0 ? healthTint(dh.ratio) : undefined
                 return (
-                  <th key={d.index} style={{ ...S.sticky, position: undefined, padding: '10px 8px', fontSize: 12, textAlign: 'center', minWidth: 96, background: tint ?? 'var(--surface-2)', borderBottom: '3px solid var(--text)' }}>
+                  <th key={d.index} style={{ ...S.sticky, position: undefined, padding: '10px 4px', fontSize: 12, textAlign: 'center', background: tint ?? 'var(--surface-2)', borderBottom: '3px solid var(--text)' }}>
                     <div style={{ fontWeight: 800, fontSize: 13 }}>{d.short}</div>
                     <div style={{ fontWeight: 500, color: 'var(--text-2)', fontSize: 11, marginTop: 2 }}>{d.date}</div>
                     {onDayPair && (

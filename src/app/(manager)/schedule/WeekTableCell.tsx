@@ -9,9 +9,9 @@ export type { CellEntry }
 
 const S = {
   base: {
-    padding: '10px 12px', verticalAlign: 'middle',
+    padding: '10px 6px', verticalAlign: 'middle',
     borderLeft: '3px solid var(--text)', borderBottom: '1px solid var(--border)',
-    fontSize: 13, textAlign: 'center', minWidth: 96,
+    fontSize: 13, textAlign: 'center',
   } as React.CSSProperties,
 }
 

@@ -45,9 +45,11 @@ export function CellEntryChip({ entry: en, emp, dimmed, srcSlot, onDragEmployee,
         onDragEmployee(en.employeeId)
       } : undefined}
       style={{
-        display: 'inline-flex', alignItems: 'center',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         color: emp?.color ?? 'var(--text)', fontWeight: 700,
-        whiteSpace: 'nowrap', fontSize: 13, lineHeight: 1.4,
+        // Wrap instead of nowrap: with the fixed-width table the cell can't
+        // grow, so long names + the 12h label fold to a second line.
+        flexWrap: 'wrap', whiteSpace: 'normal', fontSize: 13, lineHeight: 1.4,
         cursor: onDragEmployee ? 'grab' : undefined,
         opacity: dimmed ? 0.35 : 1,
         transition: 'opacity 0.15s',
