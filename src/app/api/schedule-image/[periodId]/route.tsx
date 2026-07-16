@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
-import { renderSchedulePng, IMAGE_WIDTH, IMAGE_HEIGHT } from '@/lib/schedule/render-image'
-import type { RawAssignment } from '@/lib/schedule/image-data'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { getScheduleImageView } from '@/lib/schedule/image-view'
+import { renderSchedulePng } from '@/lib/schedule/render-image'
 
 export const runtime = 'nodejs'
 
@@ -39,54 +40,19 @@ export async function GET(
     if (wpRow?.owner_id !== user.id) return new Response('Not found', { status: 404 })
   }
 
-  // Load workplace name
-  const { data: workplace } = await supabase
-    .from('workplaces')
-    .select('name')
-    .eq('id', period.workplace_id)
-    .maybeSingle()
-
-  // Load assignments with employee names + shift type keys
-  const { data: assignsRaw } = await supabase
-    .from('assignments')
-    .select('day_of_week, employee_id, shift_type_id, employees(name), shift_types(key)')
-    .eq('period_id', periodId)
-
-  // Load requirements aggregated by day+shiftKey for unfilled detection
-  const { data: reqRaw } = await supabase
-    .from('shift_requirements')
-    .select('day_of_week, count, shift_types(key)')
-    .eq('workplace_id', period.workplace_id)
-
-  type STKey = { key: string }
-  type EmpName = { name: string }
-  const assignments: RawAssignment[] = (assignsRaw ?? []).map((a) => ({
-    day_of_week: a.day_of_week,
-    shift_type_key: (a.shift_types as unknown as STKey | null)?.key ?? '',
-    employee_name: (a.employees as unknown as EmpName | null)?.name ?? '',
-  }))
-
-  const required: Record<number, Record<string, number>> = {}
-  for (const r of reqRaw ?? []) {
-    const sk = (r.shift_types as unknown as STKey | null)?.key
-    if (!sk) continue
-    const day = r.day_of_week as number
-    ;(required[day] ??= {})[sk] = ((required[day]?.[sk]) ?? 0) + (r.count as number)
-  }
-
-  const png = await renderSchedulePng({
-    workplaceName: workplace?.name ?? 'סידור שבועי',
-    weekStartISO: period.week_start_date,
-    assignments,
-    required,
-  })
+  // Access proven above — load the render data with the admin client so the
+  // image never varies with the viewer's RLS scope (employees can't read
+  // shift_requirements, which drives the role rows). Same loader as the
+  // publish upload path, so preview and stored PNG are pixel-identical.
+  const { view, workplaceName } = await getScheduleImageView(createAdminClient(), period)
+  const { png, width, height } = await renderSchedulePng(view, workplaceName)
 
   return new Response(png.buffer as ArrayBuffer, {
     headers: {
       'Content-Type': 'image/png',
       'Cache-Control': 'private, no-store',
-      'X-Image-Width': String(IMAGE_WIDTH),
-      'X-Image-Height': String(IMAGE_HEIGHT),
+      'X-Image-Width': String(width),
+      'X-Image-Height': String(height),
     },
   })
 }

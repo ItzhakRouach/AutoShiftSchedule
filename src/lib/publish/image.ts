@@ -15,13 +15,7 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { renderSchedulePng } from '@/lib/schedule/render-image'
-import { type RawAssignment } from '@/lib/schedule/image-data'
-
-type Named = { name: string } | null
-
-function one<T>(v: T | T[] | null): T | null {
-  return Array.isArray(v) ? (v[0] ?? null) : v
-}
+import { getScheduleImageView } from '@/lib/schedule/image-view'
 
 /** 7 days in seconds — TTL for the published-schedule signed URL. */
 const SIGNED_URL_TTL_SECONDS = 60 * 60 * 24 * 7
@@ -53,48 +47,15 @@ export async function buildAndUploadScheduleImage(
 ): Promise<string | null> {
   const { data: period } = await admin
     .from('schedule_periods')
-    .select('id, week_start_date, workplace_id')
+    .select('id, week_start_date, workplace_id, status')
     .eq('id', periodId)
     .maybeSingle()
   if (!period) return null
 
-  const { data: setting } = await admin
-    .from('workplace_settings')
-    .select('workplaces(name)')
-    .eq('workplace_id', period.workplace_id)
-    .maybeSingle()
-  const workplaceName = one(setting?.workplaces as Named | Named[])?.name ?? 'סידור שבועי'
-
-  const [assignsResult, reqResult] = await Promise.all([
-    admin.from('assignments')
-      .select('day_of_week, shift_type_id, temp_name, employees(name), shift_types(key)')
-      .eq('period_id', periodId),
-    admin.from('shift_requirements')
-      .select('day_of_week, count, shift_types(key)')
-      .eq('workplace_id', period.workplace_id),
-  ])
-
-  const assignments: RawAssignment[] = (assignsResult.data ?? []).map((a) => ({
-    day_of_week: a.day_of_week as number,
-    shift_type_key: one(a.shift_types as { key: string } | { key: string }[] | null)?.key ?? '',
-    employee_name: one(a.employees as Named | Named[])?.name ?? (a.temp_name as string | null) ?? '',
-  }))
-
-  const required: Record<number, Record<string, number>> = {}
-  for (const r of reqResult.data ?? []) {
-    const sk = one(r.shift_types as { key: string } | { key: string }[] | null)?.key
-    if (!sk) continue
-    const day = r.day_of_week as number
-    ;(required[day] ??= {})[sk] = (required[day]?.[sk] ?? 0) + (r.count as number)
-  }
-
   try {
-    const png = await renderSchedulePng({
-      workplaceName,
-      weekStartISO: period.week_start_date,
-      assignments,
-      required,
-    })
+    // Same loader + renderer as the preview route → identical pixels.
+    const { view, workplaceName } = await getScheduleImageView(admin, period)
+    const { png } = await renderSchedulePng(view, workplaceName)
     const storagePath = storagePathFor(period.workplace_id as string, periodId)
     const { error: uploadErr } = await admin.storage
       .from('schedule-images')
