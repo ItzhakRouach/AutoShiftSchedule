@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { getBaseUrl } from '@/lib/auth/base-url'
 import { resolveUserRole } from '@/lib/auth/role'
+import { loginGate, DEST_FOR_ROLE, type LoginScreen } from '@/lib/auth/login-gate'
 import { isExistingUserSignUp } from '@/lib/auth/signup-result'
 import { resetPasswordSchema, signInSchema, signUpSchema } from '@/lib/validation/auth'
 
@@ -14,12 +15,11 @@ export type AuthState = {
   fieldErrors?: Record<string, string>
 }
 
-/** Land each role on its own home, skipping the /dashboard bounce. */
+/** Land each role on its own home, skipping the /dashboard bounce. Used where
+ *  there is no "intended screen" to enforce (e.g. after a password reset). */
 async function redirectByRole(supabase: Awaited<ReturnType<typeof createClient>>): Promise<never> {
   const { role } = await resolveUserRole(supabase)
-  if (role === 'employee') redirect('/me')
-  if (role === 'none') redirect('/onboarding')
-  redirect('/dashboard')
+  redirect(DEST_FOR_ROLE[role])
 }
 
 export async function signIn(prevState: AuthState, formData: FormData): Promise<AuthState> {
@@ -27,6 +27,9 @@ export async function signIn(prevState: AuthState, formData: FormData): Promise<
     email: formData.get('email') as string,
     password: formData.get('password') as string,
   }
+  // Which screen the user submitted from (manager vs employee). Defaults to
+  // manager, mirroring the login page's own `?as` fallback.
+  const intended: LoginScreen = formData.get('as') === 'employee' ? 'employee' : 'manager'
 
   const parsed = signInSchema.safeParse(raw)
   if (!parsed.success) {
@@ -48,7 +51,17 @@ export async function signIn(prevState: AuthState, formData: FormData): Promise<
     return { error: 'אימייל או סיסמה שגויים' }
   }
 
-  return redirectByRole(supabase)
+  // Gate by the account's real role: you may only complete login through the
+  // screen that matches your role. On a mismatch, sign back out and send them to
+  // the correct screen — signing out first so the (auth) layout doesn't just
+  // bounce the still-authenticated user straight to their home.
+  const { role } = await resolveUserRole(supabase)
+  const gate = loginGate(intended, role)
+  if (!gate.ok) {
+    await supabase.auth.signOut()
+    redirect(`/login?as=${gate.correctScreen}&switched=1`)
+  }
+  redirect(gate.dest)
 }
 
 export async function signUp(prevState: AuthState, formData: FormData): Promise<AuthState> {

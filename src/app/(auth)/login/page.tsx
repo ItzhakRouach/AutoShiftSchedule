@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 import { signIn, type AuthState } from '../actions'
 import { Field } from '../_components/Field'
+import { RoleMismatchNotice } from '../_components/RoleMismatchNotice'
 import { Icon } from '@/components/ui/Icon'
 import { Spinner } from '@/components/ui/Spinner'
 
@@ -15,6 +16,7 @@ function LoginForm() {
   const searchParams = useSearchParams()
   const role = searchParams.get('as') === 'employee' ? 'employee' : 'manager'
   const isManager = role === 'manager'
+  const switched = searchParams.get('switched') === '1'
 
   const [state, action, pending] = useActionState(signIn, initialState)
 
@@ -87,6 +89,9 @@ function LoginForm() {
         </div>
 
         <form action={action} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Intended screen — the signIn action gates the account's real role against this. */}
+          <input type="hidden" name="as" value={role} />
+          {switched && <RoleMismatchNotice screen={role} />}
           <Field
             id="email"
             label="אימייל"

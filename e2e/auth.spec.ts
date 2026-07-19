@@ -175,6 +175,44 @@ test('logged-in manager sees "התנתקות" in the persistent top nav, and cli
   await expect(page).toHaveURL(/\/login/, { timeout: 10000 })
 })
 
+test('a manager is blocked on the employee login screen and redirected to the manager screen', async ({
+  page,
+}) => {
+  const uuid = crypto.randomUUID().replace(/-/g, '').slice(0, 12)
+  const email = `test+gate+${uuid}@example.com`
+  const password = 'TestPass123!'
+  const orgName = `ארגון ${uuid}`
+  const workplaceName = `מקום עבודה ${uuid}`
+
+  // Create a manager (signup + onboarding), then sign out.
+  await page.goto('/signup')
+  await page.getByLabel('אימייל').fill(email)
+  await page.getByLabel('סיסמה').fill(password)
+  await page.getByRole('button', { name: 'הרשמה' }).click()
+  await expect(page).toHaveURL(/\/onboarding/, { timeout: 15000 })
+  await page.getByLabel('שם הארגון').fill(orgName)
+  await page.getByLabel('שם מקום העבודה').fill(workplaceName)
+  await page.getByRole('button', { name: 'יצירת מקום עבודה' }).click()
+  await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 })
+  await page.getByRole('button', { name: 'התנתקות' }).click()
+  await expect(page).toHaveURL(/\/login/, { timeout: 10000 })
+
+  // Attempt login on the EMPLOYEE screen with manager credentials → blocked,
+  // redirected to the manager screen with the switched notice; never reaches /me.
+  await page.goto('/login?as=employee')
+  await page.getByLabel('אימייל').fill(email)
+  await page.getByLabel('סיסמה').fill(password)
+  await page.getByRole('button', { name: 'התחברות' }).click()
+  await expect(page).toHaveURL(/\/login\?as=manager&switched=1/, { timeout: 15000 })
+  await expect(page.getByText('החשבון שלך רשום כמנהל. התחבר/י כאן.')).toBeVisible()
+
+  // Logging in on the correct (manager) screen now succeeds.
+  await page.getByLabel('אימייל').fill(email)
+  await page.getByLabel('סיסמה').fill(password)
+  await page.getByRole('button', { name: 'התחברות' }).click()
+  await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 })
+})
+
 test('persistent top-nav tab bar navigates to a tab', async ({ page }) => {
   const uuid = crypto.randomUUID().replace(/-/g, '').slice(0, 12)
   const email = `test+nav+${uuid}@example.com`
