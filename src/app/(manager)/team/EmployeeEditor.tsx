@@ -65,7 +65,6 @@ export function EmployeeEditor({ roles, shiftTypes, employee, onSuccess }: Emplo
   const isEdit = !!employee
 
   const [name, setName] = useState(employee?.name ?? '')
-  const [phone, setPhone] = useState(employee?.phone ?? '')
   // New-employee defaults come from defaultsForType so a fresh form opens with
   // the employment-type's recommended bounds (full → 5/6) instead of an
   // arbitrary 2/null. Existing employees keep their saved values.
@@ -140,7 +139,7 @@ export function EmployeeEditor({ roles, shiftTypes, employee, onSuccess }: Emplo
 
       <EmployeeFields
         name={name} onNameChange={setName}
-        phone={phone} onPhoneChange={setPhone}
+        initialPhone={employee?.phone ?? ''}
         minShifts={minShifts} onMinShiftsChange={setMinShifts}
         maxShifts={maxShifts} onMaxShiftsChange={setMaxShifts}
         nameError={state.fieldErrors?.name}

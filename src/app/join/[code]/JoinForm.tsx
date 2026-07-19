@@ -3,6 +3,7 @@
 import React, { useActionState, useState } from 'react'
 import type { JoinState } from './actions'
 import { Spinner } from '@/components/ui/Spinner'
+import { PhoneInput } from '@/components/ui/PhoneInput'
 
 interface JoinFormProps {
   action: (prevState: JoinState, formData: FormData) => Promise<JoinState>
@@ -115,22 +116,12 @@ export function JoinForm({ action, initialName, initialPhone }: JoinFormProps) {
         )}
       </div>
 
-      <div>
-        <label htmlFor="phone" style={labelStyle}>טלפון נייד</label>
-        <input
-          id="phone"
-          name="phone"
-          type="tel"
-          autoComplete="tel"
-          defaultValue={initialPhone}
-          required
-          placeholder="050-0000000"
-          style={inputStyle}
-        />
-        {state.fieldErrors?.phone && (
-          <span style={errorStyle}>{state.fieldErrors.phone}</span>
-        )}
-      </div>
+      <PhoneInput
+        initialValue={initialPhone}
+        label="טלפון נייד"
+        required
+        error={state.fieldErrors?.phone}
+      />
 
       {/* Employment type */}
       <div>

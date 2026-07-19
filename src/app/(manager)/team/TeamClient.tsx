@@ -21,9 +21,13 @@ export function TeamClient({ employees, roles, shiftTypes }: TeamClientProps) {
   const [query, setQuery] = useState('')
 
   const q = query.trim().toLowerCase()
+  // Match phone on digits only, so "050", "0504551558" and "050-455-1558" all hit.
+  const qDigits = q.replace(/\D/g, '')
   const filtered = q
     ? employees.filter(
-        (e) => e.name.toLowerCase().includes(q) || (e.phone ?? '').toLowerCase().includes(q),
+        (e) =>
+          e.name.toLowerCase().includes(q) ||
+          (qDigits.length > 0 && (e.phone ?? '').replace(/\D/g, '').includes(qDigits)),
       )
     : employees
 

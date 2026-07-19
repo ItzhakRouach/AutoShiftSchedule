@@ -32,3 +32,38 @@ export function normalizeIsraeliPhone(raw: string | null | undefined): string | 
 export function isValidIsraeliPhone(raw: string | null | undefined): boolean {
   return normalizeIsraeliPhone(raw) !== null
 }
+
+// ── Local (trunk-0) format — how phones are stored and displayed ─────────────
+// wa.me still needs E.164 (normalizeIsraeliPhone); these produce/consume the
+// local `0XXXXXXXXX` form the app stores and shows.
+
+/** Common Israeli mobile prefixes (each a 3-digit `05X`), for the input dropdown. */
+export const ISRAELI_MOBILE_PREFIXES = ['050', '052', '053', '054', '055', '058', '051'] as const
+
+/** Normalize any accepted input to the local form `0504551558`, or null if invalid. */
+export function toLocalIsraeliPhone(raw: string | null | undefined): string | null {
+  const e164 = normalizeIsraeliPhone(raw)
+  return e164 ? `0${e164.slice(3)}` : null
+}
+
+/**
+ * Format a phone for display as local dashed text, e.g. `050-455-1558`
+ * (dash after the prefix and after the first 3 digits). A 10-digit mobile is
+ * grouped 3-3-4; other valid lengths return the plain local number; anything
+ * unparseable returns the raw string; empty/nullish returns ''.
+ */
+export function formatIsraeliPhoneLocal(raw: string | null | undefined): string {
+  if (!raw) return ''
+  const local = toLocalIsraeliPhone(raw)
+  if (!local) return raw
+  if (local.length === 10) return `${local.slice(0, 3)}-${local.slice(3, 6)}-${local.slice(6)}`
+  return local
+}
+
+/** Split a phone into a 3-digit local prefix + the rest, for pre-filling the
+ *  dropdown+number input. Returns empty parts when the input can't be parsed. */
+export function splitLocalPhone(raw: string | null | undefined): { prefix: string; rest: string } {
+  const local = toLocalIsraeliPhone(raw)
+  if (!local) return { prefix: '', rest: '' }
+  return { prefix: local.slice(0, 3), rest: local.slice(3) }
+}

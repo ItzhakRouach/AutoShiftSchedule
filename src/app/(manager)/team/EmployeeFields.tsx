@@ -1,14 +1,14 @@
 'use client'
 
 import React from 'react'
-import { Icon } from '@/components/ui/Icon'
 import { Stepper } from '@/components/ui/Stepper'
+import { PhoneInput } from '@/components/ui/PhoneInput'
 
 interface EmployeeFieldsProps {
   name: string
   onNameChange: (v: string) => void
-  phone: string
-  onPhoneChange: (v: string) => void
+  /** Stored phone (local `0…` or E.164 `972…`) seeding the PhoneInput. */
+  initialPhone: string
   minShifts: number
   onMinShiftsChange: (v: number) => void
   maxShifts: number | null
@@ -54,7 +54,7 @@ const rowStyle: React.CSSProperties = {
 }
 
 export function EmployeeFields({
-  name, onNameChange, phone, onPhoneChange,
+  name, onNameChange, initialPhone,
   minShifts, onMinShiftsChange,
   maxShifts, onMaxShiftsChange,
   nameError, phoneError,
@@ -92,25 +92,7 @@ export function EmployeeFields({
       </div>
 
       {/* Phone */}
-      <div>
-        <label htmlFor="emp-phone" style={labelStyle}>טלפון <span style={{ color: '#D8423B' }}>*</span></label>
-        <div style={{ position: 'relative' }}>
-          <span style={{ position: 'absolute', insetInlineStart: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)' }}>
-            <Icon name="phone" size={17} />
-          </span>
-          <input
-            id="emp-phone"
-            name="phone"
-            type="tel"
-            value={phone}
-            onChange={(e) => onPhoneChange(e.target.value)}
-            placeholder="050-0000000"
-            style={{ ...inputStyle, paddingInlineStart: 40 }}
-            autoComplete="off"
-          />
-        </div>
-        {phoneError && <p style={fieldErrorStyle}>{phoneError}</p>}
-      </div>
+      <PhoneInput id="emp-phone" initialValue={initialPhone} label="טלפון" required error={phoneError} />
 
       {/* Min shifts */}
       <div style={rowStyle}>

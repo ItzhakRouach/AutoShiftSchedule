@@ -216,8 +216,9 @@ test('manager-created employee is claimed via the ?e= link even when the invitee
   const employeePage = await employeeContext.newPage()
   await employeePage.goto(joinPath!)
   await expect(employeePage.getByLabel('שם מלא')).toHaveValue(managerGivenName)
-  // The manager-side action stores the phone normalized (E.164 sans '+')
-  await expect(employeePage.getByLabel('טלפון נייד')).toHaveValue('972529999999')
+  // Phone stored in local form, prefilled as prefix dropdown (052) + dashed number.
+  await expect(employeePage.getByLabel('קידומת')).toHaveValue('052')
+  await expect(employeePage.getByLabel('טלפון נייד')).toHaveValue('999-9999')
 
   await employeePage.getByLabel('שם מלא').fill(typedName)
   await employeePage.getByLabel('אימייל').fill(`emp+${uuid}@example.com`)

@@ -7,7 +7,7 @@ export interface ClaimParams {
   workplaceId: string
   userId: string
   name: string
-  phone: string // already normalized E.164
+  phone: string // already normalized to the local form (0504551558)
   employmentType: EmploymentType
   observesShabbat: boolean
   /** Pending-row id carried by the wa.me link (?e=). Claimed by id first, so
@@ -25,7 +25,7 @@ export interface ClaimParams {
  * is always NULL on a pending row, so it never matched and always inserted).
  *
  * Match key is the normalized phone, which both `createEmployee` and the join
- * form run through `normalizeIsraeliPhone`. Manager-configured fields
+ * form run through `toLocalIsraeliPhone`. Manager-configured fields
  * (employment_type, shift bounds, roles, must_accept) are preserved on a claim;
  * only the account link + the employee's own personal fields are written.
  *

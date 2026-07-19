@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { normalizeIsraeliPhone } from '@/lib/whatsapp/phone'
+import { toLocalIsraeliPhone } from '@/lib/whatsapp/phone'
 import { claimOrCreateEmployee } from './claim-employee'
 import type { JoinState } from './actions'
 
@@ -48,7 +48,7 @@ export async function joinAsCurrentUser(
 
   const { name, employmentType, observesShabbat } = parsed.data
 
-  const phone = normalizeIsraeliPhone(parsed.data.phone)
+  const phone = toLocalIsraeliPhone(parsed.data.phone)
   if (!phone) return { fieldErrors: { phone: 'מספר טלפון לא תקין' } }
 
   const supabase = await createClient()

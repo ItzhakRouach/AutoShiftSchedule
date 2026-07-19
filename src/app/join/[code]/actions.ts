@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getBaseUrl } from '@/lib/auth/base-url'
 import { isExistingUserSignUp } from '@/lib/auth/signup-result'
-import { normalizeIsraeliPhone } from '@/lib/whatsapp/phone'
+import { toLocalIsraeliPhone } from '@/lib/whatsapp/phone'
 import { claimOrCreateEmployee } from './claim-employee'
 
 export type JoinState = {
@@ -57,7 +57,7 @@ export async function joinWithInvite(
 
   const { name, email, password, employmentType, observesShabbat } = parsed.data
 
-  const phone = normalizeIsraeliPhone(parsed.data.phone)
+  const phone = toLocalIsraeliPhone(parsed.data.phone)
   if (!phone) return { fieldErrors: { phone: 'מספר טלפון לא תקין' } }
 
   // Defensive: this flow creates a brand-new account. If someone is already

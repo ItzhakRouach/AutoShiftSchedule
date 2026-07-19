@@ -11,7 +11,7 @@ import { syncEmployeeRoles } from '@/lib/employees/roles'
 import { syncEmployeeAvailability } from '@/lib/employees/availability'
 import { workplaceOwnershipError } from '@/lib/employees/validate-ownership'
 import { pickUniqueColor } from '@/lib/employees/colors'
-import { normalizeIsraeliPhone } from '@/lib/whatsapp/phone'
+import { toLocalIsraeliPhone } from '@/lib/whatsapp/phone'
 
 export type EmployeeActionState = {
   ok?: boolean
@@ -50,6 +50,11 @@ export async function createEmployee(
   )
   if (ownErr) return { error: ownErr }
 
+  // Store the local number (0504551558). Reject anything that isn't a valid
+  // Israeli number instead of persisting the raw string.
+  const localPhone = toLocalIsraeliPhone(phone)
+  if (!localPhone) return { fieldErrors: { phone: 'מספר טלפון לא תקין' } }
+
   const { data: existingEmps } = await supabase
     .from('employees')
     .select('color')
@@ -62,7 +67,7 @@ export async function createEmployee(
     .insert({
       workplace_id: workplace.id,
       name,
-      phone: phone ? (normalizeIsraeliPhone(phone) ?? phone) : null,
+      phone: localPhone,
       color: pickUniqueColor(existingColors),
       min_shifts_per_week: minShifts,
       max_shifts_per_week: maxShifts,
@@ -132,11 +137,14 @@ export async function updateEmployee(
   )
   if (ownErr) return { error: ownErr }
 
+  const localPhone = toLocalIsraeliPhone(phone)
+  if (!localPhone) return { fieldErrors: { phone: 'מספר טלפון לא תקין' } }
+
   const { error: updateError } = await supabase
     .from('employees')
     .update({
       name,
-      phone: phone ? (normalizeIsraeliPhone(phone) ?? phone) : null,
+      phone: localPhone,
       min_shifts_per_week: minShifts,
       max_shifts_per_week: maxShifts,
       employment_type: employmentType,

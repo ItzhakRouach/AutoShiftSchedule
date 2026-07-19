@@ -30,9 +30,10 @@ test('add an employee, verify they appear in the team list', async ({ page }) =>
   await page.getByRole('button', { name: 'הוסף עובד' }).click()
   await expect(page.getByRole('heading', { name: 'עובד חדש' })).toBeVisible({ timeout: 5000 })
 
-  // Fill name
+  // Fill name + phone (prefix dropdown defaults to 050; number field is 7 digits).
   await page.getByLabel('שם מלא').fill('ישראל ישראלי')
-  await page.getByLabel('טלפון').fill(`05${Math.floor(10000000 + Math.random() * 90000000)}`)
+  await page.getByLabel('טלפון').fill('4551558')
+  await expect(page.getByLabel('טלפון')).toHaveValue('455-1558') // dash after the first 3
 
   // Select first role (אחמ״ש) – first switch
   const firstRoleSwitch = page.getByRole('switch').first()
@@ -51,6 +52,13 @@ test('add an employee, verify they appear in the team list', async ({ page }) =>
 
   // Sheet should close and employee should appear
   await expect(page.getByText('ישראל ישראלי')).toBeVisible({ timeout: 10000 })
+
+  // Reopen the employee → the phone field shows the local dashed number, not 972.
+  await page.getByText('ישראל ישראלי').click()
+  await expect(page.getByRole('heading', { name: 'ישראל ישראלי' })).toBeVisible({ timeout: 5000 })
+  await expect(page.getByLabel('קידומת')).toHaveValue('050')
+  await expect(page.getByLabel('טלפון')).toHaveValue('455-1558')
+  await expect(page.getByLabel('טלפון')).not.toHaveValue(/972/)
 })
 
 test('create employee with student type, max shifts, and custom availability', async ({ page }) => {
@@ -67,7 +75,7 @@ test('create employee with student type, max shifts, and custom availability', a
 
   // Fill name
   await page.getByLabel('שם מלא').fill(empName)
-  await page.getByLabel('טלפון').fill(`05${Math.floor(10000000 + Math.random() * 90000000)}`)
+  await page.getByLabel('טלפון').fill('4551558')
 
   // Select first role
   const firstRoleSwitch = page.getByRole('switch').first()
@@ -116,7 +124,7 @@ test('edit employee — toggle availability ON, mark a cell, save, reload and ve
   await page.getByRole('button', { name: 'הוסף עובד' }).click()
   await expect(page.getByRole('heading', { name: 'עובד חדש' })).toBeVisible({ timeout: 5000 })
   await page.getByLabel('שם מלא').fill(empName)
-  await page.getByLabel('טלפון').fill(`05${Math.floor(10000000 + Math.random() * 90000000)}`)
+  await page.getByLabel('טלפון').fill('4551558')
   const firstRoleSwitch = page.getByRole('switch').first()
   await firstRoleSwitch.click()
   await page.getByRole('button', { name: 'הוספת עובד' }).click()
