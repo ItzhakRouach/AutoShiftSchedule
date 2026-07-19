@@ -5,6 +5,7 @@ import "@/styles/theme.css";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import SwRegister from "./sw-register";
+import InstallPrompt from "./InstallPrompt";
 
 const assistant = Assistant({
   variable: "--font-assistant",
@@ -23,6 +24,8 @@ export const metadata: Metadata = {
   description: "שיבוץ משמרות אוטומטי לצוותים לפי בקשות, תפקידים וזמני מנוחה",
   manifest: "/manifest.webmanifest",
   applicationName: "מִשְׁמֶרֶת",
+  // iOS "Add to Home Screen" gets the standalone chrome + app title.
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "מִשְׁמֶרֶת" },
   // og:image is supplied automatically by src/app/opengraph-image.tsx so shared
   // invite links render the app's own branded preview card (not a generic
   // deployment-host preview).
@@ -56,6 +59,7 @@ export default function RootLayout({
         />
         {children}
         <SwRegister />
+        <InstallPrompt />
         <Analytics />
         <SpeedInsights />
       </body>
