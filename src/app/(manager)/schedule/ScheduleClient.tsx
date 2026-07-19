@@ -26,11 +26,14 @@ import { GenerateControls } from './GenerateControls'
 import { ScheduleHeader } from './ScheduleHeader'
 import { copyLastWeekSchedule } from './copy-actions'
 import { UndoRedoBar } from './UndoRedoBar'
+import { RolelessNotice } from './RolelessNotice'
 
 interface Props {
   view: ScheduleView
   editMeta: EditMeta | null
   workerVacations: WorkplaceVacation[]
+  /** Active employees with no role — excluded from scheduling (shown as a notice). */
+  rolelessEmployees: { id: string; name: string }[]
 }
 
 type ViewMode = 'schedule' | 'requests'
@@ -40,7 +43,7 @@ const VIEW_OPTIONS = [
   { value: 'requests', label: 'בקשות עובדים' },
 ]
 
-export function ScheduleClient({ view, editMeta, workerVacations }: Props) {
+export function ScheduleClient({ view, editMeta, workerVacations, rolelessEmployees }: Props) {
   const a = useScheduleActions(view)
   const [slot, setSlot] = useState<SlotCtx | null>(null)
   const [pairDay, setPairDay] = useState<number | null>(null)
@@ -84,6 +87,8 @@ export function ScheduleClient({ view, editMeta, workerVacations }: Props) {
 
       <div className="schedule-controls">
       <ScheduleHeader view={view} pct={pct} />
+
+      <RolelessNotice employees={rolelessEmployees} />
 
       <FeasibilityBanner feasibility={view.feasibility} />
 

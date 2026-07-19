@@ -175,4 +175,68 @@ describe('claimOrCreateEmployee', () => {
     expect(err).not.toBeNull()
     expect(rows).toHaveLength(1) // nothing inserted
   })
+
+  // ── Guarded name-match fallback ────────────────────────────────────────────
+  // When the manager re-created the employee (pending, with a role) but the
+  // person registers with a DIFFERENT phone and no ?e=, claim the single
+  // name-matching pending row instead of inserting a duplicate role-less row.
+
+  it('claims by name when exactly one unclaimed pending row matches (no id/phone match)', async () => {
+    const rows = [
+      pendingRow({ id: 'emp-role', name: 'צחי רואש', phone: '972520000000', employment_type: 'part' }),
+    ]
+    const err = await claimOrCreateEmployee(fakeAdmin(rows), {
+      ...baseParams,
+      name: 'צחי רואש',
+      phone: '972521111111', // differs from the pending row's phone
+    })
+    expect(err).toBeNull()
+    expect(rows).toHaveLength(1) // no duplicate row
+    expect(rows[0].user_id).toBe('user-9')
+    expect(rows[0].status).toBe('active')
+    expect(rows[0].phone).toBe('972521111111') // employee's typed phone wins
+    expect(rows[0].employment_type).toBe('part') // manager config (role) preserved
+  })
+
+  it('name match is trimmed and whitespace-collapsed and case-insensitive', async () => {
+    const rows = [pendingRow({ id: 'emp-role', name: '  צחי   רואש  ', phone: '972520000000' })]
+    const err = await claimOrCreateEmployee(fakeAdmin(rows), {
+      ...baseParams,
+      name: 'צחי רואש',
+      phone: '972521111111',
+    })
+    expect(err).toBeNull()
+    expect(rows).toHaveLength(1)
+    expect(rows[0].user_id).toBe('user-9')
+  })
+
+  it('does NOT claim by name when two pending rows share the name (ambiguous) → fresh row', async () => {
+    const rows = [
+      pendingRow({ id: 'a', name: 'צחי רואש', phone: '972520000001' }),
+      pendingRow({ id: 'b', name: 'צחי רואש', phone: '972520000002' }),
+    ]
+    const err = await claimOrCreateEmployee(fakeAdmin(rows), {
+      ...baseParams,
+      name: 'צחי רואש',
+      phone: '972521111111',
+    })
+    expect(err).toBeNull()
+    expect(rows).toHaveLength(3) // fresh row created, neither pending claimed
+    expect(rows.find((r) => r.id === 'a')!.user_id).toBeNull()
+    expect(rows.find((r) => r.id === 'b')!.user_id).toBeNull()
+  })
+
+  it('does NOT claim a name-matching pending row from another workplace', async () => {
+    const rows = [
+      pendingRow({ id: 'foreign', workplace_id: 'wp-OTHER', name: 'צחי רואש', phone: '972520000000' }),
+    ]
+    const err = await claimOrCreateEmployee(fakeAdmin(rows), {
+      ...baseParams,
+      name: 'צחי רואש',
+      phone: '972521111111',
+    })
+    expect(err).toBeNull()
+    expect(rows.find((r) => r.id === 'foreign')!.user_id).toBeNull()
+    expect(rows).toHaveLength(2) // fresh row created in wp-1
+  })
 })

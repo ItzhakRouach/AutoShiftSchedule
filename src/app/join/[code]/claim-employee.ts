@@ -72,6 +72,30 @@ export async function claimOrCreateEmployee(
     // Lost the claim race — fall through and create a fresh row.
   }
 
+  // 3.5. Guarded name fallback. A manager may have re-created the employee as a
+  //      pending row (with a role) but the person registered with a DIFFERENT
+  //      phone and no ?e= — so steps 2-3 missed. If EXACTLY ONE unclaimed
+  //      pending row in this workplace matches the typed name (normalized), claim
+  //      it, preserving the manager-set role. Ambiguous (0 or >1) → fall through
+  //      to a fresh row; never guess between rows.
+  const wantName = normalizeName(p.name)
+  if (wantName) {
+    const { data: unclaimed } = await admin
+      .from('employees')
+      .select('id, name')
+      .eq('workplace_id', p.workplaceId)
+      .is('user_id', null)
+    const nameMatches = (unclaimed ?? []).filter(
+      (r: { name: string }) => normalizeName(r.name) === wantName,
+    )
+    if (nameMatches.length === 1) {
+      const claimed = await claimPendingRow(admin, p, nameMatches[0].id)
+      if (claimed === 'error') return 'שגיאה בהצטרפות למקום העבודה'
+      if (claimed) return null
+      // Lost the claim race — fall through and create a fresh row.
+    }
+  }
+
   // 4. No pending row to claim (pure self-signup): create one fresh.
   const { data: existingEmployees } = await admin
     .from('employees')
@@ -112,6 +136,12 @@ export async function claimOrCreateEmployee(
     return 'שגיאה בהצטרפות למקום העבודה'
   }
   return null
+}
+
+/** Normalize a name for matching: trim, collapse inner whitespace, lowercase.
+ *  Empty/whitespace-only names normalize to '' so they never match. */
+function normalizeName(name: string): string {
+  return name.trim().replace(/\s+/g, ' ').toLowerCase()
 }
 
 /** Atomically claim one unclaimed pending row by id within the workplace.

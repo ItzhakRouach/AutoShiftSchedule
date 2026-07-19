@@ -37,7 +37,7 @@ export default async function SchedulePage({
   // after the view — its ~9 reads are also served from the cached readers.
   const weekStart = upcomingWeekStartISO(new Date())
   const periodId = await ensureUpcomingPeriodId(supabase, workplace.id, weekStart)
-  const [view, weeks, workerVacations, editMetaRaw] = await Promise.all([
+  const [view, weeks, workerVacations, editMetaRaw, rolelessRaw] = await Promise.all([
     getScheduleView(supabase, workplace.id),
     listPublishedWeeks(supabase, workplace.id),
     // Upcoming vacations of ANY status/kind for the "בקשות עובדים" per-worker
@@ -47,7 +47,21 @@ export default async function SchedulePage({
     // unlike the dashboard's pre-existing admin-client call to this same helper.
     getWorkplaceVacations(supabase, workplace.id, todayISO),
     periodId ? getEditMeta(supabase, workplace.id, periodId, weekStart) : Promise.resolve(null),
+    // Active (joined) employees with their roles — used to warn the manager about
+    // role-less workers, who are silently skipped by the auto-scheduler.
+    supabase
+      .from('employees')
+      .select('id, name, employee_roles(role_id)')
+      .eq('workplace_id', workplace.id)
+      .eq('status', 'active')
+      .order('name'),
   ])
+
+  // Role-less active employees match no shift requirement, so the engine and
+  // cell-click never offer them (only manual drag works) — surface them.
+  const rolelessEmployees = (rolelessRaw.data ?? [])
+    .filter((e) => (e.employee_roles ?? []).length === 0)
+    .map((e) => ({ id: e.id as string, name: e.name as string }))
   const currentPeriodId = view?.periodId
 
   // History view: a PUBLISHED week other than the one currently being edited →
@@ -83,7 +97,7 @@ export default async function SchedulePage({
   return (
     <main className="schedule-main" style={{ background: 'var(--bg)', direction: 'rtl' }}>
       {view ? (
-        <ScheduleClient view={view} editMeta={editMeta} workerVacations={workerVacations} />
+        <ScheduleClient view={view} editMeta={editMeta} workerVacations={workerVacations} rolelessEmployees={rolelessEmployees} />
       ) : (
         <p style={{ textAlign: 'right', color: 'var(--text-2)' }}>
           לא ניתן לטעון את נתוני הסידור כרגע.

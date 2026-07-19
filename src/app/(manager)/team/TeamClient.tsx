@@ -2,14 +2,11 @@
 
 import React, { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Card } from '@/components/ui/Card'
-import { Avatar } from '@/components/ui/Avatar'
-import { RoleChip } from '@/components/ui/RoleChip'
 import { Icon } from '@/components/ui/Icon'
 import { Sheet } from '@/components/ui/Sheet'
 import { EmployeeEditor, type EmployeeData, type RoleOption } from './EmployeeEditor'
 import type { ShiftTypeOption } from './AvailabilityGrid'
-import { PendingInviteButton } from './PendingInviteButton'
+import { EmployeeCard } from './EmployeeCard'
 
 interface TeamClientProps {
   employees: EmployeeData[]
@@ -168,51 +165,9 @@ export function TeamClient({ employees, roles, shiftTypes }: TeamClientProps) {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-          {filtered.map((emp) => {
-            const empRoles = roles.filter((r) => emp.roleIds.includes(r.id))
-            return (
-              <Card
-                key={emp.id}
-                interactive
-                onClick={() => openEdit(emp)}
-                style={{ display: 'flex', alignItems: 'center', gap: 13 }}
-              >
-                <Avatar name={emp.name} color={emp.color} size={46} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
-                    <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {emp.name}
-                    </span>
-                    {emp.status === 'pending' && (
-                      <>
-                        <span
-                          title="העובד נוצר במערכת אך טרם הצטרף לאפליקציה."
-                          style={{ fontSize: 11, fontWeight: 700, color: '#E0902A', background: 'rgba(224,144,42,0.14)', padding: '2px 8px', borderRadius: 'var(--r-pill)', flexShrink: 0, cursor: 'help' }}
-                        >
-                          טרם הצטרף
-                        </span>
-                        <PendingInviteButton employeeId={emp.id} hasPhone={!!emp.phone} />
-                      </>
-                    )}
-                  </div>
-                  <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-                    {empRoles.map((r) => (
-                      <RoleChip key={r.id} roleName={r.name} color={r.color} size="sm" />
-                    ))}
-                  </div>
-                </div>
-                <div style={{ textAlign: 'center', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                  <span style={{ color: 'var(--text-2)', fontSize: 11, fontWeight: 600 }}>מינ׳ {emp.minShifts}</span>
-                  {emp.employmentType !== 'full' && (
-                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 'var(--r-pill)', background: 'var(--surface-sunk)', color: 'var(--text-3)' }}>
-                      {emp.employmentType === 'student' ? 'סטודנט' : 'חלקית'}
-                    </span>
-                  )}
-                </div>
-                <Icon name="chevronLeft" size={18} color="var(--text-3)" />
-              </Card>
-            )
-          })}
+          {filtered.map((emp) => (
+            <EmployeeCard key={emp.id} employee={emp} roles={roles} onOpen={openEdit} />
+          ))}
         </div>
       )}
 
