@@ -15,10 +15,9 @@ export default async function RequestsPage() {
   if (!ctx) redirect('/login')
 
   const {
-    employee, weekStart, period, shiftTypes, requestsByDay, vacations,
+    employee, weekStart, period, isReadOnly, shiftTypes, requestsByDay, vacations,
     submittedAt, deadlineLabel, maxOffDaysPerWeek, currentOffDayCount,
   } = ctx
-  const isReadOnly = !period || period.status !== 'collecting'
 
   const weekStartDate = new Date(weekStart + 'T00:00:00')
   const days = Array.from({ length: 7 }, (_, i) => {

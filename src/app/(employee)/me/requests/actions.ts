@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { saveDayRequestSchema } from '@/lib/validation/request'
-import { resolveEmployee, periodInWorkplace, type ActionResult } from './request-helpers'
+import { resolveEmployee, periodInWorkplace, requestWindowLocked, type ActionResult } from './request-helpers'
 
 export async function saveDayRequest(input: unknown): Promise<ActionResult> {
   const parsed = saveDayRequestSchema.safeParse(input)
@@ -19,10 +19,11 @@ export async function saveDayRequest(input: unknown): Promise<ActionResult> {
   const employee = await resolveEmployee(supabase, user.id)
   if (!employee || employee.id !== employeeId) return { error: 'אין הרשאה' }
 
-  // Guard: period must exist IN THIS WORKPLACE and be 'collecting'.
+  // Guard: period must exist IN THIS WORKPLACE and its window must be open
+  // (collecting AND before the deadline — real-time).
   const period = await periodInWorkplace(supabase, periodId, employee.workplace_id)
   if (!period) return { error: 'תקופה לא נמצאה' }
-  if (period.status !== 'collecting') {
+  if (await requestWindowLocked(supabase, period, employee.workplace_id)) {
     return { error: 'הבקשות נעולות — חלון ההגשה נסגר' }
   }
 
@@ -93,7 +94,7 @@ export async function submitRequests(periodId: string): Promise<ActionResult> {
 
   const period = await periodInWorkplace(supabase, periodId, employee.workplace_id)
   if (!period) return { error: 'תקופה לא נמצאה' }
-  if (period.status !== 'collecting') {
+  if (await requestWindowLocked(supabase, period, employee.workplace_id)) {
     return { error: 'הבקשות נעולות — חלון ההגשה נסגר' }
   }
 
@@ -124,7 +125,7 @@ export async function clearAllRequests(periodId: string): Promise<ActionResult> 
 
   const period = await periodInWorkplace(supabase, periodId, employee.workplace_id)
   if (!period) return { error: 'תקופה לא נמצאה' }
-  if (period.status !== 'collecting') {
+  if (await requestWindowLocked(supabase, period, employee.workplace_id)) {
     return { error: 'הבקשות נעולות — חלון ההגשה נסגר' }
   }
 

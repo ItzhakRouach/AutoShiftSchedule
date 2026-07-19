@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest'
-import { upcomingWeekStartISO, formatHebDate, hebrewDayName, isInVacationRange, resolveAbsenceKind } from './week'
+import {
+  upcomingWeekStartISO,
+  formatHebDate,
+  hebrewDayName,
+  isInVacationRange,
+  resolveAbsenceKind,
+  addDaysISO,
+  shouldRollToNextWeek,
+} from './week'
 
 describe('upcomingWeekStartISO', () => {
   it('returns the same Sunday when today IS Sunday', () => {
@@ -30,6 +38,34 @@ describe('upcomingWeekStartISO', () => {
     // 2026-01-04 is a Sunday
     const result = upcomingWeekStartISO(new Date(2026, 0, 4))
     expect(result).toBe('2026-01-04')
+  })
+})
+
+describe('addDaysISO', () => {
+  it('adds 7 days within a month', () => {
+    expect(addDaysISO('2026-06-07', 7)).toBe('2026-06-14')
+  })
+  it('rolls over a month boundary', () => {
+    expect(addDaysISO('2026-06-28', 7)).toBe('2026-07-05')
+  })
+  it('rolls over a year boundary', () => {
+    expect(addDaysISO('2026-12-28', 7)).toBe('2027-01-04')
+  })
+})
+
+describe('shouldRollToNextWeek', () => {
+  it('rolls forward when the week is published (schedule done → collect next week)', () => {
+    expect(shouldRollToNextWeek('2026-06-14', 'published', '2026-06-07')).toBe(true)
+  })
+  it('rolls forward when the week has already started (weekStart ≤ today)', () => {
+    // Sunday: upcoming week == today → collect for the following week instead.
+    expect(shouldRollToNextWeek('2026-06-07', 'collecting', '2026-06-07')).toBe(true)
+    expect(shouldRollToNextWeek('2026-06-07', 'locked', '2026-06-07')).toBe(true)
+  })
+  it('stays on a future, unpublished week (the intended lock/collect window)', () => {
+    expect(shouldRollToNextWeek('2026-06-14', 'collecting', '2026-06-07')).toBe(false)
+    // future + locked (deadline passed) → stay: this IS the lock window, not a roll.
+    expect(shouldRollToNextWeek('2026-06-14', 'locked', '2026-06-07')).toBe(false)
   })
 })
 

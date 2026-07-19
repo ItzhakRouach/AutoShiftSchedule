@@ -20,6 +20,28 @@ function formatISO(d: Date): string {
   return `${yyyy}-${mm}-${dd}`
 }
 
+/** Today's date as YYYY-MM-DD, same local basis as upcomingWeekStartISO. */
+export function toISODate(d: Date): string {
+  return formatISO(d)
+}
+
+/** Adds `days` to a YYYY-MM-DD date and returns the new YYYY-MM-DD. */
+export function addDaysISO(iso: string, days: number): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  return formatISO(new Date(y, m - 1, d + days))
+}
+
+/**
+ * Whether the employee's request form should skip a given week and roll forward
+ * to the next one. Rolls when the week is already PUBLISHED (its schedule is
+ * done → collect for the next week) or has already STARTED (weekStart ≤ today,
+ * i.e. Sunday's "upcoming" week is the current one). A future, unpublished week
+ * is kept even when `locked` — that read-only state is the intended lock window.
+ */
+export function shouldRollToNextWeek(weekStartISO: string, status: string, todayISO: string): boolean {
+  return status === 'published' || weekStartISO <= todayISO
+}
+
 /**
  * Formats an ISO date string (YYYY-MM-DD) as a short Hebrew date.
  * Examples: "2026-05-31" → "31.5", "2026-01-04" → "4.1"

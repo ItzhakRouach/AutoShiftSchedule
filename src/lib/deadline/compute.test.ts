@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { deadlineDateTime, deadlineLabel, isPastDeadline } from './compute'
+import { deadlineDateTime, deadlineLabel, isPastDeadline, isRequestLocked } from './compute'
 
 describe('deadlineLabel — always HH:MM', () => {
   it('strips seconds from the DB time column', () => {
@@ -23,6 +23,30 @@ describe('deadlineLabel — always HH:MM', () => {
  * Israel is in IST (UTC+2) during January → 18:00 IST = 16:00 UTC
  * Expected UTC instant: "2026-01-08T16:00:00.000Z"
  */
+
+describe('isRequestLocked', () => {
+  // Fixture deadline: weekStart 2026-06-07, Thu 18:00 IDT = 2026-06-04T15:00:00Z
+  const wk = '2026-06-07'
+  const before = new Date('2026-06-04T14:00:00Z')
+  const after = new Date('2026-06-04T16:00:00Z')
+
+  it('locked when the period is not collecting, regardless of deadline', () => {
+    expect(isRequestLocked('locked', wk, 4, '18:00', 'Asia/Jerusalem', before)).toBe(true)
+    expect(isRequestLocked('published', wk, 4, '18:00', 'Asia/Jerusalem', before)).toBe(true)
+  })
+
+  it('collecting + no deadline configured → open', () => {
+    expect(isRequestLocked('collecting', wk, null, null, 'Asia/Jerusalem', after)).toBe(false)
+  })
+
+  it('collecting + before the deadline → open', () => {
+    expect(isRequestLocked('collecting', wk, 4, '18:00', 'Asia/Jerusalem', before)).toBe(false)
+  })
+
+  it('collecting + past the deadline → locked (real-time, no cron needed)', () => {
+    expect(isRequestLocked('collecting', wk, 4, '18:00', 'Asia/Jerusalem', after)).toBe(true)
+  })
+})
 
 describe('deadlineDateTime (timezone-correct)', () => {
   it('summer (IDT, UTC+3): Thu 18:00 Asia/Jerusalem → 2026-06-04T15:00:00.000Z', () => {

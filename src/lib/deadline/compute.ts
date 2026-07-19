@@ -70,3 +70,22 @@ export function isPastDeadline(
   const deadline = deadlineDateTime(weekStartISO, dow, time, timeZone)
   return now.getTime() > deadline.getTime()
 }
+
+/**
+ * Effective read-only state for an employee's request window, computed in real
+ * time: locked if the period isn't `collecting`, or (when a deadline is
+ * configured) if the deadline has already passed — so the lock takes effect at
+ * the chosen moment rather than waiting for the daily lock job.
+ */
+export function isRequestLocked(
+  status: string,
+  weekStartISO: string,
+  dow: number | null | undefined,
+  time: string | null | undefined,
+  timeZone: string,
+  now: Date,
+): boolean {
+  if (status !== 'collecting') return true
+  if (dow == null || !time) return false
+  return isPastDeadline(now, weekStartISO, dow, time, timeZone)
+}
