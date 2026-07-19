@@ -25,6 +25,9 @@ interface Props {
   editMeta?: EditMeta | null
   /** Employee viewing their OWN schedule — their shifts are highlighted. */
   selfId?: string
+  /** Initial mobile layout. Employees default to 'day'; managers stay 'week'.
+   *  Desktop always shows the week table regardless of this. */
+  defaultLayout?: 'week' | 'day'
 }
 
 /**
@@ -34,8 +37,8 @@ interface Props {
  * The week table renders ONCE — CSS classes decide where it's visible — so the
  * DOM (and test ids) stay unique.
  */
-export function ScheduleGrids({ view, onSlot, onDayPair, assign, editMeta, selfId }: Props) {
-  const [layout, setLayout] = useState<'week' | 'day'>('week')
+export function ScheduleGrids({ view, onSlot, onDayPair, assign, editMeta, selfId, defaultLayout = 'week' }: Props) {
+  const [layout, setLayout] = useState<'week' | 'day'>(defaultLayout)
   const [selDay, setSelDay] = useState(0)
 
   return (
