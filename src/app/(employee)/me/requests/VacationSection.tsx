@@ -3,9 +3,11 @@
 import React, { useState, useTransition } from 'react'
 import { Card } from '@/components/ui/Card'
 import { Btn } from '@/components/ui/Btn'
+import { Segmented } from '@/components/ui/Segmented'
 import { InlineAlert } from '@/components/ui/InlineAlert'
 import { rangesOverlap } from '@/lib/dates/ranges'
 import type { VacationRow } from '@/lib/requests/context'
+import { ABSENCE_KIND_OPTIONS } from '@/lib/vacations/kind-meta'
 import { addVacation, removeVacation } from './vacation-actions'
 import { VacationRowCard } from './VacationRowCard'
 
@@ -20,6 +22,7 @@ interface VacationSectionProps {
 export function VacationSection({ employeeId, vacations, isReadOnly }: VacationSectionProps) {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
+  const [kind, setKind] = useState<'vacation' | 'miluim'>('vacation')
   const [addError, setAddError] = useState<string | null>(null)
   const [removeError, setRemoveError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -37,12 +40,13 @@ export function VacationSection({ employeeId, vacations, isReadOnly }: VacationS
       return
     }
     startTransition(async () => {
-      const result = await addVacation({ employeeId, dateFrom, dateTo })
+      const result = await addVacation({ employeeId, dateFrom, dateTo, kind })
       if ('error' in result) {
         setAddError(result.error)
       } else {
         setDateFrom('')
         setDateTo('')
+        setKind('vacation')
       }
     })
   }
@@ -66,6 +70,7 @@ export function VacationSection({ employeeId, vacations, isReadOnly }: VacationS
     fontSize: 14,
     fontFamily: 'var(--font)',
     minWidth: 0,
+    minHeight: 44,
   }
   const fieldLabel: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: 'var(--text-2)', marginBottom: 4 }
 
@@ -114,8 +119,16 @@ export function VacationSection({ employeeId, vacations, isReadOnly }: VacationS
           >
             הוספת חופשה
           </div>
+          <div style={fieldLabel}>סוג היעדרות</div>
+          <div style={{ marginBottom: 12 }}>
+            <Segmented
+              options={ABSENCE_KIND_OPTIONS.filter((o) => o.value !== 'sick')}
+              value={kind}
+              onChange={(v) => setKind(v as 'vacation' | 'miluim')}
+            />
+          </div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-            <label style={{ flex: 1, minWidth: 0 }}>
+            <label style={{ flex: '1 1 150px', minWidth: 0 }}>
               <div style={fieldLabel}>מתאריך</div>
               <input
                 type="date"
@@ -130,7 +143,7 @@ export function VacationSection({ employeeId, vacations, isReadOnly }: VacationS
                 aria-label="מתאריך"
               />
             </label>
-            <label style={{ flex: 1, minWidth: 0 }}>
+            <label style={{ flex: '1 1 150px', minWidth: 0 }}>
               <div style={fieldLabel}>עד תאריך</div>
               <input
                 type="date"

@@ -51,15 +51,15 @@ interface Props {
  *  VacationSection to keep that file ≤200 lines. */
 export function VacationRowCard({ vacation: v, isReadOnly, disabled, onRemove }: Props) {
   return (
-    <Card style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
+    <Card style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 14px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 auto', minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', lineHeight: 1.45, overflowWrap: 'anywhere' }}>
           יום {hebrewDayName(v.date_from)} {formatHebDate(v.date_from)}
           {v.date_from !== v.date_to && (
             <> — יום {hebrewDayName(v.date_to)} {formatHebDate(v.date_to)}</>
           )}
         </div>
-        <div style={{ display: 'flex', gap: 6 }}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           <VacationStatusBadge status={v.status} />
           <KindBadge kind={v.kind} />
         </div>
@@ -70,7 +70,8 @@ export function VacationRowCard({ vacation: v, isReadOnly, disabled, onRemove }:
           disabled={disabled}
           style={{
             border: 'none', background: 'transparent', color: 'var(--danger)',
-            cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)', padding: '4px 8px',
+            cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'var(--font)',
+            flexShrink: 0, alignSelf: 'center', minHeight: 44, minWidth: 44, padding: '10px 12px',
           }}
         >
           הסר

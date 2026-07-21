@@ -11,7 +11,7 @@ export async function addVacation(input: unknown): Promise<ActionResult> {
     const first = parsed.error.issues[0]
     return { error: first?.message ?? 'נתונים לא תקינים' }
   }
-  const { employeeId, dateFrom, dateTo } = parsed.data
+  const { employeeId, dateFrom, dateTo, kind } = parsed.data
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -39,7 +39,11 @@ export async function addVacation(input: unknown): Promise<ActionResult> {
     employee_id: employeeId,
     date_from: dateFrom,
     date_to: dateTo,
-    status: 'pending', // explicit — awaits manager approval before it counts
+    kind,
+    // Regular vacation awaits manager approval; מילואים is auto-approved by
+    // product decision (official duty — blocks scheduling immediately, and
+    // the manager sees the מילואים tag).
+    status: kind === 'miluim' ? 'approved' : 'pending',
   })
 
   if (error) return { error: 'שגיאה בהוספת חופשה' }
