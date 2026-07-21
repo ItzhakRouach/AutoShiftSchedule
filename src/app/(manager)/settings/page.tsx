@@ -32,7 +32,7 @@ export default async function SettingsPage() {
     supabase
       .from('workplace_settings')
       .select(
-        'request_deadline_dow, request_deadline_time, publish_dow, publish_time, working_days, max_off_per_day',
+        'request_deadline_dow, request_deadline_time, publish_dow, publish_time, working_days, max_off_per_day, max_off_days_per_week',
       )
       .eq('workplace_id', workplace.id)
       .maybeSingle(),
@@ -111,6 +111,7 @@ export default async function SettingsPage() {
             initialDow={settings?.request_deadline_dow ?? null}
             initialTime={hhmm(settings?.request_deadline_time as string | null) || null}
             initialMaxOffPerDay={(settings?.max_off_per_day as number | null) ?? null}
+            initialMaxOffDaysPerWeek={(settings?.max_off_days_per_week as number | null) ?? null}
           />
         </section>
 

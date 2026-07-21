@@ -24,7 +24,18 @@ const deadlineSchema = z.object({
     .regex(/^([01]\d|2[0-3]):[0-5]\d$/, { message: 'שעה לא תקינה (HH:MM)' }),
   // Empty input → null (no per-day off cap).
   max_off_per_day: z
-    .union([z.coerce.number().int().min(0).max(50), z.literal('')])
+    .union([
+      z.coerce.number().int().min(1, { message: 'ערך בין 1 ל-50' }).max(50),
+      z.literal(''),
+    ])
+    .transform((v) => (v === '' ? null : v))
+    .nullable(),
+  // Empty input → null (no weekly off cap).
+  max_off_days_per_week: z
+    .union([
+      z.coerce.number().int().min(1, { message: 'ערך בין 1 ל-7' }).max(7),
+      z.literal(''),
+    ])
     .transform((v) => (v === '' ? null : v))
     .nullable(),
 })
@@ -47,6 +58,7 @@ export async function updateRequestDeadline(
     // Normalise to HH:MM (the field may submit HH:MM:SS from a DB-seeded value).
     request_deadline_time: hhmm(formData.get('request_deadline_time') as string | null),
     max_off_per_day: (formData.get('max_off_per_day') as string | null) ?? '',
+    max_off_days_per_week: (formData.get('max_off_days_per_week') as string | null) ?? '',
   }
 
   const parsed = deadlineSchema.safeParse(raw)
@@ -58,7 +70,8 @@ export async function updateRequestDeadline(
     return { fieldErrors }
   }
 
-  const { request_deadline_dow, request_deadline_time, max_off_per_day } = parsed.data
+  const { request_deadline_dow, request_deadline_time, max_off_per_day, max_off_days_per_week } =
+    parsed.data
 
   const { error: upsertError } = await supabase
     .from('workplace_settings')
@@ -68,6 +81,7 @@ export async function updateRequestDeadline(
         request_deadline_dow,
         request_deadline_time,
         max_off_per_day,
+        max_off_days_per_week,
       },
       { onConflict: 'workplace_id' },
     )
