@@ -96,6 +96,37 @@ describe('addVacationSchema', () => {
     })
     expect(result.success).toBe(false)
   })
+
+  it('defaults kind to vacation when omitted', () => {
+    const result = addVacationSchema.safeParse({
+      employeeId: validUUID,
+      dateFrom: '2026-06-01',
+      dateTo: '2026-06-07',
+    })
+    expect(result.success).toBe(true)
+    if (result.success) expect(result.data.kind).toBe('vacation')
+  })
+
+  it('accepts an explicit miluim kind', () => {
+    const result = addVacationSchema.safeParse({
+      employeeId: validUUID,
+      dateFrom: '2026-06-01',
+      dateTo: '2026-06-07',
+      kind: 'miluim',
+    })
+    expect(result.success).toBe(true)
+    if (result.success) expect(result.data.kind).toBe('miluim')
+  })
+
+  it('rejects sick kind (employees may not self-select sick leave)', () => {
+    const result = addVacationSchema.safeParse({
+      employeeId: validUUID,
+      dateFrom: '2026-06-01',
+      dateTo: '2026-06-07',
+      kind: 'sick',
+    })
+    expect(result.success).toBe(false)
+  })
 })
 
 describe('managerAddVacationSchema', () => {

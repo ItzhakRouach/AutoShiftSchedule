@@ -21,6 +21,7 @@ export const addVacationSchema = z
     employeeId: z.string().uuid({ message: 'מזהה עובד לא תקין' }),
     dateFrom: z.string().regex(isoDateRegex, { message: 'תאריך התחלה לא תקין' }),
     dateTo: z.string().regex(isoDateRegex, { message: 'תאריך סיום לא תקין' }),
+    kind: z.enum(['vacation', 'miluim']).default('vacation'),
   })
   .refine((d) => d.dateTo >= d.dateFrom, {
     message: 'תאריך הסיום חייב להיות אחרי תאריך ההתחלה',
