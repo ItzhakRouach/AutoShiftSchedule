@@ -67,7 +67,7 @@ export function VacationSection({ employeeId, vacations, isReadOnly }: VacationS
     border: '1px solid var(--border-strong)',
     background: 'var(--surface)',
     color: 'var(--text)',
-    fontSize: 14,
+    fontSize: 16,
     fontFamily: 'var(--font)',
     minWidth: 0,
     minHeight: 44,
@@ -132,6 +132,7 @@ export function VacationSection({ employeeId, vacations, isReadOnly }: VacationS
               <div style={fieldLabel}>מתאריך</div>
               <input
                 type="date"
+                className="date-field"
                 value={dateFrom}
                 onChange={(e) => {
                   setDateFrom(e.target.value)
@@ -147,6 +148,7 @@ export function VacationSection({ employeeId, vacations, isReadOnly }: VacationS
               <div style={fieldLabel}>עד תאריך</div>
               <input
                 type="date"
+                className="date-field"
                 value={dateTo}
                 min={dateFrom || undefined}
                 onChange={(e) => setDateTo(e.target.value)}

@@ -164,3 +164,15 @@ textarea:focus-visible,
   }
   .submit-bar-sticky > div { box-shadow: var(--shadow-lift); }
 }
+
+/* iOS Safari renders native date fields as an intrinsic pill that ignores the
+   box model (width/border/radius) and can overflow its card. Resetting
+   appearance makes the field obey layout; the pseudo keeps the value
+   start-aligned in RTL. font-size >= 16px prevents iOS focus auto-zoom. */
+.date-field {
+  -webkit-appearance: none;
+  appearance: none;
+}
+.date-field::-webkit-date-and-time-value {
+  text-align: start;
+}

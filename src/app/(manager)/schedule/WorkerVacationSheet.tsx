@@ -37,7 +37,7 @@ function rangeLabel(dateFrom: string, dateTo: string): string {
 const inputStyle: React.CSSProperties = {
   width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 'var(--r-md)',
   border: '1px solid var(--border-strong)', background: 'var(--surface)',
-  color: 'var(--text)', fontSize: 14, fontFamily: 'var(--font)', minWidth: 0,
+  color: 'var(--text)', fontSize: 16, fontFamily: 'var(--font)', minWidth: 0, minHeight: 44,
 }
 
 const fieldLabel: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: 'var(--text-2)', marginBottom: 4 }
@@ -149,6 +149,7 @@ export function WorkerVacationSheet({ employeeId, employeeName, vacations, onClo
           <div style={fieldLabel}>מתאריך</div>
           <input
             type="date"
+            className="date-field"
             value={dateFrom}
             onChange={(e) => {
               setDateFrom(e.target.value)
@@ -162,6 +163,7 @@ export function WorkerVacationSheet({ employeeId, employeeName, vacations, onClo
           <div style={fieldLabel}>עד תאריך</div>
           <input
             type="date"
+            className="date-field"
             value={dateTo}
             min={dateFrom || undefined}
             onChange={(e) => setDateTo(e.target.value)}
