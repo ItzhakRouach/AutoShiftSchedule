@@ -145,7 +145,7 @@ export function WorkerVacationSheet({ employeeId, employeeName, vacations, onClo
         <Segmented options={ABSENCE_KIND_OPTIONS} value={kind} onChange={(v) => setKind(v as VacationKind)} />
       </div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-        <label style={{ flex: 1, minWidth: 0 }}>
+        <label style={{ flex: '1 1 240px', minWidth: 0 }}>
           <div style={fieldLabel}>מתאריך</div>
           <input
             type="date"
@@ -158,7 +158,7 @@ export function WorkerVacationSheet({ employeeId, employeeName, vacations, onClo
             aria-label="מתאריך"
           />
         </label>
-        <label style={{ flex: 1, minWidth: 0 }}>
+        <label style={{ flex: '1 1 240px', minWidth: 0 }}>
           <div style={fieldLabel}>עד תאריך</div>
           <input
             type="date"

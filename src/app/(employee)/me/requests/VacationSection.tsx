@@ -128,7 +128,7 @@ export function VacationSection({ employeeId, vacations, isReadOnly }: VacationS
             />
           </div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-            <label style={{ flex: '1 1 150px', minWidth: 0 }}>
+            <label style={{ flex: '1 1 240px', minWidth: 0 }}>
               <div style={fieldLabel}>מתאריך</div>
               <input
                 type="date"
@@ -143,7 +143,7 @@ export function VacationSection({ employeeId, vacations, isReadOnly }: VacationS
                 aria-label="מתאריך"
               />
             </label>
-            <label style={{ flex: '1 1 150px', minWidth: 0 }}>
+            <label style={{ flex: '1 1 240px', minWidth: 0 }}>
               <div style={fieldLabel}>עד תאריך</div>
               <input
                 type="date"
