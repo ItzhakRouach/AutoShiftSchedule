@@ -79,7 +79,7 @@ export async function joinEmployee(
 
 /** Navigate an employee to /me/requests and wait for the page heading. */
 export async function openRequests(page: Page): Promise<void> {
-  await page.getByRole('link', { name: /הגשת בקשות/ }).click()
+  await page.goto('/me/requests')
   await expect(page).toHaveURL(/\/me\/requests/, { timeout: 10000 })
   await expect(page.getByRole('heading', { name: 'הבקשות שלי' })).toBeVisible({ timeout: 10000 })
 }
