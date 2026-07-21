@@ -45,8 +45,8 @@ export interface EmployeeRequestsContext {
   submittedAt: string | null
   /** Hebrew label of when the submission window closes, or null if not configured. */
   deadlineLabel: string | null
-  /** Workplace cap on "יום חופש" requests per period (0..7, default 2). */
-  maxOffDaysPerWeek: number
+  /** Workplace cap on off-day requests per week, `null` = no limit. */
+  maxOffDaysPerWeek: number | null
   /** How many of the cap the employee has already used this period. */
   currentOffDayCount: number
 }
@@ -165,7 +165,7 @@ export async function getEmployeeRequestsContext(
   }
 
   const maxOffDaysPerWeek =
-    (settingsRow?.max_off_days_per_week as number | null | undefined) ?? 2
+    (settingsRow?.max_off_days_per_week as number | null | undefined) ?? null
 
   return {
     employee: emp,

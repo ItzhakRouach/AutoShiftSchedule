@@ -8,6 +8,7 @@ import { SHIFT_META } from '@/lib/domain/constants'
 import type { ShiftTypeRow, RequestRow } from '@/lib/requests/context'
 import { ABSENCE_KIND_META, type AbsenceKind } from '@/lib/vacations/kind-meta'
 import { DayEditor } from './DayEditor'
+import { OffCapBanner } from './OffCapBanner'
 
 const HEB_DAYS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
 
@@ -26,8 +27,8 @@ interface DayListProps {
   periodId: string
   employeeId: string
   isReadOnly: boolean
-  /** Workplace cap on off-days per period (0..7). */
-  maxOffDaysPerWeek: number
+  /** Workplace cap on off-days per period; `null` = ללא הגבלה. */
+  maxOffDaysPerWeek: number | null
   /** Off-days the employee has ALREADY taken in this period. */
   currentOffDayCount: number
 }
@@ -43,27 +44,12 @@ export function DayList({
   // upsert would replace it). So "remaining" accounts for that.
   const activeDayWasOff = activeDayCard?.request?.is_off ?? false
   const usedExcludingActive = currentOffDayCount - (activeDayWasOff ? 1 : 0)
-  const offCapReached = usedExcludingActive >= maxOffDaysPerWeek
+  const offCapReached = maxOffDaysPerWeek != null && usedExcludingActive >= maxOffDaysPerWeek
 
   return (
     <>
-      {!isReadOnly && maxOffDaysPerWeek < 7 && (
-        <div
-          data-testid="off-cap-banner"
-          style={{
-            marginBottom: 12, padding: '9px 14px', borderRadius: 'var(--r-md)',
-            background: currentOffDayCount >= maxOffDaysPerWeek
-              ? 'rgba(245,158,11,0.12)' : 'var(--surface-2)',
-            border: `1px solid ${currentOffDayCount >= maxOffDaysPerWeek
-              ? 'rgba(245,158,11,0.35)' : 'var(--border)'}`,
-            fontSize: 13, color: 'var(--text)', fontWeight: 600,
-          }}
-        >
-          ימי חופש בשבוע זה: <b>{currentOffDayCount}</b> מתוך <b>{maxOffDaysPerWeek}</b>
-          {currentOffDayCount >= maxOffDaysPerWeek && (
-            <span style={{ marginInlineStart: 8, color: 'var(--warning)' }}>· הגעת למקסימום</span>
-          )}
-        </div>
+      {!isReadOnly && maxOffDaysPerWeek != null && (
+        <OffCapBanner current={currentOffDayCount} cap={maxOffDaysPerWeek} />
       )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
         {days.map((day) => {

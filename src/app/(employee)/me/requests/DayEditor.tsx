@@ -37,6 +37,11 @@ export function DayEditor({ shiftTypes, request, periodId, employeeId, dayOfWeek
   // not already marked off (toggling OFF an existing off-day is always allowed).
   const offDisabled = offCapReached && !isOff
 
+  // An already-saved day (a request row exists) with nothing selected means
+  // this save will CLEAR it (see actions.ts) rather than being a no-op.
+  const hasSavedRow = request !== null
+  const isEmpty = !isOff && selectedIds.length === 0
+
   // Shifts and "day off" are independent, combinable preferences: e.g. pick
   // morning AND off → "give me morning, or a day off". The engine satisfies any
   // selected option. (Selecting nothing + off = a plain off-request.)
@@ -127,15 +132,17 @@ export function DayEditor({ shiftTypes, request, periodId, employeeId, dayOfWeek
 
       <div style={{ height: 18 }} />
       <Btn
-        variant="primary"
+        variant={isEmpty && hasSavedRow ? 'soft' : 'primary'}
         size="lg"
         style={{ width: '100%' }}
         onClick={handleSave}
-        disabled={isPending || (!isOff && selectedIds.length === 0)}
+        disabled={isPending || (isEmpty && !hasSavedRow)}
       >
-        {isPending ? 'שומר...' : 'שמירה'}
+        {isEmpty && hasSavedRow
+          ? (isPending ? 'מנקה…' : 'נקה יום')
+          : (isPending ? 'שומר...' : 'שמירה')}
       </Btn>
-      {!isOff && selectedIds.length === 0 && !isPending && (
+      {isEmpty && !hasSavedRow && !isPending && (
         <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-3)', marginTop: 6 }}>
           יש לבחור משמרת אחת לפחות או לסמן יום חופש
         </div>

@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { saveDayRequestSchema } from '@/lib/validation/request'
+import { weeklyCapBlocks, weeklyCapMessage, perDayCapBlocks, perDayCapMessage } from '@/lib/requests/cap-check'
 import { resolveEmployee, periodInWorkplace, requestWindowLocked, type ActionResult } from './request-helpers'
 
 export async function saveDayRequest(input: unknown): Promise<ActionResult> {
@@ -37,30 +38,56 @@ export async function saveDayRequest(input: unknown): Promise<ActionResult> {
       .select('max_off_days_per_week, max_off_per_day')
       .eq('workplace_id', employee.workplace_id)
       .maybeSingle()
-    const cap = (settingsRow?.max_off_days_per_week as number | null) ?? 2
-    const { data: otherOffs } = await supabase
-      .from('requests')
-      .select('day_of_week')
-      .eq('period_id', periodId)
-      .eq('employee_id', employeeId)
-      .eq('is_off', true)
-      .neq('day_of_week', dayOfWeek)
-    const usedExcludingThisDay = (otherOffs ?? []).length
-    if (usedExcludingThisDay + 1 > cap) {
-      return { error: `הגעת למקסימום ימי חופש לשבוע (${cap})` }
+    const cap = (settingsRow?.max_off_days_per_week as number | null) ?? null
+    // When cap is null (no limit configured), skip the count query entirely —
+    // there's nothing to compare against, and it saves a round-trip.
+    if (cap != null && cap > 0) {
+      const { data: otherOffs } = await supabase
+        .from('requests')
+        .select('day_of_week')
+        .eq('period_id', periodId)
+        .eq('employee_id', employeeId)
+        .eq('is_off', true)
+        .neq('day_of_week', dayOfWeek)
+      const usedExcludingThisDay = (otherOffs ?? []).length
+      if (weeklyCapBlocks(cap, usedExcludingThisDay)) {
+        return { error: weeklyCapMessage(cap) }
+      }
     }
-    // Per-DAY cap: how many OTHER workers are already off this day (RLS-safe RPC).
+    // Per-DAY cap: how many OTHER workers are already off this day (RLS-safe
+    // RPC). `> 0` guard is defense-in-depth above the DB CHECK (max_off_per_day
+    // can no longer be stored as 0). This is a count-then-insert check, not an
+    // atomic constraint — under concurrent saves two employees could both pass
+    // the check and both land, slightly overfilling the cap. Accepted: these
+    // are small workplaces, the cap is a preventive nudge rather than a hard
+    // guarantee, and the scheduling engine's coverage-rescue logic absorbs any
+    // resulting shortfall. Upgrade path if it ever matters: an atomic RPC with
+    // an advisory lock.
     const perDayCap = settingsRow?.max_off_per_day as number | null | undefined
-    if (perDayCap != null) {
+    if (perDayCap != null && perDayCap > 0) {
       const { data: dayOffCount } = await supabase.rpc('off_count_for_day', {
         p_period: periodId,
         p_day: dayOfWeek,
         p_exclude: employeeId,
       })
-      if (((dayOffCount as number | null) ?? 0) >= perDayCap) {
-        return { error: `כבר ${perDayCap} עובדים בחופש ביום זה — לא ניתן להוסיף` }
+      if (perDayCapBlocks(perDayCap, (dayOffCount as number | null) ?? 0)) {
+        return { error: perDayCapMessage((dayOffCount as number | null) ?? 0, perDayCap) }
       }
     }
+  }
+
+  // Empty selection (no shifts, not off) === "no request" — delete the row so
+  // the day returns to "טרם נבחר" instead of persisting a junk empty row.
+  if (!isOff && preferredShiftIds.length === 0) {
+    const { error: delErr } = await supabase
+      .from('requests')
+      .delete()
+      .eq('period_id', periodId)
+      .eq('employee_id', employeeId)
+      .eq('day_of_week', dayOfWeek)
+    if (delErr) return { error: 'שגיאה בשמירת הבקשה' }
+    revalidatePath('/me/requests')
+    return { ok: true }
   }
 
   const { error } = await supabase.from('requests').upsert(
