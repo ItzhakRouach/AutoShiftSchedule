@@ -51,6 +51,6 @@ Function contract: Appwrite `utilities` function (secret-gated, shared GUARDPAY_
 actions: `FIND_ACCOUNT` (email → name confirmation) and `IMPORT_WEEK` (period → publish shifts to GuardPay).
 Env (server-only): `GUARDPAY_APPWRITE_ENDPOINT`, `GUARDPAY_APPWRITE_PROJECT_ID`, `GUARDPAY_FUNCTION_ID`,
 `GUARDPAY_APPWRITE_API_KEY`, `GUARDPAY_IMPORT_SECRET`; dev/e2e use `GUARDPAY_FAKE=1` to bypass external calls.
-Shifts are tagged with `import_key` (period ID); full-week re-import replaces only tagged docs, preserving
+Shifts are tagged with `import_key` = `mishmeret:<week_start_date>` (stable per week); full-week re-import replaces only tagged docs, preserving
 manual shifts. **Critical:** function runs TZ=Asia/Jerusalem (salary buckets are local-time dependent); import
 refuses `BAD_TZ` if constraint violated. See GuardPay-Functions/utilities/README.md for ops runbook.

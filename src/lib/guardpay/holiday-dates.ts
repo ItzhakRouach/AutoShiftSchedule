@@ -29,12 +29,13 @@ export async function collectHolidayDates(
   weekStart: string,
 ): Promise<Set<string>> {
   const weekEnd = DateTime.fromISO(weekStart).plus({ days: 7 }).toISODate()!
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('holidays')
     .select('date')
     .eq('workplace_id', workplaceId)
     .gte('date', weekStart)
     .lte('date', weekEnd)
+  if (error) throw new Error('holidays query failed')
   const tableDates = (data ?? []).map((r) => r.date as string)
   return unionHolidaySet(tableDates, weekYears(weekStart))
 }

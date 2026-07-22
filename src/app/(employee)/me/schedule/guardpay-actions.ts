@@ -107,7 +107,7 @@ export async function syncWeekToGuardPay(input: unknown): Promise<SyncResult> {
     .maybeSingle()
   if (!link) return { error: 'אין חיבור ל-GuardPay' }
 
-  const [{ data: assignments }, { data: shiftTypes }] = await Promise.all([
+  const [assignmentsRes, shiftTypesRes] = await Promise.all([
     supabase
       .from('assignments')
       .select('day_of_week, shift_type_id')
@@ -118,7 +118,18 @@ export async function syncWeekToGuardPay(input: unknown): Promise<SyncResult> {
       .select('id, name, start_hour, hours')
       .eq('workplace_id', employee.workplace_id),
   ])
-  const holidaySet = await collectHolidayDates(supabase, employee.workplace_id, period.week_start_date)
+  if (assignmentsRes.error || shiftTypesRes.error) {
+    return { error: 'שגיאה בטעינת המשמרות — הייבוא לא בוצע, נסו שוב' }
+  }
+  const assignments = assignmentsRes.data
+  const shiftTypes = shiftTypesRes.data
+
+  let holidaySet: Set<string>
+  try {
+    holidaySet = await collectHolidayDates(supabase, employee.workplace_id, period.week_start_date)
+  } catch {
+    return { error: 'שגיאה בטעינת המשמרות — הייבוא לא בוצע, נסו שוב' }
+  }
   const shiftTypesById = Object.fromEntries(
     ((shiftTypes ?? []) as ShiftTypeRow[]).map((s) => [s.id, s]),
   )
