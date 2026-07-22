@@ -6,6 +6,7 @@ import { countMyRoles } from '@/lib/stats/my-role-counts'
 import { ScheduleGrids } from '@/app/(manager)/schedule/ScheduleGrids'
 import { WeekNav } from '@/app/(manager)/schedule/WeekNav'
 import { MyRoleCounts } from './MyRoleCounts'
+import { GuardPaySyncCard } from './GuardPaySyncCard'
 import { Card } from '@/components/ui/Card'
 
 // Always reflect the current published state (no stale schedule after the
@@ -35,6 +36,20 @@ export default async function MeSchedulePage({
   const view = selectedId ? await getPublishedScheduleView(supabase, employee.workplace_id, selectedId) : null
   const myNotes = (view?.dayNotes ?? []).filter((n) => n.employeeId === employee.id)
   const myRoleCounts = view ? countMyRoles(view, employee.id) : { roles: [], total: 0 }
+
+  const { data: gpLink } = await supabase
+    .from('guardpay_links')
+    .select('guardpay_name')
+    .eq('employee_id', employee.id)
+    .maybeSingle()
+  const { data: gpSync } = selectedId
+    ? await supabase
+        .from('guardpay_syncs')
+        .select('id')
+        .eq('employee_id', employee.id)
+        .eq('period_id', selectedId)
+        .maybeSingle()
+    : { data: null }
 
   // No published period at all yet (not even a past one) — show a dedicated
   // page-level empty state instead of the header + grid wrapper with an empty
@@ -109,6 +124,16 @@ export default async function MeSchedulePage({
         )}
 
         {view && <MyRoleCounts roles={myRoleCounts.roles} total={myRoleCounts.total} />}
+
+        {view && (
+          <GuardPaySyncCard
+            periodId={view.periodId}
+            linked={!!gpLink}
+            linkedName={gpLink?.guardpay_name ?? null}
+            synced={!!gpSync}
+            hasShifts={myRoleCounts.total > 0}
+          />
+        )}
       </div>
 
       {view ? (
