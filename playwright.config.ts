@@ -17,5 +17,9 @@ export default defineConfig({
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
+    // GuardPay integration runs against canned fixtures in e2e — no real
+    // Appwrite calls. NOTE: applies only when Playwright starts the server;
+    // kill any already-running dev server before `npm run e2e`.
+    env: { GUARDPAY_FAKE: '1' },
   },
 })
