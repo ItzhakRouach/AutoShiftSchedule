@@ -76,7 +76,9 @@ export async function unlinkGuardPay(): Promise<LinkResult> {
   const employee = await resolveEmployee(supabase, user.id)
   if (!employee) return { error: 'אין הרשאה' }
 
-  await supabase.from('guardpay_syncs').delete().eq('employee_id', employee.id)
+  const { error: syncsError } = await supabase.from('guardpay_syncs').delete().eq('employee_id', employee.id)
+  if (syncsError) return { error: 'שגיאה בניתוק החשבון' }
+
   const { error } = await supabase.from('guardpay_links').delete().eq('employee_id', employee.id)
   if (error) return { error: 'שגיאה בניתוק החשבון' }
 
@@ -135,7 +137,7 @@ export async function syncWeekToGuardPay(input: unknown): Promise<SyncResult> {
   })
   if (!r.ok) return { error: GUARDPAY_ERROR_HE[r.code] }
 
-  await supabase.from('guardpay_syncs').upsert(
+  const { error: syncMarkError } = await supabase.from('guardpay_syncs').upsert(
     {
       employee_id: employee.id,
       period_id: periodId,
@@ -144,6 +146,10 @@ export async function syncWeekToGuardPay(input: unknown): Promise<SyncResult> {
     },
     { onConflict: 'employee_id,period_id' },
   )
+  if (syncMarkError) {
+    revalidatePath('/me/schedule')
+    return { error: 'הייבוא ל-GuardPay הצליח, אך שמירת סימון הסנכרון נכשלה — רעננו את הדף' }
+  }
 
   revalidatePath('/me/schedule')
   return { ok: true, created: r.data.created }
