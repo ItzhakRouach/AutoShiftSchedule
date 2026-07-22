@@ -40,3 +40,17 @@ Vercel, Brevo SMTP live with branded sender, rate limit raised; templates in doc
 4. **SMTP**: built-in Supabase email is ~2 messages/hour project-wide — enough for nothing. Configure custom
    SMTP (Resend/Brevo free tiers) before onboarding a real team, or keep confirmations OFF.
 5. **Password floor**: dashboard minimum password length should be 8 to match the app's Zod validation.
+
+## GuardPay integration
+
+Optional third-party salary import (employee links GuardPay, imports published weeks, paid shifts flow to
+GuardPay for monthly bruto calculation). Two tables: `guardpay_links` (email + account name link per employee;
+RLS self-only), `guardpay_syncs` (per employee × period, tracks import state; RLS self-only).
+
+Function contract: Appwrite `utilities` function (secret-gated, shared GUARDPAY_IMPORT_SECRET) exposes two
+actions: `FIND_ACCOUNT` (email → name confirmation) and `IMPORT_WEEK` (period → publish shifts to GuardPay).
+Env (server-only): `GUARDPAY_APPWRITE_ENDPOINT`, `GUARDPAY_APPWRITE_PROJECT_ID`, `GUARDPAY_FUNCTION_ID`,
+`GUARDPAY_APPWRITE_API_KEY`, `GUARDPAY_IMPORT_SECRET`; dev/e2e use `GUARDPAY_FAKE=1` to bypass external calls.
+Shifts are tagged with `import_key` (period ID); full-week re-import replaces only tagged docs, preserving
+manual shifts. **Critical:** function runs TZ=Asia/Jerusalem (salary buckets are local-time dependent); import
+refuses `BAD_TZ` if constraint violated. See GuardPay-Functions/utilities/README.md for ops runbook.

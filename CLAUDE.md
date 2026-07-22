@@ -76,3 +76,4 @@ DesignTemplate/     # REFERENCE prototype — read for design/logic, do NOT ship
 - Engine rules: `docs/scheduling-engine.md`
 - Tokens & components: `docs/design-system.md`
 - Invites + publish via wa.me share links (no API): `docs/whatsapp.md`
+- GuardPay import (employee → external salary app): `docs/superpowers/specs/2026-07-23-guardpay-integration-design.md`
