@@ -6,6 +6,7 @@ const TYPES = {
   noon: { id: 'noon', name: 'צהריים', start_hour: 15, hours: 8 },
   night: { id: 'night', name: 'לילה', start_hour: 23, hours: 8 },
   m12night: { id: 'm12night', name: 'לילה 12ש׳', start_hour: 19, hours: 12 },
+  m12day: { id: 'm12day', name: 'יום 12ש׳', start_hour: 7, hours: 12 },
 }
 
 function build(weekStart: string, assignments: { day_of_week: number; shift_type_id: string }[], holidays: string[] = []) {
@@ -55,6 +56,12 @@ describe('buildWeekShifts — Israel timezone correctness', () => {
     const [s] = build('2026-07-19', [{ day_of_week: 2, shift_type_id: 'm12night' }])
     expect(s.start).toBe('2026-07-21T16:00:00.000Z')
     expect(s.end).toBe('2026-07-22T04:00:00.000Z')
+  })
+
+  it('12h day 07:00+12h — Friday instance spans into the Shabbat window (instants only)', () => {
+    const [s] = build('2026-07-19', [{ day_of_week: 5, shift_type_id: 'm12day' }])
+    expect(s.start).toBe('2026-07-24T04:00:00.000Z') // Fri 07:00+03:00
+    expect(s.end).toBe('2026-07-24T16:00:00.000Z')   // Fri 19:00+03:00 — GuardPay prices the 16:00+ blocks as Shabbat
   })
 })
 
