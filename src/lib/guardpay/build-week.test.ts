@@ -63,6 +63,14 @@ describe('buildWeekShifts — Israel timezone correctness', () => {
     expect(s.start).toBe('2026-07-24T04:00:00.000Z') // Fri 07:00+03:00
     expect(s.end).toBe('2026-07-24T16:00:00.000Z')   // Fri 19:00+03:00 — GuardPay prices the 16:00+ blocks as Shabbat
   })
+
+  it('night shift straddling the DST spring-forward keeps true 8h duration', () => {
+    // Thu 2026-03-26 23:00+02:00 → clocks jump 02:00→03:00 during the shift;
+    // end = start + 8 ELAPSED hours = Fri 08:00+03:00 (duration semantics, not wall-clock).
+    const [s] = build('2026-03-22', [{ day_of_week: 4, shift_type_id: 'night' }])
+    expect(s.start).toBe('2026-03-26T21:00:00.000Z') // Thu 23:00+02:00
+    expect(s.end).toBe('2026-03-27T05:00:00.000Z')   // Fri 08:00+03:00
+  })
 })
 
 describe('buildWeekShifts — holidays, comments, ordering', () => {
