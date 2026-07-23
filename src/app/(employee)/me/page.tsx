@@ -7,8 +7,8 @@ import { Icon, type IconName } from '@/components/ui/Icon'
 import { Card } from '@/components/ui/Card'
 import { DeleteAccountButton } from '@/components/account/DeleteAccountButton'
 import { getMeSummary, getMeStats } from '@/lib/stats/me-summary-data'
-import { upcomingWeekStartISO } from '@/lib/dates/week'
 import { deadlineLabel } from '@/lib/deadline/compute'
+import { resolveCollectionWeek } from '@/lib/requests/collection-week'
 import { deleteMyAccount } from './actions'
 import { MeSummary } from './MeSummary'
 import { MeStats } from './MeStats'
@@ -43,23 +43,19 @@ export default async function MePage() {
     .maybeSingle()
   if (!employee) redirect('/onboarding')
 
-  const [{ data: workplace }, { data: settings }, summaryData, statsData] = await Promise.all([
-    supabase.from('workplaces').select('name, timezone').eq('id', employee.workplace_id).maybeSingle(),
-    supabase
-      .from('workplace_settings')
-      .select('request_deadline_dow, request_deadline_time')
-      .eq('workplace_id', employee.workplace_id)
-      .maybeSingle(),
+  const [{ data: workplace }, week, summaryData, statsData] = await Promise.all([
+    supabase.from('workplaces').select('name').eq('id', employee.workplace_id).maybeSingle(),
+    resolveCollectionWeek(supabase, employee.workplace_id, new Date()),
     getMeSummary(supabase, employee.id, employee.workplace_id),
     getMeStats(supabase, employee.id, employee.workplace_id),
   ])
 
-  const dDow = settings?.request_deadline_dow as number | null | undefined
-  const dTime = settings?.request_deadline_time as string | null | undefined
-  const tz = (workplace?.timezone as string | null) ?? 'Asia/Jerusalem'
+  // The deadline banner follows the SAME rolled week as the request form: once
+  // this week's deadline passes it advances to next week's, never showing a
+  // stale past date.
   const deadline =
-    dDow != null && dTime
-      ? deadlineLabel(upcomingWeekStartISO(new Date()), dDow, dTime, tz)
+    week && week.dow != null && week.time
+      ? deadlineLabel(week.weekStart, week.dow, week.time, week.tz)
       : null
 
   return (

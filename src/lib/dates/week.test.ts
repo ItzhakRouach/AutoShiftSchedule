@@ -62,10 +62,14 @@ describe('shouldRollToNextWeek', () => {
     expect(shouldRollToNextWeek('2026-06-07', 'collecting', '2026-06-07')).toBe(true)
     expect(shouldRollToNextWeek('2026-06-07', 'locked', '2026-06-07')).toBe(true)
   })
-  it('stays on a future, unpublished week (the intended lock/collect window)', () => {
+  it('stays on a future, unpublished week when the deadline has NOT passed', () => {
     expect(shouldRollToNextWeek('2026-06-14', 'collecting', '2026-06-07')).toBe(false)
-    // future + locked (deadline passed) → stay: this IS the lock window, not a roll.
     expect(shouldRollToNextWeek('2026-06-14', 'locked', '2026-06-07')).toBe(false)
+  })
+  it('rolls forward when the submission deadline has passed', () => {
+    // Future collecting week, but its deadline already passed → advance so the
+    // employee sees NEXT week's deadline instead of a stale past date.
+    expect(shouldRollToNextWeek('2026-06-14', 'collecting', '2026-06-07', true)).toBe(true)
   })
 })
 

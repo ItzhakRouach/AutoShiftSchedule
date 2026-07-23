@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getAuthUser } from '@/lib/auth/user'
-import { upcomingWeekStartISO, addDaysISO, shouldRollToNextWeek, toISODate } from '@/lib/dates/week'
 import { deadlineLabel, isRequestLocked } from '@/lib/deadline/compute'
+import { resolveCollectionWeek } from './collection-week'
 
 export interface ShiftTypeRow {
   id: string
@@ -79,42 +79,17 @@ export async function getEmployeeRequestsContext(
   // vacations/pending.ts). UTC-date slice, matching that call site.
   const todayISO = now.toISOString().slice(0, 10)
 
-  // Resolve the week the employee should collect for: start at the upcoming
-  // Sunday and roll forward past any week that is already PUBLISHED or has
-  // already STARTED (so publishing, and the Sunday boundary, reopen collection
-  // for the next week — an empty form). Employees can't INSERT periods directly,
-  // so the SECURITY DEFINER RPC lazily materializes each candidate week.
-  let weekStart = upcomingWeekStartISO(now)
-  let periodId: string | null = null
-  let status = 'collecting'
-  for (let i = 0; i < 8; i++) {
-    const { data: pid, error: rpcError } = await supabase.rpc('ensure_upcoming_period', {
-      wp: emp.workplace_id,
-      wk: weekStart,
-    })
-    if (rpcError || !pid) return null
-    periodId = pid as string
-    const { data: pr } = await supabase
-      .from('schedule_periods')
-      .select('status')
-      .eq('id', periodId)
-      .maybeSingle()
-    status = (pr?.status as string | undefined) ?? 'collecting'
-    if (shouldRollToNextWeek(weekStart, status, toISODate(now))) {
-      weekStart = addDaysISO(weekStart, 7)
-      continue
-    }
-    break
-  }
-  if (!periodId) return null
+  // Resolve the week the employee should collect for (rolls past published/
+  // started/deadline-passed weeks). Shared with /me's deadline banner.
+  const week = await resolveCollectionWeek(supabase, emp.workplace_id, now)
+  if (!week) return null
+  const { weekStart, periodId, status, dow, time, tz, maxOffDaysPerWeek } = week
 
   const [
     { data: shiftTypesRaw },
     { data: requestsRaw },
     { data: vacationsRaw },
     { data: submissionRow },
-    { data: settingsRow },
-    { data: wpRow },
   ] = await Promise.all([
     supabase
       .from('shift_types')
@@ -139,21 +114,8 @@ export async function getEmployeeRequestsContext(
       .eq('period_id', periodId)
       .eq('employee_id', emp.id)
       .maybeSingle(),
-    supabase
-      .from('workplace_settings')
-      .select('request_deadline_dow, request_deadline_time, max_off_days_per_week')
-      .eq('workplace_id', emp.workplace_id)
-      .maybeSingle(),
-    supabase
-      .from('workplaces')
-      .select('timezone')
-      .eq('id', emp.workplace_id)
-      .maybeSingle(),
   ])
 
-  const dow = settingsRow?.request_deadline_dow as number | null | undefined
-  const time = settingsRow?.request_deadline_time as string | null | undefined
-  const tz = (wpRow?.timezone as string | null | undefined) ?? 'Asia/Jerusalem'
   const deadline =
     dow != null && time ? deadlineLabel(weekStart, dow, time, tz) : null
 
@@ -164,13 +126,10 @@ export async function getEmployeeRequestsContext(
     if (r.is_off) currentOffDayCount += 1
   }
 
-  const maxOffDaysPerWeek =
-    (settingsRow?.max_off_days_per_week as number | null | undefined) ?? null
-
   return {
     employee: emp,
     weekStart,
-    period: { id: periodId, status: status as 'collecting' | 'locked' | 'published' },
+    period: { id: periodId, status },
     // Real-time lock: honors the deadline the instant it passes, not only after
     // the daily lock job flips the stored status.
     isReadOnly: isRequestLocked(status, weekStart, dow, time, tz, now),

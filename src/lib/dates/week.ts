@@ -46,12 +46,19 @@ export function addDaysISO(iso: string, days: number): string {
 /**
  * Whether the employee's request form should skip a given week and roll forward
  * to the next one. Rolls when the week is already PUBLISHED (its schedule is
- * done → collect for the next week) or has already STARTED (weekStart ≤ today,
- * i.e. Sunday's "upcoming" week is the current one). A future, unpublished week
- * is kept even when `locked` — that read-only state is the intended lock window.
+ * done → collect for the next week), has already STARTED (weekStart ≤ today,
+ * i.e. Sunday's "upcoming" week is the current one), or its submission
+ * DEADLINE has already passed (`deadlinePassed`) — so the deadline banner and
+ * the request form both advance to next week's deadline the moment submission
+ * for this week closes, instead of showing a stale past date.
  */
-export function shouldRollToNextWeek(weekStartISO: string, status: string, todayISO: string): boolean {
-  return status === 'published' || weekStartISO <= todayISO
+export function shouldRollToNextWeek(
+  weekStartISO: string,
+  status: string,
+  todayISO: string,
+  deadlinePassed = false,
+): boolean {
+  return status === 'published' || weekStartISO <= todayISO || deadlinePassed
 }
 
 /**
