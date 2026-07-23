@@ -37,5 +37,15 @@ export async function unpublishPeriod(
     // swallow — DB transition succeeded; storage cleanup is best-effort.
   }
 
+  // Reset employees' GuardPay import markers for this week (admin: the rows are
+  // self-only under RLS). The schedule may change before a republish, and the
+  // marker is what disables the employee's import button — without this reset
+  // they could never pull the updated week into GuardPay.
+  try {
+    await admin.from('guardpay_syncs').delete().eq('period_id', periodId)
+  } catch {
+    // swallow — worst case the button stays disabled until unlink/relink.
+  }
+
   return { didUnpublish: true }
 }

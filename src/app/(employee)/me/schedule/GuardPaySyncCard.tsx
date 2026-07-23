@@ -15,11 +15,13 @@ interface Props {
 }
 
 /** Branded GuardPay band under the week navigator. The app icon is the visual
- *  anchor; re-sync and unlink use the repo's two-step inline confirm idiom. */
+ *  anchor. Import is one-shot per published week: once synced the button grays
+ *  out; the marker resets only when the manager unpublishes (schedule changed),
+ *  so employees re-import updated weeks but can't hammer an unchanged one.
+ *  Unlink keeps the repo's two-step inline confirm idiom. */
 export function GuardPaySyncCard({ periodId, linked, linkedName, synced, hasShifts }: Props) {
   const router = useRouter()
   const [linkOpen, setLinkOpen] = useState(false)
-  const [confirmResync, setConfirmResync] = useState(false)
   const [confirmUnlink, setConfirmUnlink] = useState(false)
   const [busy, run] = useTransition()
   const [msg, setMsg] = useState<string | null>(null)
@@ -31,7 +33,6 @@ export function GuardPaySyncCard({ periodId, linked, linkedName, synced, hasShif
   }
 
   function runSync() {
-    setConfirmResync(false)
     setMsg(null)
     run(async () => {
       const r = await syncWeekToGuardPay({ periodId })
@@ -111,26 +112,21 @@ export function GuardPaySyncCard({ periodId, linked, linkedName, synced, hasShif
         <button
           type="button"
           data-testid="guardpay-sync"
-          disabled={busy || !hasShifts}
-          onClick={synced && !confirmResync ? () => armed(setConfirmResync) : runSync}
-          title={hasShifts ? undefined : 'אין לך משמרות בשבוע הזה'}
+          disabled={busy || !hasShifts || synced}
+          onClick={runSync}
+          title={synced ? 'השבוע כבר יובא — ייפתח שוב אם המנהל יעדכן את הסידור' : hasShifts ? undefined : 'אין לך משמרות בשבוע הזה'}
           style={{
             padding: '9px 14px', borderRadius: 12, fontSize: 13, fontWeight: 700, fontFamily: 'var(--font)',
-            cursor: busy || !hasShifts ? 'default' : 'pointer',
-            border: confirmResync ? '1px solid var(--danger)' : 'none',
-            background: confirmResync ? 'rgba(220,70,70,0.08)' : 'var(--accent)',
-            color: confirmResync ? 'var(--danger)' : '#fff',
-            opacity: hasShifts ? 1 : 0.55,
+            cursor: busy || !hasShifts || synced ? 'default' : 'pointer',
+            border: 'none',
+            background: synced ? 'var(--border-strong)' : 'var(--accent)',
+            color: synced ? 'var(--text-2)' : '#fff',
+            opacity: hasShifts || synced ? 1 : 0.55,
           }}
         >
-          {busy ? 'מייבא…' : confirmResync ? 'לחצו שוב לייבוא מחדש' : synced ? 'ייבוא מחדש' : 'ייבוא המשמרות ל-GuardPay'}
+          {busy ? 'מייבא…' : synced ? 'יובא ✓' : 'ייבוא המשמרות ל-GuardPay'}
         </button>
       </div>
-      {confirmResync && (
-        <p style={{ margin: '8px 0 0', fontSize: 12.5, color: 'var(--text-2)' }}>
-          ייבוא מחדש מחליף את המשמרות שיובאו בעבר לשבוע הזה (משמרות שהוזנו ידנית ב-GuardPay לא נמחקות).
-        </p>
-      )}
       {msg && (
         <div role="status" style={{ marginTop: 8, padding: '8px 12px', borderRadius: 10, background: 'rgba(220,70,70,0.1)', color: 'var(--danger)', fontSize: 13 }}>
           {msg}

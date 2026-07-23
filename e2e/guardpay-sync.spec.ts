@@ -74,11 +74,26 @@ test('employee links GuardPay and imports the published week', async ({ browser 
   await syncBtn.click()
   await expect(guard.page.getByTestId('guardpay-synced-badge')).toBeVisible({ timeout: 15000 })
 
-  // Re-import is a two-step confirm.
-  await syncBtn.click()
-  await expect(syncBtn).toHaveText('לחצו שוב לייבוא מחדש', { timeout: 3000 })
-  await syncBtn.click()
-  await expect(guard.page.getByTestId('guardpay-synced-badge')).toBeVisible({ timeout: 15000 })
+  // Import is one-shot per published week: the button grays out and locks.
+  await expect(syncBtn).toBeDisabled({ timeout: 15000 })
+  await expect(syncBtn).toHaveText('יובא ✓')
+
+  // Manager unpublishes (schedule about to change) → the sync marker resets and
+  // the employee can import the updated week again.
+  const unpub = manager.page.getByTestId('unpublish-schedule')
+  await expect(unpub).toBeVisible({ timeout: 15000 })
+  await unpub.click()
+  await expect(unpub).toHaveText('לחצו שוב לאישור ביטול', { timeout: 2000 })
+  await unpub.click()
+  await expect(manager.page.getByTestId('unpublish-schedule')).toBeHidden({ timeout: 30_000 })
+  await manager.page.getByRole('button', { name: 'פרסם סידור' }).click()
+  await manager.page.getByRole('button', { name: /לחצו שוב לפרסום/ }).click({ timeout: 3000 }).catch(() => {})
+  await expect(manager.page.getByRole('button', { name: /פורסם/ })).toBeVisible({ timeout: 15000 })
+
+  await guard.page.reload()
+  const syncBtn2 = guard.page.getByTestId('guardpay-sync')
+  await expect(syncBtn2).toBeEnabled({ timeout: 15000 })
+  await expect(syncBtn2).toHaveText('ייבוא המשמרות ל-GuardPay')
 
   await manager.context.close()
   await guard.context.close()
