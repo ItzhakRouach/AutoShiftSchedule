@@ -65,7 +65,7 @@ export async function publishDuePeriods(
     // Mark as published
     const { error: updateErr } = await admin
       .from('schedule_periods')
-      .update({ status: 'published' })
+      .update({ status: 'published', published_at: new Date().toISOString() })
       .eq('id', period.id)
 
     if (updateErr) {

@@ -29,6 +29,11 @@ export default async function MeSchedulePage({
     .maybeSingle()
   if (!employee) redirect('/onboarding')
 
+  // Viewing the schedule clears the "new schedule published" banner on /me.
+  await supabase
+    .from('schedule_seen')
+    .upsert({ employee_id: employee.id, seen_at: new Date().toISOString() }, { onConflict: 'employee_id' })
+
   // Week navigator: pick the requested published week (?w=) or the latest.
   const weeks = await listPublishedWeeks(supabase, employee.workplace_id)
   const sp = await searchParams

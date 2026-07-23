@@ -13,6 +13,7 @@ import { deleteMyAccount } from './actions'
 import { MeSummary } from './MeSummary'
 import { MeStats } from './MeStats'
 import { PushToggle } from './PushToggle'
+import { NewScheduleBanner } from './NewScheduleBanner'
 
 function NavCard({ href, icon, title, subtitle }: { href: string; icon: IconName; title: string; subtitle: string }) {
   return (
@@ -43,12 +44,28 @@ export default async function MePage() {
     .maybeSingle()
   if (!employee) redirect('/onboarding')
 
-  const [{ data: workplace }, week, summaryData, statsData] = await Promise.all([
+  const [{ data: workplace }, week, summaryData, statsData, { data: lastPublished }, { data: seen }] = await Promise.all([
     supabase.from('workplaces').select('name').eq('id', employee.workplace_id).maybeSingle(),
     resolveCollectionWeek(supabase, employee.workplace_id, new Date()),
     getMeSummary(supabase, employee.id, employee.workplace_id),
     getMeStats(supabase, employee.id, employee.workplace_id),
+    supabase
+      .from('schedule_periods')
+      .select('published_at')
+      .eq('workplace_id', employee.workplace_id)
+      .eq('status', 'published')
+      .not('published_at', 'is', null)
+      .order('published_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase.from('schedule_seen').select('seen_at').eq('employee_id', employee.id).maybeSingle(),
   ])
+
+  // Show the "new schedule" banner when the latest publish is newer than the
+  // employee's last look (or they've never looked).
+  const publishedAt = lastPublished?.published_at as string | null | undefined
+  const seenAt = seen?.seen_at as string | null | undefined
+  const hasNewSchedule = !!publishedAt && (!seenAt || publishedAt > seenAt)
 
   // The deadline banner follows the SAME rolled week as the request form: once
   // this week's deadline passes it advances to next week's, never showing a
@@ -66,6 +83,8 @@ export default async function MePage() {
         </h1>
         <p style={{ margin: 0, fontSize: 13, color: 'var(--text-2)' }}>{workplace?.name ?? ''}</p>
       </div>
+
+      {hasNewSchedule && <NewScheduleBanner />}
 
       {deadline && (
         <Link href="/me/requests" style={{ textDecoration: 'none', display: 'block', marginBottom: 12 }}>

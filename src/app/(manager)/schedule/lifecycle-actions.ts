@@ -21,7 +21,7 @@ export async function publishSchedule(periodId: string): Promise<RunResult> {
 
   const { data: updated, error } = await supabase
     .from('schedule_periods')
-    .update({ status: 'published' })
+    .update({ status: 'published', published_at: new Date().toISOString() })
     .eq('id', periodId)
     .eq('workplace_id', workplace.id)
     .select('id')
