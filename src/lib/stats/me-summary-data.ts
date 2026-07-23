@@ -102,10 +102,21 @@ export async function getMeStats(
   const roleList: MeSummaryRole[] = (roles ?? []).map((r) => ({ name: r.name, color: r.color ?? '#888888' }))
   const weekStartById = new Map(periodList.map((p) => [p.id as string, p.week_start_date as string]))
   const assigns = assignsRes.data ?? []
+  // "week" = the employee's CURRENT schedule — the latest published week — not a
+  // calendar-week window. Schedules are published ahead (the current published
+  // week is often next Sunday's), so a strict "this calendar week" filter would
+  // show 0 while their real shifts sit in the upcoming published week. month/
+  // year stay calendar-bounded (this month / this year) and accumulate.
+  const latestWeekStart = periodList.reduce(
+    (max, p) => ((p.week_start_date as string) > max ? (p.week_start_date as string) : max),
+    '',
+  )
 
   const breakdown = (scope: Scope): ScopedBreakdown => {
-    const start = scopeStartISO(scope, now)
-    const inScope = assigns.filter((a) => (weekStartById.get(a.period_id) ?? '') >= start)
+    const inScope =
+      scope === 'week'
+        ? assigns.filter((a) => weekStartById.get(a.period_id) === latestWeekStart)
+        : assigns.filter((a) => (weekStartById.get(a.period_id) ?? '') >= scopeStartISO(scope, now))
     const s = summarizeEmployee(
       inScope.map((a) => ({ day_of_week: a.day_of_week, shift_type_id: a.shift_type_id, role_id: a.role_id })),
       [],
