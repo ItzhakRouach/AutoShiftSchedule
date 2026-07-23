@@ -7,14 +7,7 @@ import {
   aggregateFairness,
 } from './aggregate'
 import { buildWeeklyTrends } from './trends'
-
-function scopeStartDate(scope: Scope): string {
-  const d = new Date()
-  if (scope === 'month') d.setDate(d.getDate() - 31)
-  else if (scope === 'year') d.setDate(d.getDate() - 365)
-  else d.setDate(d.getDate() - 7)
-  return d.toISOString().slice(0, 10)
-}
+import { scopeStartISO } from '@/lib/dates/scope'
 
 const EMPTY_KPIS = {
   coveragePct: null,
@@ -84,7 +77,7 @@ export async function fetchDashboardStats(
       .select('id, week_start_date, status')
       .eq('workplace_id', workplaceId)
       .eq('status', 'published')
-      .gte('week_start_date', scopeStartDate(scope))
+      .gte('week_start_date', scopeStartISO(scope, new Date()))
       .order('week_start_date', { ascending: false })
     periods = data ?? []
   }

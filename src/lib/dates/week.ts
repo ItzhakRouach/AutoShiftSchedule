@@ -25,6 +25,18 @@ export function toISODate(d: Date): string {
   return formatISO(d)
 }
 
+/**
+ * ISO date of the CURRENT week's Sunday — the Sunday of the week that contains
+ * `today` (today itself when it's already Sunday). Distinct from
+ * `upcomingWeekStartISO`, which looks FORWARD to the next Sunday. Used for
+ * calendar-week statistics scoping.
+ */
+export function currentWeekStartISO(today: Date): string {
+  const sunday = new Date(today)
+  sunday.setDate(today.getDate() - today.getDay()) // getDay(): 0=Sun
+  return formatISO(sunday)
+}
+
 /** Adds `days` to a YYYY-MM-DD date and returns the new YYYY-MM-DD. */
 export function addDaysISO(iso: string, days: number): string {
   const [y, m, d] = iso.split('-').map(Number)

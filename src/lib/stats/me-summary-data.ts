@@ -5,6 +5,7 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { summarizeEmployee, type EmployeeSummary } from './employee-summary'
+import { scopeStartISO } from '@/lib/dates/scope'
 import type { Scope } from './types'
 
 export interface MeSummaryRole { name: string; color: string }
@@ -65,25 +66,20 @@ export interface MeStatsData {
   roles: MeSummaryRole[]
 }
 
-function scopeStart(scope: Scope): string {
-  const d = new Date()
-  if (scope === 'month') d.setDate(d.getDate() - 31)
-  else if (scope === 'year') d.setDate(d.getDate() - 365)
-  else d.setDate(d.getDate() - 7)
-  return d.toISOString().slice(0, 10)
-}
-
 /**
  * The employee's shift volume + role/shift-type breakdown across PUBLISHED
- * periods, for week / month / year scopes. One fetch (last 365d of periods),
- * aggregated per scope, so the UI can toggle instantly with no extra round-trip.
+ * periods, for week / month / year scopes. One fetch (this calendar year's
+ * periods), aggregated per scope, so the UI can toggle instantly with no extra
+ * round-trip. Scopes are calendar boundaries (this week/month/year), not rolling
+ * day-windows — see scopeStartISO.
  */
 export async function getMeStats(
   supabase: SupabaseClient,
   employeeId: string,
   workplaceId: string,
 ): Promise<MeStatsData> {
-  const yearStart = scopeStart('year')
+  const now = new Date()
+  const yearStart = scopeStartISO('year', now)
   const { data: periods } = await supabase
     .from('schedule_periods')
     .select('id, week_start_date')
@@ -108,7 +104,7 @@ export async function getMeStats(
   const assigns = assignsRes.data ?? []
 
   const breakdown = (scope: Scope): ScopedBreakdown => {
-    const start = scopeStart(scope)
+    const start = scopeStartISO(scope, now)
     const inScope = assigns.filter((a) => (weekStartById.get(a.period_id) ?? '') >= start)
     const s = summarizeEmployee(
       inScope.map((a) => ({ day_of_week: a.day_of_week, shift_type_id: a.shift_type_id, role_id: a.role_id })),
