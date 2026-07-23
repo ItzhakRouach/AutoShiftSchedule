@@ -66,6 +66,7 @@ export function ScheduleGrids({ view, onSlot, onDayPair, assign, editMeta, selfI
                 return (
                   <button
                     key={i}
+                    data-testid="day-nav-btn"
                     onClick={() => setSelDay(i)}
                     aria-pressed={active}
                     style={{

@@ -1,17 +1,18 @@
 'use client'
 
 import { Card } from '@/components/ui/Card'
-import { Avatar } from '@/components/ui/Avatar'
 import { Icon } from '@/components/ui/Icon'
 import { LtrText } from '@/components/ui/LtrText'
 import { RoleChip } from '@/components/ui/RoleChip'
 import { SHIFT_META, type ShiftId } from '@/lib/domain/constants'
 import type { ScheduleView } from '@/lib/schedule/view-data'
+import { buildWeekGrid } from '@/lib/schedule/week-table-data'
+import { coveredByTwelve } from '@/lib/schedule/week-table-twelve'
+import { buildDayRoleRow, dayRoleIds } from '@/lib/schedule/day-grid-rows'
 import type { SlotCtx } from './SwapEditor'
 import type { CellAssign } from './useCellAssign'
 import type { ShiftKey } from '@/lib/scheduling/types'
-import { TempChip } from './TempChip'
-import { DayTwelveCard } from './DayTwelveCard'
+import { DayEntryChip, DayCoveredMarker } from './DayEntryChip'
 import { busyDaysOf } from './week-table-helpers'
 
 interface Props {
@@ -25,11 +26,15 @@ interface Props {
 }
 
 /** Per-shift cards for the selected day, showing each role's required count
- *  and assigned employees, with red markers for unfilled slots. Slots open the
- *  SwapEditor via onSlot when provided. */
+ *  and assigned employees, with red markers for unfilled slots. 12h workers
+ *  appear inside the base shift they anchor (WeekTable parity — same
+ *  buildWeekGrid/coveredByTwelve helpers), and covered slots count toward the
+ *  target instead of showing "לא מאויש". Slots open the SwapEditor via onSlot. */
 export function DayGrid({ view, selDay, onSlot, assign, selfId }: Props) {
   const empById = new Map(view.employees.map((e) => [e.id, e]))
   const roleById = new Map(view.roles.map((r) => [r.id, r]))
+  const weekGrid = buildWeekGrid(view)
+  const coveredMap = coveredByTwelve(view)
   // Held worker already works this day → block quick-placing them again (one
   // shift/day). Greys the empty add-slots and no-ops their taps.
   const heldBusy = !!assign?.heldId && busyDaysOf(view, assign.heldId).has(selDay)
@@ -49,13 +54,7 @@ export function DayGrid({ view, selDay, onSlot, assign, selfId }: Props) {
       {view.shiftKeys.map((shift: ShiftKey) => {
         const m = SHIFT_META[shift]
         const req = view.requirements[selDay]?.[shift] ?? {}
-        const gridForShift = view.grid[selDay]?.[shift] ?? {}
-        // Show roles that have a staffing requirement OR an assignment. The
-        // worker's published view has no requirements (RLS), so fall back to
-        // whoever is actually assigned. Ordered by view.roles (rank-desc).
-        const roleIds = view.roles
-          .map((r) => r.id)
-          .filter((rid) => (req[rid] ?? 0) > 0 || (gridForShift[rid]?.length ?? 0) > 0)
+        const roleIds = dayRoleIds(view, weekGrid, coveredMap, selDay, shift)
         return (
           <Card key={shift} pad={0} style={{ overflow: 'hidden' }}>
             <div
@@ -80,17 +79,16 @@ export function DayGrid({ view, selDay, onSlot, assign, selfId }: Props) {
               )}
               {roleIds.map((roleId) => {
                 const need = req[roleId] ?? 0
-                const filled = gridForShift[roleId] ?? []
+                const row = buildDayRoleRow(view, weekGrid, coveredMap, selDay, shift, roleId)
                 const role = roleById.get(roleId)
-                const missing = Math.max(0, need - filled.length)
                 const busy = !!assign?.pendingSlot
                   && assign.pendingSlot.day === selDay
                   && assign.pendingSlot.shiftKey === shift
                   && assign.pendingSlot.roleId === roleId
                 // Desktop-parity capacity tint: under → warning, over → danger.
-                const rowTint = need > 0 && filled.length > need
+                const rowTint = need > 0 && row.assigned > need
                   ? 'var(--danger-soft)'
-                  : need > 0 && filled.length < need
+                  : need > 0 && row.assigned < need
                     ? 'var(--warning-soft)'
                     : undefined
                 return (
@@ -108,54 +106,31 @@ export function DayGrid({ view, selDay, onSlot, assign, selfId }: Props) {
                         style={{
                           fontSize: 12,
                           fontWeight: 700,
-                          color: need > 0 ? (filled.length >= need ? 'var(--success)' : 'var(--danger)') : 'var(--text-2)',
+                          color: need > 0 ? (row.assigned >= need ? 'var(--success)' : 'var(--danger)') : 'var(--text-2)',
                         }}
                       >
-                        {need > 0 ? `${filled.length}/${need}` : filled.length}
+                        {need > 0 ? `${row.assigned}/${need}` : row.assigned}
                       </span>
                     </div>
                     <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
-                      {filled.map((eid) => {
-                        const e = empById.get(eid)
-                        const isSelf = !!selfId && eid === selfId
-                        // Desktop-parity ✓ badge: this worker requested this shift.
-                        const stId = view.shiftTypeIdByKey[shift] ?? ''
-                        const requested = view.requestedSet?.has(`${eid}:${selDay}:${stId}`) ?? false
-                        return (
-                          <span
-                            key={eid}
-                            onClick={busy ? undefined : () => open(shift, roleId, filled)}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 7,
-                              padding: '5px 11px 5px 7px',
-                              borderRadius: 99,
-                              border: `1.5px solid ${isSelf ? 'var(--accent)' : 'var(--border)'}`,
-                              background: isSelf ? 'var(--accent-soft)' : 'var(--surface-2)',
-                              cursor: onSlot && !busy ? 'pointer' : 'default',
-                              opacity: busy ? 0.55 : 1,
-                            }}
-                          >
-                            <Avatar name={e?.name ?? '?'} color={e?.color ?? '#888'} size={24} />
-                            {requested && (
-                              <span title="ביקש משמרת זו" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 14, height: 14, borderRadius: '50%', background: 'var(--success-soft)', color: 'var(--success)', fontSize: 9, fontWeight: 800, flexShrink: 0 }}>✓</span>
-                            )}
-                            <span style={{ fontSize: 13, fontWeight: isSelf ? 800 : 600, color: isSelf ? 'var(--accent)' : 'var(--text)' }}>
-                              {e?.name ?? 'לא ידוע'}{isSelf ? ' (אני)' : ''}
-                            </span>
-                          </span>
-                        )
-                      })}
-                      {(view.temps ?? [])
-                        .filter((t) => t.day === selDay && t.shiftKey === shift && t.roleId === roleId)
-                        .map((t) => (
-                          <TempChip key={t.assignmentId} name={t.name} assignmentId={t.assignmentId} onRemove={busy ? undefined : assign?.removeTemp} variant="pill" />
-                        ))}
-                      {Array.from({ length: missing }).map((_, k) => (
+                      {row.entries.map((entry, i) => (
+                        <DayEntryChip
+                          key={entry.assignmentId ?? `${entry.employeeId}-${i}`}
+                          entry={entry}
+                          emp={empById.get(entry.employeeId)}
+                          isSelf={!!selfId && entry.employeeId === selfId}
+                          busy={busy}
+                          onClick={() => open(shift, roleId, row.baseIds)}
+                          onRemoveTemp={assign?.removeTemp}
+                        />
+                      ))}
+                      {Array.from({ length: row.covered }).map((_, k) => (
+                        <DayCoveredMarker key={'c' + k} />
+                      ))}
+                      {Array.from({ length: row.missing }).map((_, k) => (
                         <span
                           key={'e' + k}
-                          onClick={busy ? undefined : () => open(shift, roleId, filled)}
+                          onClick={busy ? undefined : () => open(shift, roleId, row.baseIds)}
                           aria-busy={busy || undefined}
                           style={{
                             display: 'inline-flex',
@@ -183,8 +158,6 @@ export function DayGrid({ view, selDay, onSlot, assign, selfId }: Props) {
           </Card>
         )
       })}
-
-      <DayTwelveCard view={view} selDay={selDay} />
     </div>
   )
 }

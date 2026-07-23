@@ -98,6 +98,40 @@ test('12h pair offers only the day\'s assigned staff and applies', async ({ page
   const weekTable = page.getByTestId('week-table')
   expect(await weekTable.getByText('07:00–19:00').count()).toBeGreaterThan(0)
   expect(await weekTable.getByText('19:00–07:00').count()).toBeGreaterThan(0)
+
+  // ── Mobile day view: 12h workers render INSIDE the base-shift sections ──
+  // (not in a separate bottom card), and covered slots show the 12ש׳ marker
+  // instead of "לא מאויש".
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.getByRole('button', { name: 'יום', exact: true }).click()
+
+  // Find the day the pair was applied to: iterate the day nav until the 12h
+  // anchor chips appear in the day card.
+  const dayBtns = page.getByTestId('day-nav-btn')
+  let pairDayFound = false
+  for (let i = 0; i < (await dayBtns.count()); i++) {
+    await dayBtns.nth(i).click()
+    if ((await page.getByTestId('day-twelve-chip').count()) > 0) {
+      pairDayFound = true
+      break
+    }
+  }
+  expect(pairDayFound).toBe(true)
+
+  // Both pair members anchor inside base sections: m12_day in בוקר, m12_night
+  // in לילה — each chip carries the 12ש׳ hour-range tag.
+  const twelveChips = page.getByTestId('day-twelve-chip')
+  await expect(twelveChips.first()).toBeVisible()
+  expect(await twelveChips.count()).toBe(2)
+  await expect(twelveChips.filter({ hasText: '07:00–19:00' })).toHaveCount(1)
+  await expect(twelveChips.filter({ hasText: '19:00–07:00' })).toHaveCount(1)
+
+  // The m12_day fill covers צהריים → its role row shows the covered marker,
+  // and that coverage counts toward the target (no red "לא מאויש" for it).
+  expect(await page.getByTestId('day-covered-12h').count()).toBeGreaterThan(0)
+
+  // The old separate "משמרות 12 שעות" bottom section is gone.
+  expect(await page.getByTestId('twelve-badge').count()).toBe(0)
 })
 
 test('apply is gated until both morning and night are chosen', async ({ page }) => {
