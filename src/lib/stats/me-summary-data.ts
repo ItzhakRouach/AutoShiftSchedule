@@ -5,7 +5,6 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { summarizeEmployee, type EmployeeSummary } from './employee-summary'
-import { scopeStartISO } from '@/lib/dates/scope'
 import { currentWeekStartISO } from '@/lib/dates/week'
 import type { Scope } from './types'
 
@@ -71,6 +70,22 @@ export interface MeStatsData {
 }
 
 /**
+ * Whether a period's `weekStartISO` belongs to the selected stats scope, keyed
+ * to the calendar: week = exactly the current schedule week; month = any week
+ * whose start falls in the current calendar month (INCLUDING upcoming scheduled
+ * weeks in this month); year = any week in the current calendar year. Pure.
+ */
+export function matchesStatScope(
+  weekStartISO: string,
+  scope: Scope,
+  ctx: { weekTarget: string; monthKey: string; yearKey: string },
+): boolean {
+  if (scope === 'week') return weekStartISO === ctx.weekTarget
+  if (scope === 'month') return weekStartISO.slice(0, 7) === ctx.monthKey
+  return weekStartISO.slice(0, 4) === ctx.yearKey
+}
+
+/**
  * The employee's shift volume + role/shift-type breakdown across PUBLISHED
  * periods, for week / month / year scopes. One fetch (this calendar year's
  * periods), aggregated per scope, so the UI can toggle instantly with no extra
@@ -83,7 +98,7 @@ export async function getMeStats(
   workplaceId: string,
 ): Promise<MeStatsData> {
   const now = new Date()
-  const yearStart = scopeStartISO('year', now)
+  const yearStart = `${now.getFullYear()}-01-01`
   const { data: periods } = await supabase
     .from('schedule_periods')
     .select('id, week_start_date')
@@ -106,23 +121,26 @@ export async function getMeStats(
   const roleList: MeSummaryRole[] = (roles ?? []).map((r) => ({ name: r.name, color: r.color ?? '#888888' }))
   const weekStartById = new Map(periodList.map((p) => [p.id as string, p.week_start_date as string]))
   const assigns = assignsRes.data ?? []
-  // Anchor to the CURRENT schedule week — the latest published week that has
-  // already started (weekStart ≤ this week's Sunday). "week" = exactly that
-  // week; month/year accumulate from their calendar start. FUTURE weeks
-  // (published ahead of time) are excluded from every scope so a schedule
-  // published for next week never inflates "this week/month/year".
+  // "week" = the CURRENT schedule week (latest published week that has already
+  // started, weekStart ≤ this week's Sunday). "month"/"year" bucket by the
+  // week-start's calendar month/year — so an upcoming week within THIS month
+  // (e.g. next Sunday) counts toward "month", but a week in the next month does
+  // not. See matchesStatScope.
   const cw = currentWeekStartISO(now)
   const weekTarget = periodList.reduce((max, p) => {
     const ws = p.week_start_date as string
     return ws <= cw && ws > max ? ws : max
   }, '')
+  const ctx = {
+    weekTarget,
+    monthKey: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
+    yearKey: String(now.getFullYear()),
+  }
 
   const breakdown = (scope: Scope): ScopedBreakdown => {
-    const inScope = assigns.filter((a) => {
-      const ws = weekStartById.get(a.period_id) ?? ''
-      if (ws > cw) return false // never count future weeks
-      return scope === 'week' ? ws === weekTarget : ws >= scopeStartISO(scope, now)
-    })
+    const inScope = assigns.filter((a) =>
+      matchesStatScope(weekStartById.get(a.period_id) ?? '', scope, ctx),
+    )
     const s = summarizeEmployee(
       inScope.map((a) => ({ day_of_week: a.day_of_week, shift_type_id: a.shift_type_id, role_id: a.role_id })),
       [],
