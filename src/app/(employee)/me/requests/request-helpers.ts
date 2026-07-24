@@ -34,17 +34,18 @@ export async function periodInWorkplace(
 }
 
 /**
- * Real-time request-window lock for a period: read-only if the period isn't
- * `collecting`, or (when a deadline is configured) if the deadline has already
- * passed — mirrors the page's `isReadOnly` so an employee can't bypass the lock
- * by posting a stale action between the deadline and the daily lock job.
+ * Real-time request-window lock for a period — the server write-gate twin of the
+ * page's `isReadOnly`. Delegates fully to `isRequestLocked` (deadline governs when
+ * configured; otherwise status governs), so a week PUBLISHED before its deadline
+ * stays editable exactly as the UI shows it. Must NOT short-circuit on status —
+ * doing so re-locks published-pre-deadline weeks and diverges from the UI,
+ * silently rejecting saves the form invites.
  */
 export async function requestWindowLocked(
   supabase: Awaited<ReturnType<typeof createClient>>,
   period: { status: string; week_start_date: string },
   workplaceId: string,
 ): Promise<boolean> {
-  if (period.status !== 'collecting') return true
   const [{ data: settings }, { data: wp }] = await Promise.all([
     supabase
       .from('workplace_settings')
