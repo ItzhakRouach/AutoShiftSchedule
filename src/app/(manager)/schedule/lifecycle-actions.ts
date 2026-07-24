@@ -1,5 +1,6 @@
 'use server'
 
+import { after } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
@@ -29,19 +30,32 @@ export async function publishSchedule(periodId: string): Promise<RunResult> {
   if (error) return { ok: false, error: GENERIC_ERROR }
   if (!updated || updated.length === 0) return { ok: false, error: GENERIC_ERROR }
 
-  // Best-effort: render + upload the schedule image so the WhatsApp share link
-  // works, and push a "schedule published" notification to employees. Uses the
-  // admin client. Never fails the publish.
+  const admin = createAdminClient()
+  const workplaceId = workplace.id
+
+  // The @vercel/og image render + upload MUST finish before we return: the
+  // manager's schedule page resolves the WhatsApp share link from the uploaded
+  // PNG on the very next render, so a deferred upload would leave the share
+  // button missing. Best-effort — never fails the publish.
   try {
-    const admin = createAdminClient()
     await buildAndUploadScheduleImage(admin, periodId)
-    await notifyWorkplacePublished(admin, workplace.id)
   } catch {
-    // swallow — the schedule is published regardless of image/push
+    // swallow — the schedule is published regardless of the image
   }
 
   revalidatePath('/schedule')
   revalidatePath('/dashboard') // KPIs + fairness reflect published schedules
+
+  // The push fan-out gates no UI, so it runs AFTER the response (Next 16
+  // `after()`) — the publish resolves without waiting on every subscriber.
+  after(async () => {
+    try {
+      await notifyWorkplacePublished(admin, workplaceId)
+    } catch {
+      // swallow — the schedule is published regardless of push
+    }
+  })
+
   return { ok: true }
 }
 

@@ -27,17 +27,33 @@ export async function fetchDashboardStats(
   workplaceId: string,
   scope: Scope,
 ): Promise<DashboardStats | null> {
-  // 1+2. Employees + shift types — independent, fetched in parallel.
-  const [{ data: empRaw }, { data: shiftTypesRaw }] = await Promise.all([
-    supabase
-      .from('employees')
-      .select('id, name, color, min_shifts_per_week')
-      .eq('workplace_id', workplaceId)
-      .order('name'),
-    supabase
-      .from('shift_types')
-      .select('id, key, hours, is_fallback')
-      .eq('workplace_id', workplaceId),
+  // Batch A — everything keyed only by workplaceId: employees, shift types,
+  // weekly required headcount, and the in-scope periods. (Periods: WEEK = the
+  // CURRENT period, latest by date, counted only if published; MONTH/YEAR = all
+  // published periods in the calendar range.)
+  const periodsQuery =
+    scope === 'week'
+      ? supabase
+          .from('schedule_periods')
+          .select('id, week_start_date, status')
+          .eq('workplace_id', workplaceId)
+          .order('week_start_date', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      : supabase
+          .from('schedule_periods')
+          .select('id, week_start_date, status')
+          .eq('workplace_id', workplaceId)
+          .eq('status', 'published')
+          .gte('week_start_date', scopeStartISO(scope, new Date()))
+          .order('week_start_date', { ascending: false })
+
+  const [{ data: empRaw }, { data: shiftTypesRaw }, { data: reqRaw }, periodsRes] = await Promise.all([
+    supabase.from('employees').select('id, name, color, min_shifts_per_week').eq('workplace_id', workplaceId).order('name'),
+    supabase.from('shift_types').select('id, key, hours, is_fallback').eq('workplace_id', workplaceId),
+    // shift_requirements is WEEK-shaped, keyed by workplace_id (no period_id column).
+    supabase.from('shift_requirements').select('count').eq('workplace_id', workplaceId),
+    periodsQuery,
   ])
 
   const employees = empRaw ?? []
@@ -57,30 +73,13 @@ export async function fetchDashboardStats(
     shiftTypes.map((s) => [s.id, s.is_fallback ?? s.hours >= 12]),
   )
 
-  // 3. Periods. WEEK = the CURRENT period (latest by date), counted ONLY if it's
-  // published — so unpublishing/deleting it (or never generating one) shows an
-  // empty dashboard, and we never fall back to a stale older published week.
-  // MONTH/YEAR = all published periods in the range (cumulative history charts).
-  let periods: { id: string; week_start_date: string; status: string }[]
-  if (scope === 'week') {
-    const { data: latest } = await supabase
-      .from('schedule_periods')
-      .select('id, week_start_date, status')
-      .eq('workplace_id', workplaceId)
-      .order('week_start_date', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-    periods = latest && latest.status === 'published' ? [latest] : []
-  } else {
-    const { data } = await supabase
-      .from('schedule_periods')
-      .select('id, week_start_date, status')
-      .eq('workplace_id', workplaceId)
-      .eq('status', 'published')
-      .gte('week_start_date', scopeStartISO(scope, new Date()))
-      .order('week_start_date', { ascending: false })
-    periods = data ?? []
-  }
+  const periods: { id: string; week_start_date: string; status: string }[] =
+    scope === 'week'
+      ? (() => {
+          const latest = periodsRes.data as { id: string; week_start_date: string; status: string } | null
+          return latest && latest.status === 'published' ? [latest] : []
+        })()
+      : ((periodsRes.data as { id: string; week_start_date: string; status: string }[] | null) ?? [])
 
   if (periods.length === 0) {
     return {
@@ -101,11 +100,17 @@ export async function fetchDashboardStats(
   const periodIds = periods.map((p) => p.id)
   const latestPeriodId = periods[0].id
 
-  // 4. All assignments for scope
-  const { data: assignRaw } = await supabase
-    .from('assignments')
-    .select('employee_id, day_of_week, shift_type_id, role_id, period_id')
-    .in('period_id', periodIds)
+  // Batch B — both keyed by the resolved periodIds, mutually independent.
+  const [{ data: assignRaw }, { data: reqsRaw }] = await Promise.all([
+    supabase
+      .from('assignments')
+      .select('employee_id, day_of_week, shift_type_id, role_id, period_id')
+      .in('period_id', periodIds),
+    supabase
+      .from('requests')
+      .select('employee_id, period_id, day_of_week, is_off, preferred_shift_ids')
+      .in('period_id', periodIds),
+  ])
 
   const allAssignments = (assignRaw ?? []).map((a) => ({
     ...a,
@@ -116,22 +121,9 @@ export async function fetchDashboardStats(
   // Period assignments = latest period only (for KPI accuracy)
   const periodAssignments = allAssignments.filter((a) => a.period_id === latestPeriodId)
 
-  // 5. Weekly required headcount. shift_requirements is WEEK-shaped and keyed
-  // by workplace_id (it has NO period_id column — the old .eq('period_id', …)
-  // filter errored and silently zeroed the coverage KPI).
-  const { data: reqRaw } = await supabase
-    .from('shift_requirements')
-    .select('count')
-    .eq('workplace_id', workplaceId)
-
   const required = (reqRaw ?? []).reduce((s: number, r: { count: number }) => s + r.count, 0)
   const requirementSummary = { filled: periodAssignments.length, required }
 
-  // 6. Requests for latest period (for KPI ≥2-honored)
-  const { data: reqsRaw } = await supabase
-    .from('requests')
-    .select('employee_id, period_id, day_of_week, is_off, preferred_shift_ids')
-    .in('period_id', periodIds)
   const requests = reqsRaw ?? []
   const latestRequests = requests.filter((r) => r.period_id === latestPeriodId)
 

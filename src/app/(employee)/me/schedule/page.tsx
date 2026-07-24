@@ -30,39 +30,35 @@ export default async function MeSchedulePage({
     .maybeSingle()
   if (!employee) redirect('/onboarding')
 
-  // Viewing the schedule clears the "new schedule published" banner on /me.
-  await supabase
-    .from('schedule_seen')
-    .upsert({ employee_id: employee.id, seen_at: new Date().toISOString() }, { onConflict: 'employee_id' })
-
-  // Week navigator: pick the requested published week (?w=), else default to the
-  // CURRENT schedule week — the latest published week that has already started
-  // (weekStart ≤ this week's Sunday). This shows the week in progress rather than
-  // a future week published ahead of time; it flips on Sunday. `weeks` is
-  // newest-first, so the first started one is the current week. Future weeks
-  // stay reachable via the nav.
-  const weeks = await listPublishedWeeks(supabase, employee.workplace_id)
+  // Published weeks + clearing the "new schedule" banner are independent — run
+  // together (the seen-upsert is fire-and-forget). Week navigator: pick the
+  // requested published week (?w=), else default to the CURRENT schedule week —
+  // the latest published week that has already started (weekStart ≤ this week's
+  // Sunday) — so the week in progress shows rather than a future week published
+  // ahead of time; it flips on Sunday. Future weeks stay reachable via the nav.
+  const sp = await searchParams
+  const [weeks] = await Promise.all([
+    listPublishedWeeks(supabase, employee.workplace_id),
+    supabase
+      .from('schedule_seen')
+      .upsert({ employee_id: employee.id, seen_at: new Date().toISOString() }, { onConflict: 'employee_id' }),
+  ])
   const cw = currentWeekStartISO(new Date())
   const defaultId = (weeks.find((w) => w.weekStart <= cw) ?? weeks[0])?.id
-  const sp = await searchParams
   const selectedId = sp?.w && weeks.some((w) => w.id === sp.w) ? sp.w : defaultId
-  const view = selectedId ? await getPublishedScheduleView(supabase, employee.workplace_id, selectedId) : null
+
+  // View + both GuardPay reads all depend only on employee.id/selectedId — one batch.
+  const [view, gpLinkRes, gpSyncRes] = await Promise.all([
+    selectedId ? getPublishedScheduleView(supabase, employee.workplace_id, selectedId) : Promise.resolve(null),
+    supabase.from('guardpay_links').select('guardpay_name').eq('employee_id', employee.id).maybeSingle(),
+    selectedId
+      ? supabase.from('guardpay_syncs').select('id').eq('employee_id', employee.id).eq('period_id', selectedId).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ])
   const myNotes = (view?.dayNotes ?? []).filter((n) => n.employeeId === employee.id)
   const myRoleCounts = view ? countMyRoles(view, employee.id) : { roles: [], total: 0 }
-
-  const { data: gpLink } = await supabase
-    .from('guardpay_links')
-    .select('guardpay_name')
-    .eq('employee_id', employee.id)
-    .maybeSingle()
-  const { data: gpSync } = selectedId
-    ? await supabase
-        .from('guardpay_syncs')
-        .select('id')
-        .eq('employee_id', employee.id)
-        .eq('period_id', selectedId)
-        .maybeSingle()
-    : { data: null }
+  const gpLink = gpLinkRes.data
+  const gpSync = gpSyncRes.data
 
   // No published period at all yet (not even a past one) — show a dedicated
   // page-level empty state instead of the header + grid wrapper with an empty
