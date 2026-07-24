@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { lockExpiredPeriods } from '@/lib/deadline/lock'
 import { remindMissingRequests } from '@/lib/push/remind'
+import { constantTimeEqual } from '@/lib/auth/constant-time'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -21,7 +22,7 @@ export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization')
   const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
 
-  if (!cronSecret || token !== cronSecret) {
+  if (!cronSecret || !token || !constantTimeEqual(token, cronSecret)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

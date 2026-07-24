@@ -32,12 +32,18 @@ export async function GET(
   // period row itself (employees can see their own workplace's periods to
   // know "what week is this"). Owner check matches `owns_workplace` semantics.
   if (period.status !== 'published') {
-    const { data: wpRow } = await supabase
+    // Ownership is org-based (workplaces.org_id → organizations.owner_user_id);
+    // there is no workplaces.owner_id column. The embedded !inner join returns a
+    // row only when the caller owns the org (org RLS = owner_user_id = auth.uid),
+    // so a non-owner resolves to null → 404. (The previous owner_id check always
+    // 404'd, breaking managers' preview of unpublished weeks.)
+    const { data: owned } = await supabase
       .from('workplaces')
-      .select('owner_id')
+      .select('id, organizations!inner(owner_user_id)')
       .eq('id', period.workplace_id)
+      .eq('organizations.owner_user_id', user.id)
       .maybeSingle()
-    if (wpRow?.owner_id !== user.id) return new Response('Not found', { status: 404 })
+    if (!owned) return new Response('Not found', { status: 404 })
   }
 
   // Access proven above — load the render data with the admin client so the

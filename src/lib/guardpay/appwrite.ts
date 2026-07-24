@@ -15,7 +15,15 @@ export async function executeGuardPayFunction<T>(
   action: Action,
   payload: Record<string, unknown>,
 ): Promise<GuardPayExec<T>> {
-  if (process.env.GUARDPAY_FAKE === '1') return fakeExec<T>(action, payload)
+  // Fake mode is for e2e only. Never let it silently short-circuit real syncs
+  // in production (a stray GUARDPAY_FAKE=1 there would fake-succeed every sync).
+  if (process.env.GUARDPAY_FAKE === '1') {
+    if (process.env.NODE_ENV === 'production') {
+      console.warn('[guardpay] GUARDPAY_FAKE=1 ignored in production')
+    } else {
+      return fakeExec<T>(action, payload)
+    }
+  }
 
   const endpoint = process.env.GUARDPAY_APPWRITE_ENDPOINT
   const project = process.env.GUARDPAY_APPWRITE_PROJECT_ID
