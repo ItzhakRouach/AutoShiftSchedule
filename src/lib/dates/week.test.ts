@@ -54,22 +54,30 @@ describe('addDaysISO', () => {
 })
 
 describe('shouldRollToNextWeek', () => {
-  it('rolls forward when the week is published (schedule done → collect next week)', () => {
-    expect(shouldRollToNextWeek('2026-06-14', 'published', '2026-06-07')).toBe(true)
-  })
+  const noDeadline = { published: false, deadlinePassed: false, hasDeadline: false }
   it('rolls forward when the week has already started (weekStart ≤ today)', () => {
     // Sunday: upcoming week == today → collect for the following week instead.
-    expect(shouldRollToNextWeek('2026-06-07', 'collecting', '2026-06-07')).toBe(true)
-    expect(shouldRollToNextWeek('2026-06-07', 'locked', '2026-06-07')).toBe(true)
+    expect(shouldRollToNextWeek('2026-06-07', '2026-06-07', noDeadline)).toBe(true)
   })
-  it('stays on a future, unpublished week when the deadline has NOT passed', () => {
-    expect(shouldRollToNextWeek('2026-06-14', 'collecting', '2026-06-07')).toBe(false)
-    expect(shouldRollToNextWeek('2026-06-14', 'locked', '2026-06-07')).toBe(false)
+  describe('with a configured deadline — the deadline governs, publish is ignored', () => {
+    it('rolls when the deadline has passed', () => {
+      expect(shouldRollToNextWeek('2026-06-14', '2026-06-07', { published: false, deadlinePassed: true, hasDeadline: true })).toBe(true)
+    })
+    it('STAYS on a published week whose deadline has NOT passed (collect until the deadline)', () => {
+      // A manager may publish before the deadline; employees keep collecting.
+      expect(shouldRollToNextWeek('2026-06-14', '2026-06-07', { published: true, deadlinePassed: false, hasDeadline: true })).toBe(false)
+    })
+    it('stays on a future collecting week before its deadline', () => {
+      expect(shouldRollToNextWeek('2026-06-14', '2026-06-07', { published: false, deadlinePassed: false, hasDeadline: true })).toBe(false)
+    })
   })
-  it('rolls forward when the submission deadline has passed', () => {
-    // Future collecting week, but its deadline already passed → advance so the
-    // employee sees NEXT week's deadline instead of a stale past date.
-    expect(shouldRollToNextWeek('2026-06-14', 'collecting', '2026-06-07', true)).toBe(true)
+  describe('without a deadline — publish status governs (legacy)', () => {
+    it('rolls past a published week', () => {
+      expect(shouldRollToNextWeek('2026-06-14', '2026-06-07', { published: true, deadlinePassed: false, hasDeadline: false })).toBe(true)
+    })
+    it('stays on a future unpublished week', () => {
+      expect(shouldRollToNextWeek('2026-06-14', '2026-06-07', noDeadline)).toBe(false)
+    })
   })
 })
 

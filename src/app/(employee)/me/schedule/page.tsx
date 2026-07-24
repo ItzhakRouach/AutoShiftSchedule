@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getAuthUser } from '@/lib/auth/user'
 import { getPublishedScheduleView, listPublishedWeeks } from '@/lib/schedule/published-view'
 import { countMyRoles } from '@/lib/stats/my-role-counts'
+import { currentWeekStartISO } from '@/lib/dates/week'
 import { ScheduleGrids } from '@/app/(manager)/schedule/ScheduleGrids'
 import { WeekNav } from '@/app/(manager)/schedule/WeekNav'
 import { MyRoleCounts } from './MyRoleCounts'
@@ -34,10 +35,17 @@ export default async function MeSchedulePage({
     .from('schedule_seen')
     .upsert({ employee_id: employee.id, seen_at: new Date().toISOString() }, { onConflict: 'employee_id' })
 
-  // Week navigator: pick the requested published week (?w=) or the latest.
+  // Week navigator: pick the requested published week (?w=), else default to the
+  // CURRENT schedule week — the latest published week that has already started
+  // (weekStart ≤ this week's Sunday). This shows the week in progress rather than
+  // a future week published ahead of time; it flips on Sunday. `weeks` is
+  // newest-first, so the first started one is the current week. Future weeks
+  // stay reachable via the nav.
   const weeks = await listPublishedWeeks(supabase, employee.workplace_id)
+  const cw = currentWeekStartISO(new Date())
+  const defaultId = (weeks.find((w) => w.weekStart <= cw) ?? weeks[0])?.id
   const sp = await searchParams
-  const selectedId = sp?.w && weeks.some((w) => w.id === sp.w) ? sp.w : weeks[0]?.id
+  const selectedId = sp?.w && weeks.some((w) => w.id === sp.w) ? sp.w : defaultId
   const view = selectedId ? await getPublishedScheduleView(supabase, employee.workplace_id, selectedId) : null
   const myNotes = (view?.dayNotes ?? []).filter((n) => n.employeeId === employee.id)
   const myRoleCounts = view ? countMyRoles(view, employee.id) : { roles: [], total: 0 }

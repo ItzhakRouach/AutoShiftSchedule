@@ -6,6 +6,7 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { summarizeEmployee, type EmployeeSummary } from './employee-summary'
 import { scopeStartISO } from '@/lib/dates/scope'
+import { currentWeekStartISO } from '@/lib/dates/week'
 import type { Scope } from './types'
 
 export interface MeSummaryRole { name: string; color: string }
@@ -20,13 +21,16 @@ export async function getMeSummary(
   employeeId: string,
   workplaceId: string,
 ): Promise<MeSummaryData | null> {
-  // Current period only, and only while published — never fall back to an older
-  // published week (mirrors getPublishedScheduleView so the summary disappears
-  // when the manager unpublishes/clears the current schedule).
+  // The CURRENT schedule week — the latest period that has already started
+  // (weekStart ≤ this week's Sunday), and only while published. Bounding by the
+  // current week means a schedule published ahead for next week doesn't replace
+  // the week-in-progress summary; it flips on Sunday. Returns null when the
+  // current week isn't published (unpublished/cleared/not yet scheduled).
   const { data: period } = await supabase
     .from('schedule_periods')
     .select('id, status')
     .eq('workplace_id', workplaceId)
+    .lte('week_start_date', currentWeekStartISO(new Date()))
     .order('week_start_date', { ascending: false })
     .limit(1)
     .maybeSingle()
@@ -102,21 +106,23 @@ export async function getMeStats(
   const roleList: MeSummaryRole[] = (roles ?? []).map((r) => ({ name: r.name, color: r.color ?? '#888888' }))
   const weekStartById = new Map(periodList.map((p) => [p.id as string, p.week_start_date as string]))
   const assigns = assignsRes.data ?? []
-  // "week" = the employee's CURRENT schedule — the latest published week — not a
-  // calendar-week window. Schedules are published ahead (the current published
-  // week is often next Sunday's), so a strict "this calendar week" filter would
-  // show 0 while their real shifts sit in the upcoming published week. month/
-  // year stay calendar-bounded (this month / this year) and accumulate.
-  const latestWeekStart = periodList.reduce(
-    (max, p) => ((p.week_start_date as string) > max ? (p.week_start_date as string) : max),
-    '',
-  )
+  // Anchor to the CURRENT schedule week — the latest published week that has
+  // already started (weekStart ≤ this week's Sunday). "week" = exactly that
+  // week; month/year accumulate from their calendar start. FUTURE weeks
+  // (published ahead of time) are excluded from every scope so a schedule
+  // published for next week never inflates "this week/month/year".
+  const cw = currentWeekStartISO(now)
+  const weekTarget = periodList.reduce((max, p) => {
+    const ws = p.week_start_date as string
+    return ws <= cw && ws > max ? ws : max
+  }, '')
 
   const breakdown = (scope: Scope): ScopedBreakdown => {
-    const inScope =
-      scope === 'week'
-        ? assigns.filter((a) => weekStartById.get(a.period_id) === latestWeekStart)
-        : assigns.filter((a) => (weekStartById.get(a.period_id) ?? '') >= scopeStartISO(scope, now))
+    const inScope = assigns.filter((a) => {
+      const ws = weekStartById.get(a.period_id) ?? ''
+      if (ws > cw) return false // never count future weeks
+      return scope === 'week' ? ws === weekTarget : ws >= scopeStartISO(scope, now)
+    })
     const s = summarizeEmployee(
       inScope.map((a) => ({ day_of_week: a.day_of_week, shift_type_id: a.shift_type_id, role_id: a.role_id })),
       [],

@@ -30,13 +30,19 @@ describe('isRequestLocked', () => {
   const before = new Date('2026-06-04T14:00:00Z')
   const after = new Date('2026-06-04T16:00:00Z')
 
-  it('locked when the period is not collecting, regardless of deadline', () => {
-    expect(isRequestLocked('locked', wk, 4, '18:00', 'Asia/Jerusalem', before)).toBe(true)
-    expect(isRequestLocked('published', wk, 4, '18:00', 'Asia/Jerusalem', before)).toBe(true)
+  it('with a deadline, the DEADLINE governs — published/locked before the deadline is still OPEN', () => {
+    // A manager may publish before the deadline; employees keep editing requests
+    // until it passes (honored on the next re-generate).
+    expect(isRequestLocked('published', wk, 4, '18:00', 'Asia/Jerusalem', before)).toBe(false)
+    expect(isRequestLocked('locked', wk, 4, '18:00', 'Asia/Jerusalem', before)).toBe(false)
+    // …and locked once the deadline passes, whatever the status.
+    expect(isRequestLocked('published', wk, 4, '18:00', 'Asia/Jerusalem', after)).toBe(true)
   })
 
-  it('collecting + no deadline configured → open', () => {
+  it('no deadline configured → status governs (published/locked = read-only)', () => {
     expect(isRequestLocked('collecting', wk, null, null, 'Asia/Jerusalem', after)).toBe(false)
+    expect(isRequestLocked('published', wk, null, null, 'Asia/Jerusalem', after)).toBe(true)
+    expect(isRequestLocked('locked', wk, null, null, 'Asia/Jerusalem', after)).toBe(true)
   })
 
   it('collecting + before the deadline → open', () => {

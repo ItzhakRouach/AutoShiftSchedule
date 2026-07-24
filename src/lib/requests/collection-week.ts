@@ -45,6 +45,7 @@ export async function resolveCollectionWeek(
   const maxOffDaysPerWeek =
     (settingsRow?.max_off_days_per_week as number | null | undefined) ?? null
   const todayISO = toISODate(now)
+  const hasDeadline = dow != null && !!time
 
   let weekStart = upcomingWeekStartISO(now)
   let periodId: string | null = null
@@ -63,8 +64,14 @@ export async function resolveCollectionWeek(
       .maybeSingle()
     status = (pr?.status as string | undefined) ?? 'collecting'
     const deadlinePassed =
-      dow != null && time ? isPastDeadline(now, weekStart, dow, time, tz) : false
-    if (shouldRollToNextWeek(weekStart, status, todayISO, deadlinePassed)) {
+      hasDeadline ? isPastDeadline(now, weekStart, dow as number, time as string, tz) : false
+    if (
+      shouldRollToNextWeek(weekStart, todayISO, {
+        published: status === 'published',
+        deadlinePassed,
+        hasDeadline,
+      })
+    ) {
       weekStart = addDaysISO(weekStart, 7)
       continue
     }

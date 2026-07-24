@@ -73,9 +73,11 @@ export function isPastDeadline(
 
 /**
  * Effective read-only state for an employee's request window, computed in real
- * time: locked if the period isn't `collecting`, or (when a deadline is
- * configured) if the deadline has already passed — so the lock takes effect at
- * the chosen moment rather than waiting for the daily lock job.
+ * time. When a deadline is configured the **deadline is the source of truth** —
+ * requests stay editable until it passes, even if the manager already published
+ * a schedule for the week (they may publish early; late requests are honored on
+ * the next re-generate). Only when NO deadline is set does the period status
+ * govern (published/locked → read-only).
  */
 export function isRequestLocked(
   status: string,
@@ -85,7 +87,6 @@ export function isRequestLocked(
   timeZone: string,
   now: Date,
 ): boolean {
-  if (status !== 'collecting') return true
-  if (dow == null || !time) return false
+  if (dow == null || !time) return status !== 'collecting'
   return isPastDeadline(now, weekStartISO, dow, time, timeZone)
 }

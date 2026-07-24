@@ -45,20 +45,21 @@ export function addDaysISO(iso: string, days: number): string {
 
 /**
  * Whether the employee's request form should skip a given week and roll forward
- * to the next one. Rolls when the week is already PUBLISHED (its schedule is
- * done → collect for the next week), has already STARTED (weekStart ≤ today,
- * i.e. Sunday's "upcoming" week is the current one), or its submission
- * DEADLINE has already passed (`deadlinePassed`) — so the deadline banner and
- * the request form both advance to next week's deadline the moment submission
- * for this week closes, instead of showing a stale past date.
+ * to the next one. Always rolls past a week that has already STARTED
+ * (weekStart ≤ today). Beyond that, when a submission **deadline is configured**
+ * the DEADLINE governs — roll once it has passed, regardless of whether a
+ * schedule was already published (a manager may publish before the deadline;
+ * employees keep collecting until it passes). Only when NO deadline is set does
+ * publish status govern (legacy fallback).
  */
 export function shouldRollToNextWeek(
   weekStartISO: string,
-  status: string,
   todayISO: string,
-  deadlinePassed = false,
+  opts: { published: boolean; deadlinePassed: boolean; hasDeadline: boolean },
 ): boolean {
-  return status === 'published' || weekStartISO <= todayISO || deadlinePassed
+  if (weekStartISO <= todayISO) return true
+  if (opts.hasDeadline) return opts.deadlinePassed
+  return opts.published
 }
 
 /**
