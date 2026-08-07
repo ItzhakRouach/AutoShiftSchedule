@@ -1,7 +1,8 @@
 // Minimal app-shell service worker for the מִשְׁמֶרֶת PWA.
-// Network-first for navigations (so auth/redirects are never served stale),
-// cache-first for same-origin static assets. Only OK responses are cached.
-const CACHE_NAME = 'mishmeret-v2';
+// Network-first for navigations AND Next.js RSC payloads (so a freshly published
+// schedule is never served stale), cache-first for same-origin static assets.
+// Only OK responses are cached.
+const CACHE_NAME = 'mishmeret-v3';
 const APP_SHELL = ['/'];
 
 self.addEventListener('install', (event) => {
@@ -48,7 +49,31 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Same-origin static GET: cache-first, store only OK responses.
+  // Next.js App Router client-side navigations/prefetches are NOT mode:'navigate'
+  // — they're `fetch('/path?_rsc=<hash>')` (mode:'cors'). These carry LIVE data
+  // (schedules, dashboard, requests), so they must be network-first: cache-first
+  // here served a pre-publish schedule in the installed phone PWA. The _rsc URL
+  // is stable per build, so a cache-first entry would never self-invalidate.
+  const isRSC =
+    request.headers.get('RSC') === '1' ||
+    request.headers.get('Next-Router-Prefetch') === '1' ||
+    url.searchParams.has('_rsc');
+  if (isRSC) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request)) // offline: fall back to last-seen
+    );
+    return;
+  }
+
+  // Same-origin static GET (content-hashed assets): cache-first, store only OK.
   event.respondWith(
     caches.match(request).then((cached) => {
       if (cached) return cached;
