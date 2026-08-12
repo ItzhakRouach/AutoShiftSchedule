@@ -66,7 +66,7 @@ export function CoverageIssues({
           boxShadow: 'var(--shadow-lift)', padding: '20px 20px 16px',
         }}
       >
-        <div style={{ fontSize: 'var(--text-h2)', fontWeight: 800, color: '#C2410C', marginBottom: 6 }}>
+        <div style={{ fontSize: 'var(--text-h2)', fontWeight: 800, color: 'var(--danger-strong)', marginBottom: 6 }}>
           בעיות כיסוי — דרושה תשומת לבך
         </div>
         <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '0 0 14px', lineHeight: 1.6 }}>

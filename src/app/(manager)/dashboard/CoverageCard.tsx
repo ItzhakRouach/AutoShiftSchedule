@@ -2,10 +2,13 @@ import { Card } from '@/components/ui/Card'
 import { Icon } from '@/components/ui/Icon'
 import type { PeriodKPIs } from '@/lib/stats/types'
 
+const soft = (token: string) => `color-mix(in srgb, ${token} 10%, transparent)`
+const border = (token: string) => `color-mix(in srgb, ${token} 25%, transparent)`
+
 const COLOR_MAP = {
-  green: { text: '#13A98E', bg: 'rgba(19,169,142,0.1)', border: 'rgba(19,169,142,0.25)', label: 'כיסוי מלא' },
-  amber: { text: '#E0902A', bg: 'rgba(224,144,42,0.1)', border: 'rgba(224,144,42,0.25)', label: 'כיסוי חלקי' },
-  red:   { text: '#EB6A4E', bg: 'rgba(235,106,78,0.1)', border: 'rgba(235,106,78,0.25)', label: 'כיסוי נמוך' },
+  green: { text: 'var(--success)', bg: soft('var(--success)'), border: border('var(--success)'), label: 'כיסוי מלא' },
+  amber: { text: 'var(--warning)', bg: soft('var(--warning)'), border: border('var(--warning)'), label: 'כיסוי חלקי' },
+  red:   { text: 'var(--danger-2)', bg: soft('var(--danger-2)'), border: border('var(--danger-2)'), label: 'כיסוי נמוך' },
 }
 
 interface Props {

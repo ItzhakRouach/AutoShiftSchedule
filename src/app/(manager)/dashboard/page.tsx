@@ -57,8 +57,8 @@ export default async function DashboardPage({
   const twoValue = twoTotal > 0 ? `${twoCount} / ${twoTotal}` : '—'
   const twoColor =
     twoTotal === 0 ? 'var(--text-3)'
-    : twoCount / twoTotal >= 0.75 ? '#13A98E'
-    : '#E0902A'
+    : twoCount / twoTotal >= 0.75 ? 'var(--success)'
+    : 'var(--warning)'
 
   return (
     <main className="page-wrap wide" style={{ direction: 'rtl' }}>
@@ -98,17 +98,17 @@ export default async function DashboardPage({
             <Card pad={14}>
               <Stat icon="alert" value={kpis?.uncoveredSlots ?? 0} label="משבצות לא מאוישות"
                 sub={kpis?.uncoveredSlots ? 'דורש טיפול' : 'הכל מכוסה'}
-                color={kpis?.uncoveredSlots ? '#EB6A4E' : '#13A98E'} />
+                color={kpis?.uncoveredSlots ? 'var(--danger-2)' : 'var(--success)'} />
             </Card>
             <Card pad={14}>
               <Stat icon="clock" value={kpis?.shifts12h ?? 0} label="משמרות 12 שעות"
                 sub="עומס אפשרי"
-                color={kpis && kpis.shifts12h > 0 ? '#E0902A' : 'var(--text-3)'} />
+                color={kpis && kpis.shifts12h > 0 ? 'var(--warning)' : 'var(--text-3)'} />
             </Card>
             <Card pad={14}>
               <Stat icon="users" value={kpis?.belowMinCount ?? 0} label="מתחת למינימום"
                 sub="עובדים שקיבלו פחות ממינימום המשמרות שהוגדר להם"
-                color={kpis?.belowMinCount ? '#EB6A4E' : '#13A98E'} />
+                color={kpis?.belowMinCount ? 'var(--danger-2)' : 'var(--success)'} />
             </Card>
             <Card pad={14}>
               <Stat icon="checkCircle"

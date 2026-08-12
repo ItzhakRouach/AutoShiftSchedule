@@ -35,6 +35,10 @@
   --danger: #D8423B;
   --danger-soft: rgba(216,66,59,0.12);
 
+  /* coral status red — low-coverage indicators (same hex in every theme) */
+  --danger-2: #EB6A4E;
+  --danger-strong: #C2410C;
+
   /* radii (soft) */
   --r-lg: 22px;
   --r-md: 16px;
