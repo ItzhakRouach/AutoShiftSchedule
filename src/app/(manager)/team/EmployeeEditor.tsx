@@ -2,7 +2,8 @@
 
 import React, { useActionState, useState, useEffect } from 'react'
 import { Btn } from '@/components/ui/Btn'
-import { createEmployee, updateEmployee, deleteEmployee, type EmployeeActionState } from './actions'
+import { createEmployee, updateEmployee, type EmployeeActionState } from './actions'
+import { deleteEmployee } from './delete-action'
 import { EmployeeFields } from './EmployeeFields'
 import { RoleSelector } from './RoleSelector'
 import { EmployeeSettingsToggles } from './EmployeeSettingsToggles'
