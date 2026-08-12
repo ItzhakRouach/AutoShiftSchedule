@@ -1,8 +1,9 @@
 // Even night-distribution targets (pure, deterministic). Computes a per-worker
 // night threshold so nights spread evenly across the ELIGIBLE pool:
-//   T = ceil(remainingNights / |pool|), where nights explicitly requested beyond
-//   the naive share are carried by their requesters (requests win) and workers
-//   who cannot or must not take nights are excluded from the pool.
+//   T = ceil((total − requestedNights) / |non-requesters|) — every explicitly
+//   requested night is carried by its requester (requests win), the remainder
+//   spreads over the non-requesters (or the full pool when everyone requested).
+//   Workers who cannot or must not take nights are excluded from the pool.
 // Thresholds feed the night-unload pass and the diversity cost (strong
 // preference — hard constraints and coverage always win).
 import type { Assignment, Employee, EngineInput, NightImbalance, Requirements } from './types'
@@ -97,11 +98,20 @@ export function buildNightThresholds(input: EngineInput): Record<string, number>
 
   let target = DEFAULT_NIGHT_CAP
   if (!fallback) {
-    const naive = Math.ceil(total / pool.length)
-    let excess = 0
-    for (const id of pool) excess += Math.max(0, requestedNights(input, id) - naive)
-    const remaining = Math.max(0, total - excess)
-    target = Math.ceil(remaining / pool.length)
+    // Requesters carry ALL the nights they asked for (their threshold is
+    // max(T, requested) below), so the even-division target only needs to
+    // spread the remainder across the non-requesters. Spreading over the full
+    // pool would double-count requested nights and over-cap total capacity.
+    let requested = 0
+    const nonRequesters: string[] = []
+    for (const id of pool) {
+      const req = requestedNights(input, id)
+      if (req > 0) requested += req
+      else nonRequesters.push(id)
+    }
+    const remaining = Math.max(0, total - requested)
+    const spread = nonRequesters.length > 0 ? nonRequesters.length : pool.length
+    target = Math.ceil(remaining / spread)
   }
 
   const map: Record<string, number> = {}

@@ -94,12 +94,11 @@ function bestMove(
   maxCycle: number,
   opts: DiversityOpts,
 ): Move | null {
-  const acc: { move: Move; cost: number }[] = []
+  let best: { move: Move; cost: number } | null = null
   const consider = (move: Move): void => {
     const cost = scoreMove(input, metas, st, move, before, opts)
     if (cost === null) return
-    const top = acc[0]
-    if (!top || cost < top.cost) acc[0] = { move, cost }
+    if (!best || cost < best.cost) best = { move, cost }
   }
   const n = refs.length
   for (let i = 0; i < n; i++) {
@@ -118,7 +117,9 @@ function bestMove(
       }
     }
   }
-  return acc[0]?.move ?? null
+  // Assertion: TS can't see the closure assignment in `consider` and narrows
+  // `best` to its `null` initializer.
+  return (best as { move: Move; cost: number } | null)?.move ?? null
 }
 
 /**

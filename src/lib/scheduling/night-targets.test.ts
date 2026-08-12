@@ -71,6 +71,34 @@ describe('buildNightThresholds (target-based)', () => {
     expect(thr['d']).toBe(1)
   })
 
+  it('mid-tier requesters do not inflate total capacity above the real night count', () => {
+    // 7 nights / 4 guards. h3 requests 3, h2 requests 2 → they absorb 5;
+    // remaining 2 spread over the 2 non-requesters → T=1.
+    // Old formula only counted requests ABOVE the naive share, giving 3+2+2+2=9.
+    const employees = [emp('h3'), emp('h2'), emp('b'), emp('c')]
+    const requests = buildRequests(employees, (id, day) =>
+      (id === 'h3' && day < 3) || (id === 'h2' && day < 2) ? { preferred: ['night'] } : {},
+    )
+    const inp = input({ employees, requirements: reqFor(days, 'night', GUARD, 1), requests })
+    const thr = buildNightThresholds(inp)
+    expect(thr['h3']).toBe(3)
+    expect(thr['h2']).toBe(2)
+    expect(thr['b']).toBe(1)
+    expect(thr['c']).toBe(1)
+    expect(thr['h3'] + thr['h2'] + thr['b'] + thr['c']).toBe(7)
+  })
+
+  it('when every pool member requested nights, the remainder spreads over the full pool', () => {
+    // 7 nights, both guards request 2 → remaining 3 has no non-requesters;
+    // spread over the whole pool: T = ceil(3/2) = 2.
+    const employees = [emp('a'), emp('b')]
+    const requests = buildRequests(employees, (id, day) => (day < 2 ? { preferred: ['night'] } : {}))
+    const inp = input({ employees, requirements: reqFor(days, 'night', GUARD, 1), requests })
+    const thr = buildNightThresholds(inp)
+    expect(thr['a']).toBe(2)
+    expect(thr['b']).toBe(2)
+  })
+
   it('night-only availability stays exempt (Infinity)', () => {
     const employees = [emp('n', { availability: nightOnlyAvail }), emp('a'), emp('b')]
     const inp = input({ employees, requirements: reqFor(days, 'night', GUARD, 1) })
