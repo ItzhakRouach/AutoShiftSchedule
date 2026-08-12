@@ -90,6 +90,7 @@ const baseParams: ClaimParams = {
   phone: '972521111111',
   employmentType: 'full',
   observesShabbat: false,
+  observesHolidays: false,
 }
 
 function pendingRow(overrides: Partial<Row> = {}): Row {
@@ -157,6 +158,26 @@ describe('claimOrCreateEmployee', () => {
     expect(rows).toHaveLength(1)
     expect(rows[0].user_id).toBe('user-9')
     expect(rows[0].status).toBe('active')
+  })
+
+  it('keeps Shabbat and holiday observance independent (insert + claim)', async () => {
+    const inserted: Row[] = []
+    await claimOrCreateEmployee(fakeAdmin(inserted), {
+      ...baseParams,
+      observesShabbat: true,
+      observesHolidays: false,
+    })
+    expect(inserted[0].observes_shabbat).toBe(true)
+    expect(inserted[0].observes_holidays).toBe(false)
+
+    const claimed = [pendingRow({ phone: '972521111111' })]
+    await claimOrCreateEmployee(fakeAdmin(claimed), {
+      ...baseParams,
+      observesShabbat: false,
+      observesHolidays: true,
+    })
+    expect(claimed[0].observes_shabbat).toBe(false)
+    expect(claimed[0].observes_holidays).toBe(true)
   })
 
   it('double submit in the same workplace: 23505 on insert resolves to success, no duplicate row', async () => {

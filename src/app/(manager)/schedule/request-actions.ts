@@ -34,11 +34,16 @@ export async function managerSaveDayRequest(input: {
 
   // Period + employee + shift types must belong to the manager's workplace.
   const [{ data: period }, { data: emp }] = await Promise.all([
-    supabase.from('schedule_periods').select('id').eq('id', periodId).eq('workplace_id', workplace.id).maybeSingle(),
+    supabase.from('schedule_periods').select('id, status').eq('id', periodId).eq('workplace_id', workplace.id).maybeSingle(),
     supabase.from('employees').select('id').eq('id', employeeId).eq('workplace_id', workplace.id).maybeSingle(),
   ])
   if (!period) return { error: 'תקופה לא נמצאה' }
   if (!emp) return { error: 'עובד לא נמצא' }
+  // Manager override past the deadline is allowed (locked), but a PUBLISHED week
+  // is final — silently rewriting a request under a published schedule is a
+  // footgun. Unpublish first to edit requests.
+  if (period.status === 'published')
+    return { error: 'הסידור לשבוע זה כבר פורסם — יש לבטל פרסום לפני עדכון בקשות' }
 
   // Shifts + off are combinable ("morning OR off"), so keep both.
   const shiftIds = preferredShiftIds

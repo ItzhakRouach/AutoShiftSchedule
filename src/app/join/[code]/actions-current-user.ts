@@ -6,17 +6,10 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { toLocalIsraeliPhone } from '@/lib/whatsapp/phone'
 import { claimOrCreateEmployee } from './claim-employee'
+import { baseJoinShape, readBaseJoinFields } from './join-schema'
 import type { JoinState } from './actions'
 
-const CurrentUserJoinSchema = z.object({
-  name: z
-    .string()
-    .min(2, 'שם חייב להכיל לפחות 2 תווים')
-    .max(120, 'שם ארוך מדי (מקסימום 120 תווים)'),
-  phone: z.string().min(1, 'יש להזין מספר טלפון'),
-  employmentType: z.enum(['full', 'part', 'student'], { error: 'יש לבחור סוג משרה' }),
-  observesShabbat: z.boolean(),
-})
+const CurrentUserJoinSchema = z.object(baseJoinShape)
 
 /**
  * Server action for an already-authenticated user with role `none` who wants
@@ -29,12 +22,7 @@ export async function joinAsCurrentUser(
   prevState: JoinState,
   formData: FormData,
 ): Promise<JoinState> {
-  const raw = {
-    name: (formData.get('name') as string ?? '').trim(),
-    phone: (formData.get('phone') as string ?? '').trim(),
-    employmentType: formData.get('employmentType') as string ?? 'full',
-    observesShabbat: formData.get('observesShabbat') === 'true',
-  }
+  const raw = readBaseJoinFields(formData)
 
   const parsed = CurrentUserJoinSchema.safeParse(raw)
   if (!parsed.success) {
@@ -46,7 +34,7 @@ export async function joinAsCurrentUser(
     return { fieldErrors }
   }
 
-  const { name, employmentType, observesShabbat } = parsed.data
+  const { name, employmentType, observesShabbat, observesHolidays } = parsed.data
 
   const phone = toLocalIsraeliPhone(parsed.data.phone)
   if (!phone) return { fieldErrors: { phone: 'מספר טלפון לא תקין' } }
@@ -101,6 +89,7 @@ export async function joinAsCurrentUser(
     phone,
     employmentType,
     observesShabbat,
+    observesHolidays,
     pendingEmployeeId,
   })
   if (claimError) return { error: claimError }

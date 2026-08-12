@@ -8,6 +8,11 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { isPublishDue } from './compute'
 import { buildAndUploadScheduleImage } from './image'
 import { notifyWorkplacePublished } from '@/lib/push/send'
+import { toISODateUTC } from '@/lib/dates/week'
+
+/** Never auto-publish weeks older than this — an abandoned/stale period from
+ *  weeks ago must not suddenly go public on the next cron tick. */
+const MAX_RETRO_DAYS = 14
 
 export interface PublishResult {
   published: number
@@ -46,11 +51,13 @@ export async function publishDuePeriods(
     // Publish the earliest not-yet-published period. 'locked' is the normal
     // case (deadline cron locked it); 'collecting' covers workplaces with no
     // request deadline configured, so their schedule still goes out on time.
+    const minWeek = toISODateUTC(new Date(now.getTime() - MAX_RETRO_DAYS * 86_400_000))
     const { data: periods, error: periodsErr } = await admin
       .from('schedule_periods')
       .select('id, week_start_date')
       .eq('workplace_id', workplace_id)
       .in('status', ['locked', 'collecting'])
+      .gte('week_start_date', minWeek)
       .order('week_start_date', { ascending: true })
       .limit(1)
 

@@ -8,6 +8,7 @@ import { getBaseUrl } from '@/lib/auth/base-url'
 import { isExistingUserSignUp } from '@/lib/auth/signup-result'
 import { toLocalIsraeliPhone } from '@/lib/whatsapp/phone'
 import { claimOrCreateEmployee } from './claim-employee'
+import { baseJoinShape, readBaseJoinFields } from './join-schema'
 
 export type JoinState = {
   error?: string
@@ -19,15 +20,9 @@ export type JoinState = {
 // or single-use the code here; only expiry gates redemption.
 
 const JoinSchema = z.object({
-  name: z
-    .string()
-    .min(2, 'שם חייב להכיל לפחות 2 תווים')
-    .max(120, 'שם ארוך מדי (מקסימום 120 תווים)'),
+  ...baseJoinShape,
   email: z.string().email('אימייל לא תקין'),
   password: z.string().min(8, 'הסיסמה חייבת לפחות 8 תווים'),
-  phone: z.string().min(1, 'יש להזין מספר טלפון'),
-  employmentType: z.enum(['full', 'part', 'student'], { error: 'יש לבחור סוג משרה' }),
-  observesShabbat: z.boolean(),
 })
 
 export async function joinWithInvite(
@@ -37,12 +32,9 @@ export async function joinWithInvite(
   formData: FormData,
 ): Promise<JoinState> {
   const raw = {
-    name: (formData.get('name') as string ?? '').trim(),
+    ...readBaseJoinFields(formData),
     email: (formData.get('email') as string ?? '').trim(),
     password: formData.get('password') as string ?? '',
-    phone: (formData.get('phone') as string ?? '').trim(),
-    employmentType: formData.get('employmentType') as string ?? 'full',
-    observesShabbat: formData.get('observesShabbat') === 'true',
   }
 
   const parsed = JoinSchema.safeParse(raw)
@@ -55,7 +47,7 @@ export async function joinWithInvite(
     return { fieldErrors }
   }
 
-  const { name, email, password, employmentType, observesShabbat } = parsed.data
+  const { name, email, password, employmentType, observesShabbat, observesHolidays } = parsed.data
 
   const phone = toLocalIsraeliPhone(parsed.data.phone)
   if (!phone) return { fieldErrors: { phone: 'מספר טלפון לא תקין' } }
@@ -152,6 +144,7 @@ export async function joinWithInvite(
     phone,
     employmentType,
     observesShabbat,
+    observesHolidays,
     pendingEmployeeId,
   })
   if (claimError) return { error: claimError }

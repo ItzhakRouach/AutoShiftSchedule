@@ -25,6 +25,12 @@ export function toISODate(d: Date): string {
   return formatISO(d)
 }
 
+/** YYYY-MM-DD in UTC. For server-side (cron / DB-written-in-UTC) comparisons —
+ *  deliberately distinct from the local-time `toISODate`. */
+export function toISODateUTC(d: Date): string {
+  return d.toISOString().slice(0, 10)
+}
+
 /**
  * ISO date of the CURRENT week's Sunday — the Sunday of the week that contains
  * `today` (today itself when it's already Sunday). Distinct from

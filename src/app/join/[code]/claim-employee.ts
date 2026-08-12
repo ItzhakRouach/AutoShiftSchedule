@@ -10,6 +10,7 @@ export interface ClaimParams {
   phone: string // already normalized to the local form (0504551558)
   employmentType: EmploymentType
   observesShabbat: boolean
+  observesHolidays: boolean
   /** Pending-row id carried by the wa.me link (?e=). Claimed by id first, so
    *  the right row is linked even if the employee typed a different phone. */
   pendingEmployeeId?: string
@@ -118,7 +119,7 @@ export async function claimOrCreateEmployee(
     min_shifts_per_week: shiftDefaults.min_shifts_per_week,
     max_shifts_per_week: shiftDefaults.max_shifts_per_week,
     observes_shabbat: p.observesShabbat,
-    observes_holidays: p.observesShabbat,
+    observes_holidays: p.observesHolidays,
   })
   if (empError) {
     // Double submit: the racing request already linked this user. The unique
@@ -160,7 +161,7 @@ async function claimPendingRow(
       name: p.name,
       phone: p.phone,
       observes_shabbat: p.observesShabbat,
-      observes_holidays: p.observesShabbat,
+      observes_holidays: p.observesHolidays,
     })
     .eq('id', pendingId)
     .eq('workplace_id', p.workplaceId)
