@@ -38,19 +38,19 @@ export function pickCollectionWeek(opts: {
   hasDeadline: boolean
   deadlinePassed: (weekStart: string) => boolean
 }): { weekStart: string; status: 'collecting' | 'locked' | 'published' } {
-  let weekStart = opts.firstWeek
-  let status = 'collecting'
-  for (let i = 0; i < MAX_CANDIDATE_WEEKS; i++) {
-    weekStart = addDaysISO(opts.firstWeek, i * 7)
-    status = opts.statusByWeek[weekStart] ?? 'collecting'
+  for (let i = 0; ; i++) {
+    const weekStart = addDaysISO(opts.firstWeek, i * 7)
+    const status = (opts.statusByWeek[weekStart] ?? 'collecting') as
+      | 'collecting'
+      | 'locked'
+      | 'published'
     const roll = shouldRollToNextWeek(weekStart, opts.todayISO, {
       published: status === 'published',
       deadlinePassed: opts.hasDeadline ? opts.deadlinePassed(weekStart) : false,
       hasDeadline: opts.hasDeadline,
     })
-    if (!roll) break
+    if (!roll || i === MAX_CANDIDATE_WEEKS - 1) return { weekStart, status }
   }
-  return { weekStart, status: status as 'collecting' | 'locked' | 'published' }
 }
 
 export async function resolveCollectionWeek(
