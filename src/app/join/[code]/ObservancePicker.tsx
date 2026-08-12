@@ -41,9 +41,8 @@ function ObservanceCheckbox({
   )
 }
 
-/** Shabbat + holiday observance — SEPARATE flags (the engine blocks them
- *  independently). Checking Shabbat also defaults holidays on, but each stays
- *  individually toggleable. */
+/** Shabbat + holiday observance — SEPARATE, fully independent flags (the
+ *  engine blocks them independently, and no checkbox ever changes the other). */
 export function ObservancePicker({
   shabbat,
   holidays,
@@ -60,10 +59,7 @@ export function ObservancePicker({
       <ObservanceCheckbox
         name="observesShabbat"
         checked={shabbat}
-        onChange={(v) => {
-          onShabbat(v)
-          if (v) onHolidays(true)
-        }}
+        onChange={onShabbat}
         label="אני שומר/ת שבת (לא עובד/ת בשבתות)"
       />
       <ObservanceCheckbox
