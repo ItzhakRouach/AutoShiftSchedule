@@ -53,6 +53,13 @@ export function CellEntryChip({ entry: en, emp, dimmed, srcSlot, onDragEmployee,
         cursor: onDragEmployee ? 'grab' : undefined,
         opacity: dimmed ? 0.35 : 1,
         transition: 'opacity 0.15s',
+        // Amber pill so 12h workers pop out of the table at a glance.
+        ...(en.is12h && {
+          background: 'var(--warning-soft)',
+          border: '1.5px solid var(--warning)',
+          borderRadius: 'var(--r-pill)',
+          padding: '2px 8px',
+        }),
       }}
     >
       {en.requested && <Badge />}
