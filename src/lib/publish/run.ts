@@ -52,7 +52,21 @@ async function publishForWorkplace(
     .limit(1)
 
   if (periodsErr) return { published: 0, errors: [`periods fetch for ${workplace_id}: ${periodsErr.message}`] }
-  if (!periods?.length) return { published: 0, errors: [] }
+  if (!periods?.length) {
+    // A period older than MAX_RETRO_DAYS is deliberately never auto-published,
+    // but silently skipping it makes the cron look broken — leave a trail.
+    const { data: stale } = await admin
+      .from('schedule_periods')
+      .select('week_start_date')
+      .eq('workplace_id', workplace_id)
+      .in('status', ['locked', 'collecting'])
+      .order('week_start_date', { ascending: true })
+      .limit(1)
+    if (stale?.length) {
+      console.warn('[publish cron] skipping stale period', workplace_id, stale[0].week_start_date)
+    }
+    return { published: 0, errors: [] }
+  }
 
   const period = periods[0]
   const { error: updateErr } = await admin
@@ -110,6 +124,7 @@ export async function publishDuePeriods(
     try {
       return await publishForWorkplace(admin, s, now)
     } catch (e) {
+      console.error('[publish cron]', s.workplace_id, e)
       return { published: 0, errors: [`publish for ${s.workplace_id}: ${e instanceof Error ? e.message : String(e)}`] }
     }
   })
