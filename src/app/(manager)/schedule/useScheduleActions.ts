@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import type { ScheduleView } from '@/lib/schedule/view-data'
-import type { Coverage, TwelveHourSuggestion, OverriddenOff, Warning } from '@/lib/scheduling/types'
+import type { Coverage, TwelveHourSuggestion, OverriddenOff, NightImbalance, Warning } from '@/lib/scheduling/types'
 import { runSchedule } from './actions'
 import { publishSchedule, hasManualAssignments } from './lifecycle-actions'
 
@@ -15,6 +15,7 @@ export function useScheduleActions(view: ScheduleView) {
   const [suggestions, setSuggestions] = useState<TwelveHourSuggestion[]>([])
   const [overriddenOff, setOverriddenOff] = useState<OverriddenOff[]>([])
   const [uncovered, setUncovered] = useState<Warning[]>([])
+  const [nightImbalance, setNightImbalance] = useState<NightImbalance[]>([])
   const [showIssues, setShowIssues] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [published, setPublished] = useState(view.status === 'published')
@@ -36,9 +37,11 @@ export function useScheduleActions(view: ScheduleView) {
       setSuggestions(res.twelveHourSuggestions ?? [])
       const ov = res.overriddenOff ?? []
       const un = res.uncovered ?? []
+      const ni = res.nightImbalance ?? []
       setOverriddenOff(ov)
       setUncovered(un)
-      setShowIssues(ov.length > 0 || un.length > 0)
+      setNightImbalance(ni)
+      setShowIssues(ov.length > 0 || un.length > 0 || ni.length > 0)
       router.refresh()
     })
   }
@@ -74,7 +77,7 @@ export function useScheduleActions(view: ScheduleView) {
   }
 
   return {
-    coverage, suggestions, overriddenOff, uncovered, showIssues, setShowIssues,
+    coverage, suggestions, overriddenOff, uncovered, nightImbalance, showIssues, setShowIssues,
     error, published, setPublished, publishing, checking, running, hasResult,
     showConfirm, setShowConfirm,
     triggerGenerate, handleGenerateClick, completeTwelveHour, publish, resetAfterDelete,

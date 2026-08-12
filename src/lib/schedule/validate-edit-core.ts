@@ -5,6 +5,7 @@ import type { ShiftId } from '@/lib/domain/constants'
 import {
   availabilityAllows,
   holdsRole,
+  mustAcceptNightBlocked,
   underMax,
   worksThatDay,
 } from '@/lib/scheduling/constraints'
@@ -98,6 +99,10 @@ export function validateAssignmentCore(args: ValidateCoreArgs): Verdict {
       warnings.push('מחוץ לזמינות שהעובד ציין')
     if (isSacredBlocked(emp, meta, shiftKey as ShiftKey))
       return { ok: false, severity: 'hard', reason: 'חסום עקב שבת או חג' }
+    // The auto-engine never gives a must_accept worker an unrequested night;
+    // a manual placement stays allowed but the manager is warned.
+    if (mustAcceptNightBlocked(emp, shiftKey as ShiftKey, request))
+      warnings.push('עובד במעמד חובת שיבוץ — לא ביקש משמרת לילה זו')
   } else {
     // 12h spans two adjacent base shifts. Shabbat/holiday on EITHER window stays
     // hard; availability is overridable (warn at most once).
@@ -116,6 +121,8 @@ export function validateAssignmentCore(args: ValidateCoreArgs): Verdict {
           availWarned = true
         }
       }
+      if (covered.some((s) => mustAcceptNightBlocked(emp, s as ShiftKey, request)))
+        warnings.push('עובד במעמד חובת שיבוץ — לא ביקש משמרת לילה זו')
     }
   }
 

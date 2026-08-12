@@ -242,3 +242,29 @@ describe('slotAtCapacity', () => {
     expect(slotAtCapacity(3, 0)).toBe(false)
   })
 })
+
+describe('must_accept night warning (manual edit stays allowed)', () => {
+  const maEmp: Employee = { ...emp, mustAccept: true }
+
+  it('warns when placing an unrequested night on a must_accept worker', () => {
+    const v = validateAssignmentCore(args({ emp: maEmp, shiftKey: 'night' }))
+    expect(v.ok).toBe(true)
+    if (v.ok) {
+      expect(v.severity).toBe('soft')
+      expect(v.reason).toContain('לילה')
+    }
+  })
+
+  it('does not warn when the must_accept worker requested this night', () => {
+    const v = validateAssignmentCore(
+      args({ emp: maEmp, shiftKey: 'night', request: { off: false, preferred: ['night'] } }),
+    )
+    expect(v).toEqual({ ok: true })
+  })
+
+  it('does not warn for a regular worker on an unrequested night', () => {
+    const v = validateAssignmentCore(args({ shiftKey: 'night' }))
+    expect(v.ok).toBe(true)
+    if (v.ok) expect(v.reason).toBeUndefined()
+  })
+})

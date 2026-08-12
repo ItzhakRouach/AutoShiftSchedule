@@ -3,7 +3,7 @@
 import { Btn } from '@/components/ui/Btn'
 import { SHIFT_META, type ShiftId } from '@/lib/domain/constants'
 import type { ScheduleView } from '@/lib/schedule/view-data'
-import type { GapReason, OverriddenOff, Warning } from '@/lib/scheduling/types'
+import type { GapReason, NightImbalance, OverriddenOff, Warning } from '@/lib/scheduling/types'
 
 const DAY_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
 
@@ -33,16 +33,19 @@ export function CoverageIssues({
   open,
   overridden,
   uncovered,
+  nightImbalance = [],
   view,
   onClose,
 }: {
   open: boolean
   overridden: OverriddenOff[]
   uncovered: Warning[]
+  nightImbalance?: NightImbalance[]
   view: ScheduleView
   onClose: () => void
 }) {
-  if (!open || (overridden.length === 0 && uncovered.length === 0)) return null
+  if (!open || (overridden.length === 0 && uncovered.length === 0 && nightImbalance.length === 0))
+    return null
   const nameOf = (id: string) => view.employees.find((e) => e.id === id)?.name ?? '—'
   const peoplePulled = Array.from(new Set(overridden.map((o) => nameOf(o.employeeId))))
 
@@ -99,6 +102,16 @@ export function CoverageIssues({
           </Section>
         )}
 
+        {nightImbalance.length > 0 && (
+          <Section title={`חלוקת לילות לא שוויונית (${nightImbalance.length})`}>
+            {nightImbalance.map((n, i) => (
+              <li key={i}>
+                <strong style={{ color: 'var(--text)' }}>{nameOf(n.employeeId)}</strong> — {n.nights} לילות (יעד ≈ {n.target})
+              </li>
+            ))}
+          </Section>
+        )}
+
         <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: 'var(--r-md)', background: 'var(--surface-2)' }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>פתרונות אפשריים</div>
           <ul style={{ margin: 0, paddingInlineStart: 18, fontSize: 12.5, color: 'var(--text-2)', lineHeight: 1.8 }}>
@@ -107,6 +120,9 @@ export function CoverageIssues({
             )}
             {uncovered.length > 0 && (
               <li>ללחוץ על &quot;השלם 12ש׳ אוטומטית&quot; כדי לנסות לכסות את החוסרים במשמרות 12 שעות, או לשבץ 12 שעות ידנית.</li>
+            )}
+            {nightImbalance.length > 0 && (
+              <li>לא נמצאה החלפה חוקית שתאזן את הלילות — אפשר לאזן ידנית או להרחיב זמינות של עובדים נוספים ללילות.</li>
             )}
             <li>לבקש מעובד לוותר על בקשת חופש באותו יום, או להגדיל את מכסת החופשים.</li>
             <li>לערוך ידנית את הסידור (לחיצה על משבצת) לפי שיקול דעתך.</li>

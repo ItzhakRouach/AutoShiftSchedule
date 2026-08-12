@@ -65,7 +65,7 @@ export function ScheduleClient({ view, editMeta, workerVacations, rolelessEmploy
   }
 
   const {
-    coverage, suggestions, overriddenOff, uncovered, showIssues, setShowIssues,
+    coverage, suggestions, overriddenOff, uncovered, nightImbalance, showIssues, setShowIssues,
     error, published, publishing, checking, running, hasResult, showConfirm, setShowConfirm,
     triggerGenerate, handleGenerateClick, completeTwelveHour, publish, resetAfterDelete,
   } = a
@@ -92,7 +92,7 @@ export function ScheduleClient({ view, editMeta, workerVacations, rolelessEmploy
 
       <FeasibilityBanner feasibility={view.feasibility} />
 
-      <CoverageIssues open={showIssues} overridden={overriddenOff} uncovered={uncovered} view={view} onClose={() => setShowIssues(false)} />
+      <CoverageIssues open={showIssues} overridden={overriddenOff} uncovered={uncovered} nightImbalance={nightImbalance} view={view} onClose={() => setShowIssues(false)} />
 
       {error && (
         <div style={{

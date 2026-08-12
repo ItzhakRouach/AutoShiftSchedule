@@ -95,5 +95,6 @@ export async function runSchedule(
     twelveHourSuggestions: result.twelveHourSuggestions,
     overriddenOff: result.overriddenOff,
     uncovered: result.warnings,
+    nightImbalance: result.nightImbalance,
   }
 }

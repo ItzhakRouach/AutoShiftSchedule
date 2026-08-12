@@ -216,6 +216,9 @@ export interface EngineResult {
   /** Soft off-requests the coverage-rescue pass overrode to staff a day, so the
    *  manager can be told who was pulled in despite requesting off. */
   overriddenOff: OverriddenOff[]
+  /** Workers holding more nights than their even-share target (hard constraints
+   *  or coverage made a legal rebalance impossible) — surfaced as a warning. */
+  nightImbalance: NightImbalance[]
   /** Present only when `EngineInput.collectTimings` is true: wall ms per fill pass (see runFill in fill.ts). */
   timings?: Record<string, number>
 }
@@ -226,4 +229,11 @@ export interface OverriddenOff {
   day: number
   shift: ShiftKey
   roleId: string
+}
+
+/** A worker over their even-share night target (see night-targets.ts). */
+export interface NightImbalance {
+  employeeId: string
+  nights: number
+  target: number
 }

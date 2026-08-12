@@ -17,7 +17,7 @@ import type {
   Settings,
   TwelveHourKey,
 } from './types'
-import { isOff, worksThatDay, underMax, availabilityAllows } from './constraints'
+import { isOff, worksThatDay, underMax, availabilityAllows, mustAcceptNightBlocked } from './constraints'
 import { isSacredBlocked } from './shabbat-holiday'
 import { TWELVE_HOUR_COVERS } from './fallback'
 import { shiftStartAbs, shiftEndAbs } from './rest'
@@ -60,6 +60,7 @@ export function canTwelve(ctx: TwelveCtx): boolean {
   for (const shift of touched) {
     if (isSacredBlocked(ctx.emp, ctx.meta, shift)) return false
     if (ctx.emp.availability !== null && !availabilityAllows(ctx.emp, ctx.meta.index, shift)) return false
+    if (mustAcceptNightBlocked(ctx.emp, shift, ctx.request)) return false
   }
 
   const [vs, ve] = interval(ctx.variant, ctx.meta.index)

@@ -11,6 +11,7 @@ import { isAssignable } from './constraints'
 import { feasibilityFromFill } from './feasibility'
 import { buildTwelveHourSuggestions } from './fallback'
 import { collectWarnings, computeCoverage, computeStats } from './grid'
+import { computeNightImbalance } from './night-targets'
 import { runFill } from './fill'
 
 function reqOf(input: EngineInput, empId: string, day: number) {
@@ -37,6 +38,7 @@ export function generateSchedule(input: EngineInput): EngineResult {
     feasibility,
     twelveHourSuggestions: buildTwelveHourSuggestions(warnings, input.settings, st.committed),
     overriddenOff: st.overriddenOff ?? [],
+    nightImbalance: computeNightImbalance(input, st.committed),
     ...(st.timings ? { timings: st.timings } : {}),
   }
 }

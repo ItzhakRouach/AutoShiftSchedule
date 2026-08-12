@@ -1,5 +1,5 @@
 import 'server-only'
-import type { Coverage, FeasibilityResult, TwelveHourSuggestion, OverriddenOff, Warning } from '@/lib/scheduling/types'
+import type { Coverage, FeasibilityResult, TwelveHourSuggestion, OverriddenOff, NightImbalance, Warning } from '@/lib/scheduling/types'
 
 // Shared types/constants for actions.ts (runSchedule) + lifecycle-actions.ts
 // (publish/unpublish/clear). Split out because a 'use server' module may only
@@ -17,6 +17,8 @@ export interface RunResult {
   overriddenOff?: OverriddenOff[]
   /** Slots still uncovered after rescue + 12h (day, shift, roleId=name, missing). */
   uncovered?: Warning[]
+  /** Workers holding more nights than their even-share target. */
+  nightImbalance?: NightImbalance[]
 }
 
 export interface RunOptions {

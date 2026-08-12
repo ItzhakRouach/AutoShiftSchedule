@@ -57,6 +57,16 @@ export function availabilityAllows(
   return allowed.includes(shift)
 }
 
+/** must_accept workers only ever work nights they explicitly requested —
+ *  their shifts are binding, so an unrequested night must never be imposed. */
+export function mustAcceptNightBlocked(
+  emp: Employee,
+  shift: ShiftKey,
+  request: DayRequest,
+): boolean {
+  return emp.mustAccept && shift === 'night' && !request.preferred.includes('night')
+}
+
 /** 6. Rest between this shift and every committed shift, INCLUDING the prior
  *  published week's tail (e.g. Saturday night → Sunday morning) and the next
  *  (already-committed) week's head (e.g. Sunday morning ← Saturday night). */
@@ -108,6 +118,7 @@ export function isAssignable(
   const ruledOutByOff = ctx.request.off && !ctx.request.preferred.includes(ctx.shift)
   const offBlocks = ruledOutByOff && !(opts.allowSoftOff && !ctx.request.offHard)
   if (offBlocks) return false
+  if (mustAcceptNightBlocked(ctx.emp, ctx.shift, ctx.request)) return false
   if (!availabilityAllows(ctx.emp, ctx.meta.index, ctx.shift)) return false
   if (isSacredBlocked(ctx.emp, ctx.meta, ctx.shift)) return false
   if (worksThatDay(ctx.current, ctx.meta.index)) return false
