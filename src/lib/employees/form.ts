@@ -1,4 +1,5 @@
 import { employeeSchema, EMPLOYMENT_TYPES, type AvailabilityItem } from '@/lib/validation/employee'
+import { buildFieldErrors as buildFieldErrorsFromZod } from '@/lib/validation/field-errors'
 
 export function parseFormData(formData: FormData) {
   const name = (formData.get('name') as string | null) ?? ''
@@ -57,11 +58,5 @@ export function parseFormData(formData: FormData) {
 export function buildFieldErrors(
   err: ReturnType<typeof employeeSchema.safeParse>,
 ): Record<string, string> {
-  if (err.success) return {}
-  const out: Record<string, string> = {}
-  for (const issue of err.error.issues) {
-    const key = String(issue.path[0] ?? 'form')
-    if (!out[key]) out[key] = issue.message
-  }
-  return out
+  return err.success ? {} : buildFieldErrorsFromZod(err.error)
 }

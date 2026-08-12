@@ -7,6 +7,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { toLocalIsraeliPhone } from '@/lib/whatsapp/phone'
 import { claimOrCreateEmployee } from './claim-employee'
 import { baseJoinShape, readBaseJoinFields } from './join-schema'
+import { buildFieldErrors } from '@/lib/validation/field-errors'
 import type { JoinState } from './actions'
 
 const CurrentUserJoinSchema = z.object(baseJoinShape)
@@ -25,14 +26,7 @@ export async function joinAsCurrentUser(
   const raw = readBaseJoinFields(formData)
 
   const parsed = CurrentUserJoinSchema.safeParse(raw)
-  if (!parsed.success) {
-    const fieldErrors: Record<string, string> = {}
-    for (const issue of parsed.error.issues) {
-      const key = issue.path[0] as string
-      if (key && !fieldErrors[key]) fieldErrors[key] = issue.message
-    }
-    return { fieldErrors }
-  }
+  if (!parsed.success) return { fieldErrors: buildFieldErrors(parsed.error) }
 
   const { name, employmentType, observesShabbat, observesHolidays } = parsed.data
 

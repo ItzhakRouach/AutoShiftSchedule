@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getAuthUser } from '@/lib/auth/user'
 import { getActiveWorkplace } from '@/lib/workplace/current'
-import { upcomingWeekStartISO } from '@/lib/dates/week'
+import { toISODateUTC, upcomingWeekStartISO } from '@/lib/dates/week'
 import { ensureUpcomingPeriodId } from '@/lib/schedule/cached-reads'
 import { getScheduleView } from '@/lib/schedule/view-data'
 import { getPublishedScheduleView, listPublishedWeeks } from '@/lib/schedule/published-view'
@@ -31,7 +31,7 @@ export default async function SchedulePage({
   if (!workplace) redirect('/onboarding')
 
   const sp = await searchParams
-  const todayISO = new Date().toISOString().slice(0, 10)
+  const todayISO = toISODateUTC(new Date())
   // Resolve the period id ONCE (cached per-request; getScheduleView reuses it)
   // so getEditMeta can run inside the same Promise.all instead of serially
   // after the view — its ~9 reads are also served from the cached readers.

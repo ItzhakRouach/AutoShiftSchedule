@@ -1,4 +1,5 @@
 // Pure deterministic helpers for the schedule adapter (no IO).
+import { addDaysISO } from '@/lib/dates/week'
 
 /** Deterministic uint32 seed from a uuid string (FNV-1a). */
 export function seedFromUuid(uuid: string): number {
@@ -12,14 +13,5 @@ export function seedFromUuid(uuid: string): number {
 
 /** Compute the 7 ISO dates for a week starting at `weekStartISO` (YYYY-MM-DD). */
 export function weekDatesFrom(weekStartISO: string): string[] {
-  const [y, m, d] = weekStartISO.split('-').map(Number)
-  const base = new Date(Date.UTC(y, m - 1, d))
-  return Array.from({ length: 7 }, (_, i) => {
-    const dt = new Date(base)
-    dt.setUTCDate(base.getUTCDate() + i)
-    const yyyy = dt.getUTCFullYear()
-    const mm = String(dt.getUTCMonth() + 1).padStart(2, '0')
-    const dd = String(dt.getUTCDate()).padStart(2, '0')
-    return `${yyyy}-${mm}-${dd}`
-  })
+  return Array.from({ length: 7 }, (_, i) => addDaysISO(weekStartISO, i))
 }

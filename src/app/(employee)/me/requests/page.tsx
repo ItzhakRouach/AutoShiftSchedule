@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getEmployeeRequestsContext } from '@/lib/requests/context'
-import { formatHebDate, resolveAbsenceKind } from '@/lib/dates/week'
+import { addDaysISO, formatHebDate, resolveAbsenceKind } from '@/lib/dates/week'
 import { RequestsHeader } from './RequestsHeader'
 import { DayList } from './DayList'
 import { VacationSection } from './VacationSection'
@@ -19,11 +19,8 @@ export default async function RequestsPage() {
     submittedAt, deadlineLabel, maxOffDaysPerWeek, currentOffDayCount,
   } = ctx
 
-  const weekStartDate = new Date(weekStart + 'T00:00:00')
   const days = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(weekStartDate)
-    d.setDate(weekStartDate.getDate() + i)
-    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    const iso = addDaysISO(weekStart, i)
     return {
       dayOfWeek: i,
       dateLabel: formatHebDate(iso),

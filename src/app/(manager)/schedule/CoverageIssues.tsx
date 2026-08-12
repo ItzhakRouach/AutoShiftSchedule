@@ -5,7 +5,7 @@ import { SHIFT_META, type ShiftId } from '@/lib/domain/constants'
 import type { ScheduleView } from '@/lib/schedule/view-data'
 import type { GapReason, NightImbalance, OverriddenOff, Warning } from '@/lib/scheduling/types'
 
-const DAY_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
+import { HEBREW_WEEKDAYS as DAY_NAMES } from '@/lib/dates/week'
 
 const REASON_LABEL: Record<GapReason, string> = {
   no_role: 'אין עובד עם ההרשאה לתפקיד זה',

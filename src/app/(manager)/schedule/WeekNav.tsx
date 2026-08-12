@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { Icon } from '@/components/ui/Icon'
 import { Spinner } from '@/components/ui/Spinner'
 import type { PublishedWeek } from '@/lib/schedule/published-view'
+import { addDaysISO } from '@/lib/dates/week'
 
 /**
  * Previous/next navigator across PUBLISHED weeks. `weeks` is newest-first.
@@ -44,11 +45,7 @@ export function WeekNav({ weeks, selectedId }: { weeks: PublishedWeek[]; selecte
   }
 
   // Calendar: pick any date → jump to the published week that contains it.
-  const weekEnd = (start: string) => {
-    const d = new Date(start + 'T00:00:00')
-    d.setDate(d.getDate() + 6)
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-  }
+  const weekEnd = (start: string) => addDaysISO(start, 6)
   const sorted = [...weeks].sort((a, b) => a.weekStart.localeCompare(b.weekStart))
   const minDate = sorted[0]?.weekStart
   const maxDate = sorted.length ? weekEnd(sorted[sorted.length - 1].weekStart) : undefined

@@ -1,5 +1,6 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { addDaysISO } from '@/lib/dates/week'
 
 export interface PriorPeriodRow {
   id: string
@@ -47,9 +48,7 @@ export async function findAdjacentPeriod(
   weekStart: string,
   offsetDays: -7 | 7,
 ): Promise<PriorPeriodRow | null> {
-  const base = new Date(`${weekStart}T00:00:00Z`)
-  base.setUTCDate(base.getUTCDate() + offsetDays)
-  const targetISO = base.toISOString().slice(0, 10)
+  const targetISO = addDaysISO(weekStart, offsetDays)
 
   const { data } = await supabase
     .from('schedule_periods')

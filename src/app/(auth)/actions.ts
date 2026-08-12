@@ -8,6 +8,7 @@ import { resolveUserRole } from '@/lib/auth/role'
 import { loginGate, DEST_FOR_ROLE, type LoginScreen } from '@/lib/auth/login-gate'
 import { isExistingUserSignUp } from '@/lib/auth/signup-result'
 import { resetPasswordSchema, signInSchema, signUpSchema } from '@/lib/validation/auth'
+import { buildFieldErrors } from '@/lib/validation/field-errors'
 
 export type AuthState = {
   error?: string
@@ -32,14 +33,7 @@ export async function signIn(prevState: AuthState, formData: FormData): Promise<
   const intended: LoginScreen = formData.get('as') === 'employee' ? 'employee' : 'manager'
 
   const parsed = signInSchema.safeParse(raw)
-  if (!parsed.success) {
-    const fieldErrors: Record<string, string> = {}
-    for (const issue of parsed.error.issues) {
-      const field = String(issue.path[0])
-      if (!fieldErrors[field]) fieldErrors[field] = issue.message
-    }
-    return { fieldErrors }
-  }
+  if (!parsed.success) return { fieldErrors: buildFieldErrors(parsed.error) }
 
   const supabase = await createClient()
   const { error } = await supabase.auth.signInWithPassword({
@@ -71,14 +65,7 @@ export async function signUp(prevState: AuthState, formData: FormData): Promise<
   }
 
   const parsed = signUpSchema.safeParse(raw)
-  if (!parsed.success) {
-    const fieldErrors: Record<string, string> = {}
-    for (const issue of parsed.error.issues) {
-      const field = String(issue.path[0])
-      if (!fieldErrors[field]) fieldErrors[field] = issue.message
-    }
-    return { fieldErrors }
-  }
+  if (!parsed.success) return { fieldErrors: buildFieldErrors(parsed.error) }
 
   const supabase = await createClient()
   const baseUrl = await getBaseUrl()
@@ -152,14 +139,7 @@ export async function updatePassword(
     password: (formData.get('password') as string) ?? '',
     passwordConfirm: (formData.get('passwordConfirm') as string) ?? '',
   })
-  if (!parsed.success) {
-    const fieldErrors: Record<string, string> = {}
-    for (const issue of parsed.error.issues) {
-      const field = String(issue.path[0])
-      if (!fieldErrors[field]) fieldErrors[field] = issue.message
-    }
-    return { fieldErrors }
-  }
+  if (!parsed.success) return { fieldErrors: buildFieldErrors(parsed.error) }
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

@@ -77,12 +77,16 @@ export function formatHebDate(iso: string): string {
   return `${Number(dd)}.${Number(mm)}`
 }
 
-const HEB_DAYS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
+/** Canonical Hebrew weekday names, Sunday-first (index = getDay()). */
+export const HEBREW_WEEKDAYS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'] as const
+
+/** Canonical short Hebrew weekday marks, Sunday-first. */
+export const HEBREW_WEEKDAY_SHORTS = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'] as const
 
 /** Hebrew weekday name (e.g. "ראשון") for a YYYY-MM-DD date. Local-time. */
 export function hebrewDayName(iso: string): string {
   const [y, m, d] = iso.split('-').map(Number)
-  return HEB_DAYS[new Date(y, m - 1, d).getDay()]
+  return HEBREW_WEEKDAYS[new Date(y, m - 1, d).getDay()]
 }
 
 /** True if `iso` falls within ANY of the given inclusive vacation ranges. */

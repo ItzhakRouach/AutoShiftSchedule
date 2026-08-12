@@ -1,5 +1,6 @@
 import type { ViewEmployee, ViewRequest, ViewVacation } from '@/lib/schedule/view-data'
 import type { WorkplaceVacation } from '@/lib/vacations/pending'
+import { addDaysISO } from '@/lib/dates/week'
 
 /** Build a lookup: employeeId → dayOfWeek → ViewRequest */
 export function buildRequestMap(
@@ -43,8 +44,5 @@ export function buildWorkerVacationsByEmployee(vacations: WorkplaceVacation[]): 
 
 /** ISO date for current-week day index 0..6 (Sunday..Saturday). */
 export function isoForDayIndex(weekStart: string, dayIndex: number): string {
-  const [y, m, d] = weekStart.split('-').map(Number)
-  const date = new Date(y, m - 1, d)
-  date.setDate(date.getDate() + dayIndex)
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+  return addDaysISO(weekStart, dayIndex)
 }

@@ -37,7 +37,7 @@ export function deadlineDateTime(
   return deadlineDT.toUTC().toJSDate()
 }
 
-const HEB_DAYS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
+import { HEBREW_WEEKDAYS as HEB_DAYS } from '@/lib/dates/week'
 
 /**
  * Human-readable Hebrew label for the request deadline, e.g.

@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createWorkplaceSchema } from '@/lib/validation/workplace'
+import { buildFieldErrors } from '@/lib/validation/field-errors'
 import { createWorkplaceWithDefaults } from '@/lib/workplace/create'
 
 export type WorkplaceState = {
@@ -43,14 +44,7 @@ export async function createWorkplace(
   }
 
   const parsed = createWorkplaceSchema.safeParse(raw)
-  if (!parsed.success) {
-    const fieldErrors: Record<string, string> = {}
-    for (const issue of parsed.error.issues) {
-      const field = String(issue.path[0])
-      if (!fieldErrors[field]) fieldErrors[field] = issue.message
-    }
-    return { fieldErrors }
-  }
+  if (!parsed.success) return { fieldErrors: buildFieldErrors(parsed.error) }
 
   const { orgName, workplaceName, timezone } = parsed.data
 

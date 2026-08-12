@@ -22,7 +22,7 @@ export function busyDaysOf(view: ScheduleView, employeeId: string): Set<number> 
 // Full Hebrew weekday names by index (0 = Sunday … 6 = Saturday), matching
 // `DayInfo.index`. Used only for the cell's screen-reader label — the visible
 // header uses the shorter `DayInfo.short` form.
-const DAY_NAMES_FULL = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
+import { HEBREW_WEEKDAYS as DAY_NAMES_FULL } from '@/lib/dates/week'
 
 /** "<day>, <shift>, <role>: <names | לא מאויש>" for the cell's aria-label. */
 export function buildCellLabel(

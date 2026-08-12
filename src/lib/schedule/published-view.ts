@@ -10,10 +10,8 @@ import { formatHebDate } from '@/lib/dates/week'
 import { weekDatesFrom } from './map-rows'
 import { shiftMetaFromRow, type ShiftDisplay } from '@/lib/domain/meta'
 import { buildRequestedSet, type ScheduleView, type ViewRequest } from './view-data'
-import { splitAssignments } from './view-data-grid'
+import { buildDayInfos, splitAssignments } from './view-data-grid'
 import type { ShiftKey } from '@/lib/scheduling/types'
-
-const DAY_SHORTS = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳']
 
 /** Published weeks for a workplace (newest first) — for the week navigator. */
 export interface PublishedWeek { id: string; weekStart: string; label: string }
@@ -93,12 +91,7 @@ export async function getPublishedScheduleView(
 
   const { grid, twelve, temps } = splitAssignments(assignsRaw ?? [], idToKey)
 
-  const weekDates = weekDatesFrom(period.week_start_date)
-  const days = Array.from({ length: 7 }, (_, i) => ({
-    index: i,
-    short: DAY_SHORTS[i],
-    date: formatHebDate(weekDates[i]),
-  }))
+  const days = buildDayInfos(weekDatesFrom(period.week_start_date))
 
   const requests: ViewRequest[] = (requestsRaw ?? []).map((r) => ({
     employeeId: r.employee_id,

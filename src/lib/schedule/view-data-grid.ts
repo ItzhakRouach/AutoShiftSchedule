@@ -1,18 +1,16 @@
 // Pure splitters + tiny helpers used by getScheduleView. Kept separate from
 // view-data.ts to honor the project's ≤200-line rule.
-import { formatHebDate } from '@/lib/dates/week'
+import { formatHebDate, HEBREW_WEEKDAY_SHORTS } from '@/lib/dates/week'
 import type { ShiftId } from '@/lib/domain/constants'
 import type { ShiftKey } from '@/lib/scheduling/types'
 import type { DayInfo, ViewGrid, ViewTwelve, ViewTempEntry } from './view-data'
 import { parseTwelveFills } from './twelve-fills'
 
-const DAY_SHORTS = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳']
-
 /** 7-day DayInfo[] from the week's ISO start date. */
 export function buildDayInfos(weekDates: string[]): DayInfo[] {
   return Array.from({ length: 7 }, (_, i) => ({
     index: i,
-    short: DAY_SHORTS[i],
+    short: HEBREW_WEEKDAY_SHORTS[i],
     date: formatHebDate(weekDates[i]),
   }))
 }

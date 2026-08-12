@@ -4,7 +4,7 @@ import { useActionState } from 'react'
 import { Btn } from '@/components/ui/Btn'
 import { updateRequestDeadline, type DeadlineActionState } from './actions'
 
-const DAYS_HEB = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
+import { HEBREW_WEEKDAYS as DAYS_HEB } from '@/lib/dates/week'
 
 interface Props {
   initialDow: number | null

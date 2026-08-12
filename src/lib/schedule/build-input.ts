@@ -8,6 +8,7 @@ import {
   type MapInput,
 } from './map-rows'
 import { fetchWorkplaceScoped, fetchEmployeeScoped } from './fetch-stages'
+import { addDaysISO } from '@/lib/dates/week'
 
 export interface PeriodInfo {
   id: string
@@ -53,11 +54,7 @@ export async function buildEngineInput(
   // For holiday-eve detection on the last day we need the day after the week ends.
   // Depends only on stage-1's week_start_date, so it's ready before stage 2 fires.
   const weekDatesArr = weekDatesFrom(period.week_start_date)
-  const lastDate = weekDatesArr[6]
-  const [y, m, d] = lastDate.split('-').map(Number)
-  const dayAfter = new Date(Date.UTC(y, m - 1, d))
-  dayAfter.setUTCDate(dayAfter.getUTCDate() + 1)
-  const dayAfterISO = `${dayAfter.getUTCFullYear()}-${String(dayAfter.getUTCMonth() + 1).padStart(2, '0')}-${String(dayAfter.getUTCDate()).padStart(2, '0')}`
+  const dayAfterISO = addDaysISO(weekDatesArr[6], 1)
 
   // Stage 2: everything needing only workplace_id/week_start_date/period_id —
   // including the prior/adjacent period lookups, which filter by workplace_id

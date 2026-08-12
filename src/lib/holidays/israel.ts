@@ -6,21 +6,13 @@
  * Israeli schedule (il:true) gives the correct 1-day yom tov for Diaspora 2-day chagim.
  */
 import { HebrewCalendar, flags } from '@hebcal/core'
+// @hebcal/core's greg() returns a Date at midnight LOCAL time, so the
+// local-time toISODate keeps the civil date correct in any process timezone.
+import { toISODate as toISO } from '@/lib/dates/week'
 
 export interface ChagDate {
   date: string   // YYYY-MM-DD (UTC)
   name: string   // Hebrew name via render('he')
-}
-
-/**
- * @hebcal/core's greg() returns a Date at midnight local time.
- * Use local-time accessors so the civil date matches regardless of the process timezone.
- */
-function toISO(g: Date): string {
-  const yyyy = g.getFullYear()
-  const mm = String(g.getMonth() + 1).padStart(2, '0')
-  const dd = String(g.getDate()).padStart(2, '0')
-  return `${yyyy}-${mm}-${dd}`
 }
 
 /**

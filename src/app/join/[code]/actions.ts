@@ -9,6 +9,7 @@ import { isExistingUserSignUp } from '@/lib/auth/signup-result'
 import { toLocalIsraeliPhone } from '@/lib/whatsapp/phone'
 import { claimOrCreateEmployee } from './claim-employee'
 import { baseJoinShape, readBaseJoinFields } from './join-schema'
+import { buildFieldErrors } from '@/lib/validation/field-errors'
 
 export type JoinState = {
   error?: string
@@ -38,14 +39,7 @@ export async function joinWithInvite(
   }
 
   const parsed = JoinSchema.safeParse(raw)
-  if (!parsed.success) {
-    const fieldErrors: Record<string, string> = {}
-    for (const issue of parsed.error.issues) {
-      const key = issue.path[0] as string
-      if (key && !fieldErrors[key]) fieldErrors[key] = issue.message
-    }
-    return { fieldErrors }
-  }
+  if (!parsed.success) return { fieldErrors: buildFieldErrors(parsed.error) }
 
   const { name, email, password, employmentType, observesShabbat, observesHolidays } = parsed.data
 

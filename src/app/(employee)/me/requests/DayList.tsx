@@ -10,7 +10,7 @@ import { ABSENCE_KIND_META, type AbsenceKind } from '@/lib/vacations/kind-meta'
 import { DayEditor } from './DayEditor'
 import { OffCapBanner } from './OffCapBanner'
 
-const HEB_DAYS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
+import { HEBREW_WEEKDAYS as HEB_DAYS } from '@/lib/dates/week'
 
 interface DayCard {
   dayOfWeek: number

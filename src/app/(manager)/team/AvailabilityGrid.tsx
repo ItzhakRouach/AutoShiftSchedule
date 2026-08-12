@@ -4,7 +4,7 @@ import React from 'react'
 import { Toggle } from '@/components/ui/Toggle'
 import type { AvailabilityItem } from '@/lib/validation/employee'
 
-const DAY_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
+import { HEBREW_WEEKDAYS as DAY_NAMES } from '@/lib/dates/week'
 
 export interface ShiftTypeOption {
   id: string

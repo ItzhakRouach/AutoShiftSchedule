@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { Btn } from '@/components/ui/Btn'
 import { setWorkingDays } from './requirements-actions'
 
-const DAY_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
+import { HEBREW_WEEKDAYS as DAY_NAMES } from '@/lib/dates/week'
 
 export function WorkingDaysSection({ initialDays }: { initialDays: number[] }) {
   const [days, setDays] = useState<Set<number>>(new Set(initialDays))

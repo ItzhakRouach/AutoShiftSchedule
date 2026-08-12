@@ -6,20 +6,11 @@
  *   isHolidayEve[d] = (weekDates[d] + 1 day) ∈ holidayDates
  */
 
+import { addDaysISO } from '@/lib/dates/week'
+
 export interface HolidayDayMeta {
   isHoliday: boolean
   isHolidayEve: boolean
-}
-
-/** Add `n` days to a YYYY-MM-DD string using UTC math. */
-function addDays(iso: string, n: number): string {
-  const [y, m, d] = iso.split('-').map(Number)
-  const dt = new Date(Date.UTC(y, m - 1, d))
-  dt.setUTCDate(dt.getUTCDate() + n)
-  const yyyy = dt.getUTCFullYear()
-  const mm = String(dt.getUTCMonth() + 1).padStart(2, '0')
-  const dd = String(dt.getUTCDate()).padStart(2, '0')
-  return `${yyyy}-${mm}-${dd}`
 }
 
 /**
@@ -35,7 +26,7 @@ export function buildHolidayMeta(
     const date = weekDates[d]
     return {
       isHoliday: holidayDates.has(date),
-      isHolidayEve: holidayDates.has(addDays(date, 1)),
+      isHolidayEve: holidayDates.has(addDaysISO(date, 1)),
     }
   })
 }

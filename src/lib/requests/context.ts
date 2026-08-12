@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getAuthUser } from '@/lib/auth/user'
 import { deadlineLabel, isRequestLocked } from '@/lib/deadline/compute'
+import { toISODateUTC } from '@/lib/dates/week'
 import { resolveCollectionWeek } from './collection-week'
 
 export interface ShiftTypeRow {
@@ -77,7 +78,7 @@ export async function getEmployeeRequestsContext(
   // Hide absences whose range has fully passed — a worker reads as available
   // again once their vacation/מילואים ends (mirrors the manager side in
   // vacations/pending.ts). UTC-date slice, matching that call site.
-  const todayISO = now.toISOString().slice(0, 10)
+  const todayISO = toISODateUTC(now)
 
   // Resolve the week the employee should collect for (rolls past published/
   // started/deadline-passed weeks). Shared with /me's deadline banner.
