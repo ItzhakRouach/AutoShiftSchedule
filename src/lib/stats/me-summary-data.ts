@@ -6,7 +6,13 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { summarizeEmployee, type EmployeeSummary } from './employee-summary'
 import { currentWeekStartISO } from '@/lib/dates/week'
+import { fetchRolesAll, fetchShiftTypes } from '@/lib/schedule/cached-reads'
 import type { Scope } from './types'
+
+/** Active roles, rank-desc — deduped per request via fetchRolesAll. */
+async function activeRoles(supabase: SupabaseClient, workplaceId: string) {
+  return (await fetchRolesAll(supabase, workplaceId)).filter((r) => r.is_active)
+}
 
 export interface MeSummaryRole { name: string; color: string }
 export interface MeSummaryData {
@@ -35,7 +41,7 @@ export async function getMeSummary(
     .maybeSingle()
   if (!period || period.status !== 'published') return null
 
-  const [{ data: assigns }, { data: reqs }, { data: shiftTypes }, { data: roles }] = await Promise.all([
+  const [{ data: assigns }, { data: reqs }, shiftTypes, roles] = await Promise.all([
     supabase
       .from('assignments')
       .select('day_of_week, shift_type_id, role_id')
@@ -46,8 +52,8 @@ export async function getMeSummary(
       .select('day_of_week, is_off, preferred_shift_ids')
       .eq('period_id', period.id)
       .eq('employee_id', employeeId),
-    supabase.from('shift_types').select('id, key').eq('workplace_id', workplaceId),
-    supabase.from('roles').select('id, name, color, rank').eq('workplace_id', workplaceId).eq('is_active', true).order('rank', { ascending: false }),
+    fetchShiftTypes(supabase, workplaceId),
+    activeRoles(supabase, workplaceId),
   ])
 
   const shiftKeyById = new Map((shiftTypes ?? []).map((s) => [s.id, s.key]))
@@ -108,9 +114,9 @@ export async function getMeStats(
   const periodList = periods ?? []
   const periodIds = periodList.map((p) => p.id as string)
 
-  const [{ data: shiftTypes }, { data: roles }, assignsRes] = await Promise.all([
-    supabase.from('shift_types').select('id, key').eq('workplace_id', workplaceId),
-    supabase.from('roles').select('id, name, color, rank').eq('workplace_id', workplaceId).eq('is_active', true).order('rank', { ascending: false }),
+  const [shiftTypes, roles, assignsRes] = await Promise.all([
+    fetchShiftTypes(supabase, workplaceId),
+    activeRoles(supabase, workplaceId),
     periodIds.length
       ? supabase.from('assignments').select('period_id, day_of_week, shift_type_id, role_id').eq('employee_id', employeeId).in('period_id', periodIds)
       : Promise.resolve({ data: [] as { period_id: string; day_of_week: number; shift_type_id: string; role_id: string }[] }),

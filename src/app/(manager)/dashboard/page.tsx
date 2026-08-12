@@ -1,12 +1,12 @@
 import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
 import { getAuthUser } from '@/lib/auth/user'
 import { getActiveWorkplace } from '@/lib/workplace/current'
 import { getWorkplaceVacations } from '@/lib/vacations/pending'
 import { getRoleHeadcounts } from '@/lib/stats/role-headcounts'
 import { fetchDashboardStats } from '@/lib/stats/fetch'
+import { toISODateUTC } from '@/lib/dates/week'
 import { PendingVacations } from './PendingVacations'
 import { RoleHeadcounts } from './RoleHeadcounts'
 import { Card } from '@/components/ui/Card'
@@ -39,14 +39,14 @@ export default async function DashboardPage({
   const sp = await searchParams
   const scope: Scope = isScope(sp?.scope) ? sp.scope as Scope : 'week'
 
-  const todayISO = new Date().toISOString().slice(0, 10)
-  const admin = createAdminClient()
-  // The three data sources are independent — fetch them in parallel instead of
-  // three sequential round-trips.
+  const todayISO = toISODateUTC(new Date())
+  // The three data sources are independent — fetch them in parallel. All reads
+  // are RLS-covered for the owning manager, so the authed client suffices (no
+  // service-role bypass in a user-facing path).
   const [stats, pendingVacations, roleHeadcounts] = await Promise.all([
     workplace ? fetchDashboardStats(supabase, workplace.id, scope) : null,
-    workplace ? getWorkplaceVacations(admin, workplace.id, todayISO) : [],
-    workplace ? getRoleHeadcounts(admin, workplace.id) : [],
+    workplace ? getWorkplaceVacations(supabase, workplace.id, todayISO) : [],
+    workplace ? getRoleHeadcounts(supabase, workplace.id) : [],
   ])
   const maxHours = Math.max(...(stats?.employees.map((e) => e.hours) ?? [1]), 1)
   const kpis = stats?.kpis

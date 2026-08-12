@@ -11,28 +11,29 @@ export interface RoleHeadcount {
 
 /**
  * How many employees hold each ACTIVE role in a workplace (hybrid — whatever
- * roles this workplace defined). Distinct employees per role. Elevated client
- * (employee_roles are RLS-scoped); caller passes the manager's own workplace id.
+ * roles this workplace defined). Distinct employees per role. Works with the
+ * manager's authed client (roles/employees/employee_roles all grant the owning
+ * manager RLS select); caller passes the manager's own workplace id.
  */
 export async function getRoleHeadcounts(
-  admin: SupabaseClient,
+  client: SupabaseClient,
   workplaceId: string,
 ): Promise<RoleHeadcount[]> {
-  const { data: roles } = await admin
+  const { data: roles } = await client
     .from('roles')
     .select('id, name, color, rank')
     .eq('workplace_id', workplaceId)
     .eq('is_active', true)
     .order('rank', { ascending: false })
 
-  const { data: emps } = await admin
+  const { data: emps } = await client
     .from('employees')
     .select('id')
     .eq('workplace_id', workplaceId)
   const empIds = (emps ?? []).map((e) => e.id as string)
 
   const { data: er } = empIds.length
-    ? await admin.from('employee_roles').select('employee_id, role_id').in('employee_id', empIds)
+    ? await client.from('employee_roles').select('employee_id, role_id').in('employee_id', empIds)
     : { data: [] as { employee_id: string; role_id: string }[] }
 
   // Held role ids per employee.
