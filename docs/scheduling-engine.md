@@ -34,6 +34,14 @@ Data model addition (Phase 4 migration): `employee_availability(employee_id, day
 7. One shift per employee per day.
 8. Never exceed `max_shifts_per_week`.
 
+## Fill order — hard days first when scarcity bites
+Every fill pass iterates days chronologically (the best starting point for the fairness passes). If that
+run leaves open required slots on **hard days** (Friday, Saturday, holiday, holiday-eve — `day-order.ts
+isHardDay`), the week is re-filled iterating hard days FIRST (`fill.ts runFillHardDaysAware`), spending
+scarce capacity (max-shifts, rest windows) on the smallest candidate pools before regular weekdays. The
+run with fewer hard-day gaps wins (tie → more total filled → keep chronological). Both `generateSchedule`
+and `checkFeasibility` use it, so feasibility still can never contradict the grid (FIX B).
+
 ## Soft objectives (canonical priority order — highest first)
 This is the EXACT order implemented in `scoring.ts compareCandidates` (and threaded into the
 reservation pre-pass via `dayfill.ts isTopPrecedenceFor`). Lower comparator output = higher priority.

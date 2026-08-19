@@ -4,7 +4,7 @@
 import { BASE_SHIFTS, type EngineInput, type FeasibilityResult, type ShiftKey } from './types'
 import { collectWarnings } from './grid'
 import { buildTwelveHourSuggestions } from './fallback'
-import { runFill, countFilled } from './fill'
+import { runFill, runFillHardDaysAware, countFilled } from './fill'
 import type { FillState } from './dayfill'
 
 /** Count total required role-slots across the week. */
@@ -26,7 +26,7 @@ export function countRequiredSlots(input: EngineInput): number {
  * constraints — i.e. exactly what generateSchedule fills. Runs the shared fill.
  */
 export function maxStaffableSlots(input: EngineInput): number {
-  return countFilled(runFill(input))
+  return countFilled(runFillHardDaysAware(input))
 }
 
 /**
@@ -53,7 +53,9 @@ export function feasibilityFromFill(input: EngineInput, st: FillState): Feasibil
     }
   }
   // Measure 8h-ONLY coverage to decide whether 12h is the reason we got further.
-  const eightOnly = countFilled(runFill(input, true))
+  // Use the SAME day order as the fill that produced `st` — otherwise a
+  // hard-days-first win by reordering alone would masquerade as "12h helped".
+  const eightOnly = countFilled(runFill(input, true, false, false, st.hardDaysFirst ?? false))
   const twelveHelped = input.settings.allow12hFallback && maxStaffable > eightOnly
   // Even if 12h could not be auto-assigned here, suggestions may still apply.
   const warnings = collectWarnings(input, st.grid)
@@ -68,5 +70,5 @@ export function feasibilityFromFill(input: EngineInput, st: FillState): Feasibil
 
 /** Standalone feasibility: runs the engine's real fill internally (FIX B). */
 export function checkFeasibility(input: EngineInput): FeasibilityResult {
-  return feasibilityFromFill(input, runFill(input))
+  return feasibilityFromFill(input, runFillHardDaysAware(input))
 }

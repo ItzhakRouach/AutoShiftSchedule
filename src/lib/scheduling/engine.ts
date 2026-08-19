@@ -12,16 +12,17 @@ import { feasibilityFromFill } from './feasibility'
 import { buildTwelveHourSuggestions } from './fallback'
 import { collectWarnings, computeCoverage, computeStats } from './grid'
 import { computeNightImbalance } from './night-targets'
-import { runFill } from './fill'
+import { runFillHardDaysAware } from './fill'
 
 function reqOf(input: EngineInput, empId: string, day: number) {
   return input.requests[empId]?.[day] ?? { off: false, preferred: [] }
 }
 
 export function generateSchedule(input: EngineInput): EngineResult {
-  // Run the engine's real fill ONCE. Feasibility is derived from this same
+  // Run the engine's real fill (chronological, with a hard-days-first retry
+  // when Fri/Sat/holiday slots stay open). Feasibility is derived from this same
   // result (FIX B), guaranteeing coverage.filledSlots == feasibility.maxStaffable.
-  const st = runFill(input, input.skipTwelve ?? false)
+  const st = runFillHardDaysAware(input, input.skipTwelve ?? false)
 
   const warnings = collectWarnings(input, st.grid)
   const feasibility = feasibilityFromFill(input, st)

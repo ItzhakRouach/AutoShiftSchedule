@@ -29,12 +29,12 @@ function reqOf(input: EngineInput, empId: string, day: number): DayRequest {
 export function runCoverageRescue(
   input: EngineInput,
   st: FillState,
-  metas: Record<number, DayMeta>,
+  days: DayMeta[],
 ): OverriddenOff[] {
   const overrides: OverriddenOff[] = []
 
-  for (const d of input.days) {
-    const meta = metas[d.index]
+  for (const d of days) {
+    const meta = d
     // Each entry is one still-needed unit (requirement − already-filled, incl 12h).
     for (const slot of openSlotsForDay(input, st, d.index)) {
       const candidates = input.employees

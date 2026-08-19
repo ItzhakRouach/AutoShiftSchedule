@@ -25,6 +25,9 @@ export interface FillState {
   overriddenOff?: import('./types').OverriddenOff[]
   /** dev-only opt-in pass timings (ms), keyed by pass name — see fill.ts. */
   timings?: Record<string, number>
+  /** day-iteration order this state was filled with — lets feasibility compare
+   *  its 8h-only baseline using the SAME order (see feasibilityFromFill). */
+  hardDaysFirst?: boolean
 }
 
 function reqOf(input: EngineInput, empId: string, day: number) {

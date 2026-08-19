@@ -69,6 +69,8 @@ DesignTemplate/     # REFERENCE prototype — read for design/logic, do NOT ship
   shift/day. **Soft:** requested shift · must_accept · under-min · fairness · 16h ideal rest for guards.
 - **Flow:** manager configures → invites (link/code) → employees request → deadline locks → auto-schedule
   → manual edits / 12h as needed → publish → WhatsApp image. See `docs/scheduling-engine.md`.
+- **Fill order:** chronological; when Fri/Sat/holiday slots stay open, the week refills hard-days-first
+  and the better-covering run wins (`fill.ts runFillHardDaysAware`).
 
 ## Pointers
 - Roadmap & phases: `docs/IMPLEMENTATION_PLAN.md`

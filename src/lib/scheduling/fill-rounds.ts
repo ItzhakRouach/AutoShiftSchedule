@@ -38,20 +38,15 @@ export function buildLotteryRanks(input: EngineInput): Record<string, number> {
  * fill) on the remaining slots, so a minimum only yields where a request truly
  * needs the slot.
  */
-export function honorRequestsRound(
-  input: EngineInput,
-  st: FillState,
-  metas: Record<number, DayMeta>,
-): void {
-  for (const d of input.days) {
-    const meta = metas[d.index]
+export function honorRequestsRound(input: EngineInput, st: FillState, days: DayMeta[]): void {
+  for (const d of days) {
     matchDay(
       input,
-      meta,
+      d,
       st,
       () => 1, // one shift/day; weekly accrual happens across days
       (e, slot) =>
-        requestsSlot(input, e, slot) && isTopPrecedenceFor(input, meta, st, e, slot, true),
+        requestsSlot(input, e, slot) && isTopPrecedenceFor(input, d, st, e, slot, true),
     )
   }
 }
@@ -65,17 +60,12 @@ export function honorRequestsRound(
  * `isAssignable` still enforces the hard rules (rest, one-shift/day, max shifts,
  * role, Shabbat/holiday) — so genuinely-impossible requests are simply skipped.
  */
-export function mustAcceptRound(
-  input: EngineInput,
-  st: FillState,
-  metas: Record<number, DayMeta>,
-): void {
+export function mustAcceptRound(input: EngineInput, st: FillState, days: DayMeta[]): void {
   if (!input.employees.some((e) => e.mustAccept)) return
-  for (const d of input.days) {
-    const meta = metas[d.index]
+  for (const d of days) {
     matchDay(
       input,
-      meta,
+      d,
       st,
       (e) => (e.mustAccept ? 1 : 0),
       (e, slot) => e.mustAccept && requestsSlot(input, e, slot),
@@ -93,27 +83,22 @@ export function mustAcceptRound(
  * so total filled slots are identical to a run without this pass; it merely
  * decides WHO occupies a contested slot. Off-requests stay hard (isAssignable).
  */
-export function carryOverRound(
-  input: EngineInput,
-  st: FillState,
-  metas: Record<number, DayMeta>,
-): void {
+export function carryOverRound(input: EngineInput, st: FillState, days: DayMeta[]): void {
   const hasDeficit = input.employees.some((e) => (e.priorDeficit ?? 0) > 0)
   if (!hasDeficit) return
-  for (const d of input.days) {
-    const meta = metas[d.index]
+  for (const d of days) {
     matchDay(
       input,
-      meta,
+      d,
       st,
       (e) => ((e.priorDeficit ?? 0) > 0 && st.committed[e.id].length < e.minShifts ? 1 : 0),
-      (e, slot) => isTopPrecedenceFor(input, meta, st, e, slot),
+      (e, slot) => isTopPrecedenceFor(input, d, st, e, slot),
     )
   }
 }
 
-export function generalFill(input: EngineInput, st: FillState, metas: Record<number, DayMeta>): void {
-  for (const d of input.days) {
-    matchDay(input, metas[d.index], st, () => 1, () => true)
+export function generalFill(input: EngineInput, st: FillState, days: DayMeta[]): void {
+  for (const d of days) {
+    matchDay(input, d, st, () => 1, () => true)
   }
 }

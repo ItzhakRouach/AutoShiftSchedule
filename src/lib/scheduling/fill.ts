@@ -3,7 +3,8 @@
 // can never disagree with the grid. Pure & deterministic.
 import type { EngineInput } from './types'
 import { emptyGrid } from './grid'
-import type { FillState } from './dayfill'
+import { openSlotsForDay, type FillState } from './dayfill'
+import { isHardDay, prioritizeDays } from './day-order'
 import { runTwelveFill } from './twelve-fill'
 import { runDiversityPass, buildNightThresholds } from './diversity'
 import { runNightUnloadPass } from './night-unload'
@@ -37,6 +38,7 @@ export function runFill(
   skipTwelve = false,
   skipDiversity = false,
   skipNightThenOff = false,
+  hardDaysFirst = false,
 ): FillState {
   const st: FillState = {
     grid: emptyGrid(input),
@@ -44,24 +46,29 @@ export function runFill(
     satisfied: {},
     lotteryRank: buildLotteryRanks(input),
     timings: input.collectTimings ? {} : undefined,
+    hardDaysFirst,
   }
   for (const e of input.employees) {
     st.committed[e.id] = []
     st.satisfied[e.id] = 0
   }
   const metas = metaMap(input)
+  // Day iteration order for every capacity-competing pass. `hardDaysFirst`
+  // spends scarce capacity on Fri/Sat/holiday slots before regular weekdays —
+  // see runFillHardDaysAware for when that trade is worth making.
+  const days = hardDaysFirst ? prioritizeDays(input.days) : input.days
   // MUST-ACCEPT FIRST: honor every feasible requested shift of must-accept
   // employees before any other reservation, so their requests win all contention.
-  timed(st, 'must-accept', () => mustAcceptRound(input, st, metas))
+  timed(st, 'must-accept', () => mustAcceptRound(input, st, days))
   // HYBRID: honor every feasible requested shift (request-first precedence),
   // resolving only request-vs-request contention; minimums are pursued next.
-  timed(st, 'requests', () => honorRequestsRound(input, st, metas))
+  timed(st, 'requests', () => honorRequestsRound(input, st, days))
   // CROSS-WEEK FAIRNESS: reserve toward minShifts for carry-over (under-served
   // last published week) employees, before general fill. Top-precedence-gated &
   // open-slot-only ⇒ coverage-preserving; off-requests remain hard.
-  timed(st, 'carry-over', () => carryOverRound(input, st, metas))
+  timed(st, 'carry-over', () => carryOverRound(input, st, days))
   // FIX 2: general max-matching fill of all remaining required slots.
-  timed(st, 'general-fill', () => generalFill(input, st, metas))
+  timed(st, 'general-fill', () => generalFill(input, st, days))
   // NIGHT CAP: same-day swaps pull anyone over their night cap (≤3, unless
   // night/evening-only or they requested the nights) back down. Coverage- and
   // request-preserving. Runs before diversity so the type/co-worker pass then
@@ -120,12 +127,12 @@ export function runFill(
   // LONE m12_day (07–19) that would leave 19:00→night thin with no m12_night
   // partner. Records the overrides so the manager can be alerted.
   timed(st, 'coverage-rescue', () => {
-    st.overriddenOff = runCoverageRescue(input, st, metas)
+    st.overriddenOff = runCoverageRescue(input, st, days)
   })
   // LAST RESORT: 12h auto-coverage for any slot the 8h fill + rescue still can't
   // staff (a genuine shortage). day/night pair preferred, 03-15/15-03 last.
   timed(st, 'twelve-fill', () => {
-    st.twelve = skipTwelve ? [] : runTwelveFill(input, st)
+    st.twelve = skipTwelve ? [] : runTwelveFill(input, st, days)
     if (!skipTwelve) {
       // A 12h COVERS requested base windows (e.g. m12_night satisfies a noon or
       // night request) — recount so stats.requestsSatisfied reflects it.
@@ -142,4 +149,29 @@ export function countFilled(st: FillState): number {
   let n = 0
   for (const id of Object.keys(st.committed)) n += st.committed[id].length
   return n
+}
+
+/** Still-open required units on hard days (Fri/Sat/holiday) after a fill. */
+function hardDayGaps(input: EngineInput, st: FillState): number {
+  let n = 0
+  for (const d of input.days) if (isHardDay(d)) n += openSlotsForDay(input, st, d.index).length
+  return n
+}
+
+/**
+ * Coverage-priority fill. Chronological order gives the fairness passes their
+ * best result, so it runs first; only when it leaves gaps on hard days
+ * (Fri/Sat/holiday — the smallest candidate pools) is the week re-filled with
+ * those days FIRST, and the run that covers them better wins (hard-day gaps,
+ * then total filled; ties keep the chronological run).
+ */
+export function runFillHardDaysAware(input: EngineInput, skipTwelve = false): FillState {
+  const chrono = runFill(input, skipTwelve)
+  const chronoGaps = hardDayGaps(input, chrono)
+  if (chronoGaps === 0) return chrono
+  const hardFirst = runFill(input, skipTwelve, false, false, true)
+  const hardGaps = hardDayGaps(input, hardFirst)
+  if (hardGaps < chronoGaps) return hardFirst
+  if (hardGaps === chronoGaps && countFilled(hardFirst) > countFilled(chrono)) return hardFirst
+  return chrono
 }

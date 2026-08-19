@@ -121,14 +121,16 @@ function tryDisplace(
 }
 
 /** Run the full 12h coverage pass, mutating `st`; returns canonical records. */
-export function runTwelveFill(input: EngineInput, st: FillState): TwelveHourAssignment[] {
+export function runTwelveFill(
+  input: EngineInput,
+  st: FillState,
+  days: DayMeta[],
+): TwelveHourAssignment[] {
   const out: TwelveHourAssignment[] = []
   if (!input.settings.allow12hFallback) return out
-  const metas: Record<number, DayMeta> = {}
-  for (const d of input.days) metas[d.index] = d
 
-  for (const d of input.days) {
-    const meta = metas[d.index]
+  for (const d of days) {
+    const meta = d
     // PREFERRED day/night pair: greedy fill, then displacement to free an 8h holder
     // so the pair can tile the whole day. Repeat until no progress. Any gap the pair
     // cannot close is left as a warning (off-cycle variants are no longer used).
