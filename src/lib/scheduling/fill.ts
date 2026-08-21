@@ -8,6 +8,7 @@ import { isHardDay, prioritizeDays } from './day-order'
 import { runTwelveFill } from './twelve-fill'
 import { runDiversityPass, buildNightThresholds } from './diversity'
 import { runNightUnloadPass } from './night-unload'
+import { runNightEvennessPass } from './night-evenness'
 import { runSeniorRolePass } from './senior-role'
 import { runManagerBalancePass } from './manager-balance'
 import { runNightThenOffPass } from './night-then-off'
@@ -73,10 +74,9 @@ export function runFill(
   // night/evening-only or they requested the nights) back down. Coverage- and
   // request-preserving. Runs before diversity so the type/co-worker pass then
   // re-optimises around the final night distribution.
+  const nightThresholds = buildNightThresholds(input)
   if (!skipDiversity) {
-    timed(st, 'night-unload', () =>
-      runNightUnloadPass(input, st, metas, buildNightThresholds(input)),
-    )
+    timed(st, 'night-unload', () => runNightUnloadPass(input, st, metas, nightThresholds))
   }
   // FAIRNESS dims 2 & 4: coverage-preserving diversity swaps (shift-type variety
   // + co-worker rotation). Swaps only — coverage & per-employee load unchanged.
@@ -104,9 +104,15 @@ export function runFill(
     // a worker to a 4th night. Run night-unload AGAIN after the swap block to pull
     // any such worker back to ≤ their threshold via coverage-preserving same-day
     // swaps. (Senior/manager swaps are night-neutral; only diversity can violate.)
-    timed(st, 'night-unload-2', () =>
-      runNightUnloadPass(input, st, metas, buildNightThresholds(input)),
-    )
+    timed(st, 'night-unload-2', () => runNightUnloadPass(input, st, metas, nightThresholds))
+    // NIGHT EVENNESS: actively split nights as evenly as the hard constraints,
+    // coverage and requests allow (below the caps night-unload enforces).
+    timed(st, 'night-evenness', () => {
+      runNightEvennessPass(input, st, metas, nightThresholds)
+      for (const e of input.employees) {
+        st.satisfied[e.id] = recountSatisfied(input, e.id, st.committed[e.id])
+      }
+    })
   }
   // NIGHT→OFF (hard rule): keep a night worker working the next day (coverage-
   // neutral displacement) rather than leaving them off, unless they requested
