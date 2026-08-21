@@ -11,6 +11,7 @@ import { runNightUnloadPass } from './night-unload'
 import { runNightEvennessPass } from './night-evenness'
 import { runSeniorRolePass } from './senior-role'
 import { runManagerBalancePass } from './manager-balance'
+import { runRoleBalancePass } from './role-balance'
 import { runNightThenOffPass } from './night-then-off'
 import { runCoverageRescue } from './coverage-rescue'
 import { satisfiedCount as recountSatisfied } from './request-gate'
@@ -153,6 +154,9 @@ export function runFill(
   // and request-neutral, so a final polish here is always safe.
   if (!skipDiversity) {
     timed(st, 'manager-balance-2', () => runManagerBalancePass(input, st, metas))
+    // ROLE BALANCE: split every non-manager role's shifts evenly across its
+    // holders (same-shift role swaps — coverage/load/night/request-neutral).
+    timed(st, 'role-balance', () => runRoleBalancePass(input, st, metas))
   }
   return st
 }
