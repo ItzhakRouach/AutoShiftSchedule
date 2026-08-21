@@ -14,6 +14,7 @@ interface Cell {
   day: number
   shift: ShiftKey
   role: string
+  is12h?: boolean
 }
 
 function stateFrom(cells: Cell[], empIds: string[]): FillState {
@@ -24,7 +25,7 @@ function stateFrom(cells: Cell[], empIds: string[]): FillState {
     st.lotteryRank[id] = i
   })
   for (const c of cells) {
-    const asg: Assignment = { employeeId: c.emp, day: c.day, shift: c.shift, roleId: c.role }
+    const asg: Assignment = { employeeId: c.emp, day: c.day, shift: c.shift, roleId: c.role, is12h: c.is12h }
     st.committed[c.emp].push(asg)
     const grid = st.grid[c.day] ?? (st.grid[c.day] = {} as Record<ShiftKey, Record<string, string[]>>)
     const byShift = grid[c.shift] ?? (grid[c.shift] = {})
@@ -107,6 +108,23 @@ describe('role-balance pass (unit)', () => {
     runRoleBalancePass(inp, st, metasOf(inp))
     // GUARD is piled 2/0 on `a`, but the only same-shift counterpart cells are
     // manager cells — the ≥50% rule owns those, so nothing may move.
+    expect(JSON.stringify(st.committed)).toBe(before)
+  })
+
+  it('U6: 12h cells are invisible — not counted and never swapped', () => {
+    const inp = input({ employees: [dual('d1'), dual('d2')] })
+    // d1's dispatch "pile" is all 12h coverage; only plain-8h cells count, so
+    // there is no gap and nothing may move.
+    const st = stateFrom(
+      [
+        { emp: 'd1', day: 0, shift: 'noon', role: DISPATCH, is12h: true },
+        { emp: 'd1', day: 0, shift: 'night', role: DISPATCH, is12h: true },
+        { emp: 'd2', day: 0, shift: 'morning', role: GUARD },
+      ],
+      ['d1', 'd2'],
+    )
+    const before = JSON.stringify(st.committed)
+    runRoleBalancePass(inp, st, metasOf(inp))
     expect(JSON.stringify(st.committed)).toBe(before)
   })
 

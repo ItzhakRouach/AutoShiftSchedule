@@ -134,6 +134,17 @@ The 3-cycle rotations escape the single-type **stranding** local optimum that sw
 Modules: `diversity.ts` (cost + orchestration), `moves.ts` (swap/3-cycle primitives), `request-gate.ts`
 (satisfied-count gate).
 
+**Dedicated balance post-passes** (all coverage-, request- and hard-constraint-preserving via `moveLegal`):
+- **Night evenness** (`night-evenness.ts`, after night-unload-2): actively splits nights evenly BELOW the
+  caps — while one finite-threshold worker holds ≥2 more nights than another, swap a night for a non-night
+  cell (same-day or cross-day). Requested nights never move; night-only workers exempt.
+- **Manager balance** (`manager-balance.ts`, runs TWICE — after senior swaps AND again after
+  coverage-rescue + 12h, which add shifts and can dilute an אחמ״ש below their ceil(total/2) in-role target).
+- **Role balance** (`role-balance.ts`, last): splits every non-manager role's shifts evenly across its
+  holders via same-shift role swaps (gap ≥2, global Σcount² strictly decreasing; seniors keep their role;
+  manager cells excluded). `moveLegal` allows a SOFT off only for same-day swaps (the mover already works
+  that day — e.g. placed by coverage-rescue); cross-day moves honor soft offs strictly.
+
 Per-shift-type counts are surfaced on `EmployeeStat.byType { morning, noon, night }` for transparency/tests.
 
 ## 12h auto-coverage policy (CONFIRMED product rules)
