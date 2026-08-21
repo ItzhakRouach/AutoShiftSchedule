@@ -31,6 +31,7 @@ function legal(
   shift: ShiftKey,
   roleId: string,
   current: Assignment[],
+  allowSoftOff: boolean,
 ): boolean {
   const ctx: CheckContext = {
     emp, meta, shift, roleId,
@@ -40,7 +41,7 @@ function legal(
     priorTail: input.priorWeekTail?.[emp.id],
     nextHead: input.nextWeekHead?.[emp.id],
   }
-  return isAssignable(ctx)
+  return isAssignable(ctx, { allowSoftOff })
 }
 
 const empById = (input: EngineInput, id: string): Employee =>
@@ -69,7 +70,12 @@ export function moveLegal(
     const emp = empById(input, from.empId)
     // committed state for this employee WITHOUT their vacated slot...
     const rest = st.committed[from.empId].filter((x) => x !== from.a)
-    if (!legal(input, emp, metas[to.a.day], to.a.shift, to.a.roleId, rest)) return false
+    // A SAME-day move never adds work on an off day — the mover already works
+    // that day (a soft off there was legitimately overridden by coverage-
+    // rescue), so a soft off must not veto the swap. Cross-day moves still
+    // honor soft offs strictly.
+    const sameDay = to.a.day === from.a.day
+    if (!legal(input, emp, metas[to.a.day], to.a.shift, to.a.roleId, rest, sameDay)) return false
     // ...and the proposed full assignment set (rest + the cell they move into).
     const proposed = [...rest, { ...to.a, employeeId: from.empId }]
     if (!preservesRequestsFor(input, from.empId, st.committed[from.empId], proposed)) {

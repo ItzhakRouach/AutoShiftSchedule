@@ -6,7 +6,7 @@
 import { describe, it, expect } from 'vitest'
 import { generateSchedule } from './engine'
 import { runManagerBalancePass } from './manager-balance'
-import { GUARD, SHIFT_MGR, emp, input, mergeReqs, reqFor } from './fixtures'
+import { GUARD, SHIFT_MGR, buildRequests, emp, input, mergeReqs, reqFor } from './fixtures'
 import type { FillState } from './dayfill'
 import type { Assignment, DayMeta, EngineInput, ShiftKey } from './types'
 
@@ -136,6 +136,36 @@ describe('manager-balance pass', () => {
 })
 
 describe('manager-balance end-to-end invariant', () => {
+  it('holds even when coverage-rescue adds shifts AFTER the balance pass', () => {
+    // a is soft-off days 3-5; the only way to staff GUARD noon there is to
+    // reclaim him (c hard-off, b occupied by the manager slot). Those rescued
+    // guard shifts land AFTER the early manager-balance run and dilute a below
+    // ceil(total/2) — the late re-run must fix it via same-shift role swaps
+    // with b (who holds surplus manager noons on those days).
+    const a = emp('a', { roleIds: [SHIFT_MGR, GUARD] })
+    const b = emp('b', { roleIds: [SHIFT_MGR, GUARD] })
+    const c = emp('c', { roleIds: [GUARD] })
+    const days = [0, 1, 2, 3, 4, 5]
+    const req = mergeReqs(reqFor(days, 'noon', SHIFT_MGR, 1), reqFor(days, 'noon', GUARD, 1))
+    const requests = buildRequests([a, b, c], (id, day) => {
+      if (id === 'a' && day >= 3 && day <= 5) return { off: true }
+      if (id === 'c' && day >= 3 && day <= 5) return { offHard: true }
+      return {}
+    })
+    for (const seed of [1, 2, 3]) {
+      const res = generateSchedule(
+        input({ employees: [a, b, c], requirements: req, requests, managerRoleId: SHIFT_MGR, seed }),
+      )
+      for (const id of ['a', 'b']) {
+        const asg = res.assignmentsByEmployee[id] ?? []
+        const mgr = asg.filter((x) => x.roleId === SHIFT_MGR).length
+        expect(mgr, `seed ${seed}: ${id} has ${mgr}/${asg.length} manager shifts`).toBeGreaterThanOrEqual(
+          Math.ceil(asg.length / 2),
+        )
+      }
+    }
+  })
+
   it('every manager-holder ends with ≥50% of their shifts in the manager role', () => {
     const a = emp('a', { roleIds: [SHIFT_MGR, GUARD] })
     const b = emp('b', { roleIds: [SHIFT_MGR, GUARD] })

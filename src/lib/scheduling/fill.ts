@@ -147,6 +147,13 @@ export function runFill(
       }
     }
   })
+  // MANAGER BALANCE (re-run): coverage-rescue and the 12h pass ADD shifts after
+  // the first balance run, which can dilute a manager-holder below their
+  // ceil(total/2) in-role target. Same-shift role swaps are coverage-, load-
+  // and request-neutral, so a final polish here is always safe.
+  if (!skipDiversity) {
+    timed(st, 'manager-balance-2', () => runManagerBalancePass(input, st, metas))
+  }
   return st
 }
 
