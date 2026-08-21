@@ -7,7 +7,8 @@ import {
   aggregateFairness,
 } from './aggregate'
 import { buildWeeklyTrends } from './trends'
-import { scopeStartISO } from '@/lib/dates/scope'
+import { scopeRangeISO } from '@/lib/dates/scope'
+import { toISODate } from '@/lib/dates/week'
 
 const EMPTY_KPIS = {
   coveragePct: null,
@@ -26,26 +27,35 @@ export async function fetchDashboardStats(
   supabase: SupabaseClient,
   workplaceId: string,
   scope: Scope,
+  anchorISO?: string,
 ): Promise<DashboardStats | null> {
   // Batch A — everything keyed only by workplaceId: employees, shift types,
-  // weekly required headcount, and the in-scope periods. (Periods: WEEK = the
-  // CURRENT period, latest by date, counted only if published; MONTH/YEAR = all
-  // published periods in the calendar range.)
+  // weekly required headcount, and the in-scope periods. Only PUBLISHED periods
+  // count — newer collecting/locked rows must not shadow a published one.
+  // WEEK = the anchored week, or the latest published when unanchored;
+  // MONTH/YEAR = published periods inside the anchored calendar range
+  // (defaulting to the current month/year).
+  const range = scope === 'week' ? null : scopeRangeISO(scope, anchorISO ?? toISODate(new Date()))
   const periodsQuery =
     scope === 'week'
-      ? supabase
-          .from('schedule_periods')
-          .select('id, week_start_date, status')
-          .eq('workplace_id', workplaceId)
-          .order('week_start_date', { ascending: false })
-          .limit(1)
-          .maybeSingle()
+      ? (() => {
+          const q = supabase
+            .from('schedule_periods')
+            .select('id, week_start_date, status')
+            .eq('workplace_id', workplaceId)
+            .eq('status', 'published')
+          return (anchorISO ? q.eq('week_start_date', anchorISO) : q)
+            .order('week_start_date', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+        })()
       : supabase
           .from('schedule_periods')
           .select('id, week_start_date, status')
           .eq('workplace_id', workplaceId)
           .eq('status', 'published')
-          .gte('week_start_date', scopeStartISO(scope, new Date()))
+          .gte('week_start_date', range!.startISO)
+          .lt('week_start_date', range!.endISO)
           .order('week_start_date', { ascending: false })
 
   const [{ data: empRaw }, { data: shiftTypesRaw }, { data: reqRaw }, periodsRes] = await Promise.all([
@@ -77,7 +87,7 @@ export async function fetchDashboardStats(
     scope === 'week'
       ? (() => {
           const latest = periodsRes.data as { id: string; week_start_date: string; status: string } | null
-          return latest && latest.status === 'published' ? [latest] : []
+          return latest ? [latest] : []
         })()
       : ((periodsRes.data as { id: string; week_start_date: string; status: string }[] | null) ?? [])
 

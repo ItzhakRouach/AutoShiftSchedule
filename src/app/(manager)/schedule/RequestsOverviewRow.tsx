@@ -4,6 +4,7 @@ import { SHIFT_META } from '@/lib/domain/constants'
 import { resolveAbsenceKind } from '@/lib/dates/week'
 import type { ViewEmployee, ViewRequest, ViewVacation } from '@/lib/schedule/view-data'
 import { ABSENCE_KIND_META, type AbsenceKind } from '@/lib/vacations/kind-meta'
+import { primaryWeekKind } from './requests-overview-helpers'
 
 interface DayColumn {
   index: number
@@ -114,26 +115,17 @@ interface Props {
   onOpenVacation: () => void
 }
 
-/** Picks the kind to show in the row's week-marker badge: the earliest (by
- *  date_from) of the employee's active/upcoming ranges — deterministic when
- *  several kinds are present in the same week. */
-function primaryWeekKind(empVacs: ViewVacation[]): AbsenceKind | null {
-  if (empVacs.length === 0) return null
-  const sorted = [...empVacs].sort((a, b) => (a.dateFrom < b.dateFrom ? -1 : a.dateFrom > b.dateFrom ? 1 : 0))
-  return sorted[0].kind
-}
-
 /** One employee's request row: sticky name cell + a DayCell per day. Split out
  *  of RequestsOverview to keep that component ≤200 lines. */
 export function RequestsOverviewRow({ emp, rowIndex, days, byDay, empVacs, isoByDayIndex, shiftTypeIdByKey, onEdit, onOpenVacation }: Props) {
-  const weekKind = primaryWeekKind(empVacs)
+  const weekKind = primaryWeekKind(empVacs, isoByDayIndex[0], isoByDayIndex[isoByDayIndex.length - 1])
   return (
     <tr style={{ background: rowIndex % 2 === 0 ? 'var(--surface)' : 'var(--bg)' }}>
       <td style={{ ...stickyName, background: 'var(--surface-2)' }}>
         <span style={{ color: emp.color, fontWeight: 700 }}>{emp.name}</span>
         {weekKind && (
           <span
-            title={`לעובד יש ${ABSENCE_KIND_META[weekKind].label} בשבוע זה או היעדרות פעילה`}
+            title={`לעובד יש ${ABSENCE_KIND_META[weekKind].label} בשבוע זה`}
             style={{
               marginInlineStart: 6, fontSize: 11, fontWeight: 800,
               color: ABSENCE_KIND_META[weekKind].color, background: ABSENCE_KIND_META[weekKind].soft,

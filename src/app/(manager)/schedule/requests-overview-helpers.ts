@@ -46,3 +46,17 @@ export function buildWorkerVacationsByEmployee(vacations: WorkplaceVacation[]): 
 export function isoForDayIndex(weekStart: string, dayIndex: number): string {
   return addDaysISO(weekStart, dayIndex)
 }
+
+/** Kind for the row's name-cell badge: only ranges that overlap the displayed
+ *  week count (inclusive bounds, matching employee_vacations semantics); the
+ *  earliest dateFrom wins when several kinds overlap — deterministic. */
+export function primaryWeekKind(
+  empVacs: ViewVacation[],
+  weekStartISO: string,
+  weekEndISO: string,
+): ViewVacation['kind'] | null {
+  const overlapping = empVacs.filter((v) => v.dateFrom <= weekEndISO && v.dateTo >= weekStartISO)
+  if (overlapping.length === 0) return null
+  const sorted = [...overlapping].sort((a, b) => (a.dateFrom < b.dateFrom ? -1 : a.dateFrom > b.dateFrom ? 1 : 0))
+  return sorted[0].kind
+}
