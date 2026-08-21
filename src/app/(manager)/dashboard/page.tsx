@@ -28,6 +28,15 @@ export const dynamic = 'force-dynamic'
 
 function isScope(v: unknown): v is Scope { return v === 'week' || v === 'month' || v === 'year' }
 
+/** True only for a well-formed YYYY-MM-DD that is a real calendar date — keeps
+ *  values like 2026-13-45 from ever reaching Postgres as a date literal. */
+function isRealISODate(v: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return false
+  const [y, m, d] = v.split('-').map(Number)
+  const dt = new Date(y, m - 1, d)
+  return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d
+}
+
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -40,7 +49,7 @@ export default async function DashboardPage({
   const workplace = await getActiveWorkplace(supabase)
   const sp = await searchParams
   const scope: Scope = isScope(sp?.scope) ? sp.scope as Scope : 'week'
-  const at = sp?.at && /^\d{4}-\d{2}-\d{2}$/.test(sp.at) ? sp.at : null
+  const at = sp?.at && isRealISODate(sp.at) ? sp.at : null
 
   const todayISO = toISODateUTC(new Date())
   // The data sources are independent — fetch them in parallel. All reads

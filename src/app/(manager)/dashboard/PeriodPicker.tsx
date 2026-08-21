@@ -25,7 +25,8 @@ export function PeriodPicker({ options, at }: { options: PeriodOption[]; at: str
       const params = new URLSearchParams(searchParams.toString())
       if (value) params.set('at', value)
       else params.delete('at')
-      router.replace(`${pathname}?${params.toString()}`)
+      const qs = params.toString()
+      router.replace(qs ? `${pathname}?${qs}` : pathname)
     })
   }
 

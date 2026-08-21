@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { buildPeriodOptions } from './period-options'
+import { toVisualHebrew } from '@/lib/schedule/bidi'
+
+// Strips the LRI/PDI bidi isolates that keep number ranges LTR inside the RTL page.
+const logical = (label: string) => label.replace(/[⁦⁩]/g, '')
 
 // Published week starts, newest first — the shape the dashboard query returns.
 const WEEKS = ['2026-08-30', '2026-08-16', '2026-08-09', '2026-07-26', '2025-12-28']
@@ -12,12 +16,24 @@ describe('buildPeriodOptions — week scope', () => {
 
   it('labels a same-month week as d–d.M', () => {
     const [, aug16] = buildPeriodOptions('week', WEEKS)
-    expect(aug16.label).toBe('16–22.8')
+    expect(logical(aug16.label)).toBe('16–22.8')
   })
 
   it('labels a cross-month week as d.M–d.M', () => {
     const [aug30] = buildPeriodOptions('week', WEEKS)
-    expect(aug30.label).toBe('30.8–5.9')
+    expect(logical(aug30.label)).toBe('30.8–5.9')
+  })
+
+  it('week labels survive RTL bidi resolution (start date stays first)', () => {
+    // Without the LRI…PDI isolate, "30.8–5.9" renders as "5.9–30.8" in dir=rtl.
+    const [aug30, aug16] = buildPeriodOptions('week', WEEKS)
+    expect(toVisualHebrew(aug30.label)).toContain('30.8–5.9')
+    expect(toVisualHebrew(aug16.label)).toContain('16–22.8')
+  })
+
+  it('sorts newest-first regardless of input order', () => {
+    const opts = buildPeriodOptions('week', ['2026-08-09', '2026-08-30', '2026-08-16'])
+    expect(opts.map((o) => o.value)).toEqual(['2026-08-30', '2026-08-16', '2026-08-09'])
   })
 
   it('dedupes repeated week starts', () => {
