@@ -13,6 +13,8 @@ import { Card } from '@/components/ui/Card'
 import { Stat } from '@/components/ui/Stat'
 import { Icon } from '@/components/ui/Icon'
 import { ScopeToggle } from './ScopeToggle'
+import { PeriodPicker } from './PeriodPicker'
+import { buildPeriodOptions } from '@/lib/stats/period-options'
 import { DashNav } from './DashNav'
 import { CoverageCard } from './CoverageCard'
 import { DashPanels } from './DashPanels'
@@ -29,7 +31,7 @@ function isScope(v: unknown): v is Scope { return v === 'week' || v === 'month' 
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ scope?: string }>
+  searchParams: Promise<{ scope?: string; at?: string }>
 }) {
   const supabase = await createClient()
   const user = await getAuthUser(supabase)
@@ -38,16 +40,27 @@ export default async function DashboardPage({
   const workplace = await getActiveWorkplace(supabase)
   const sp = await searchParams
   const scope: Scope = isScope(sp?.scope) ? sp.scope as Scope : 'week'
+  const at = sp?.at && /^\d{4}-\d{2}-\d{2}$/.test(sp.at) ? sp.at : null
 
   const todayISO = toISODateUTC(new Date())
-  // The three data sources are independent — fetch them in parallel. All reads
+  // The data sources are independent — fetch them in parallel. All reads
   // are RLS-covered for the owning manager, so the authed client suffices (no
   // service-role bypass in a user-facing path).
-  const [stats, pendingVacations, roleHeadcounts] = await Promise.all([
-    workplace ? fetchDashboardStats(supabase, workplace.id, scope) : null,
+  const [stats, pendingVacations, roleHeadcounts, publishedWeeksRaw] = await Promise.all([
+    workplace ? fetchDashboardStats(supabase, workplace.id, scope, at ?? undefined) : null,
     workplace ? getWorkplaceVacations(supabase, workplace.id, todayISO) : [],
     workplace ? getRoleHeadcounts(supabase, workplace.id) : [],
+    workplace
+      ? supabase
+          .from('schedule_periods')
+          .select('week_start_date')
+          .eq('workplace_id', workplace.id)
+          .eq('status', 'published')
+          .order('week_start_date', { ascending: false })
+          .then(({ data }) => (data ?? []).map((p) => p.week_start_date as string))
+      : Promise.resolve([]),
   ])
+  const periodOptions = buildPeriodOptions(scope, publishedWeeksRaw)
   const maxHours = Math.max(...(stats?.employees.map((e) => e.hours) ?? [1]), 1)
   const kpis = stats?.kpis
 
@@ -78,9 +91,12 @@ export default async function DashboardPage({
       {/* Pending vacation requests — popup on entry + card */}
       <PendingVacations items={pendingVacations} />
 
-      {/* Scope toggle */}
-      <div style={{ marginBottom: 18 }}>
-        <Suspense><ScopeToggle scope={scope} /></Suspense>
+      {/* Scope toggle + period picker */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+        <div style={{ flex: 1 }}>
+          <Suspense><ScopeToggle scope={scope} /></Suspense>
+        </div>
+        <Suspense><PeriodPicker options={periodOptions} at={at} /></Suspense>
       </div>
 
       {!stats || stats.kpis.activeEmployees === 0 ? (

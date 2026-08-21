@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { scopeStartISO } from './scope'
+import { scopeStartISO, scopeRangeISO } from './scope'
 
 describe('scopeStartISO — calendar-period boundaries (local time)', () => {
   // Wed 2026-07-15 (mid-month, mid-year, mid-week). Week starts Sunday 2026-07-12.
@@ -38,5 +38,27 @@ describe('scopeStartISO — calendar-period boundaries (local time)', () => {
     expect(scopeStartISO('year', jan1)).toBe('2026-01-01')
     expect(scopeStartISO('month', jan1)).toBe('2026-01-01')
     expect(scopeStartISO('week', jan1)).toBe('2025-12-28')
+  })
+})
+
+describe('scopeRangeISO — [start, end) bounds for an anchored period', () => {
+  it('month: first of month to first of next month', () => {
+    expect(scopeRangeISO('month', '2026-08-01')).toEqual({ startISO: '2026-08-01', endISO: '2026-09-01' })
+  })
+
+  it('month: any anchor inside the month normalizes to its own month', () => {
+    expect(scopeRangeISO('month', '2026-08-21')).toEqual({ startISO: '2026-08-01', endISO: '2026-09-01' })
+  })
+
+  it('month: December rolls the end into the next year', () => {
+    expect(scopeRangeISO('month', '2026-12-01')).toEqual({ startISO: '2026-12-01', endISO: '2027-01-01' })
+  })
+
+  it('year: Jan 1 to next Jan 1', () => {
+    expect(scopeRangeISO('year', '2026-03-15')).toEqual({ startISO: '2026-01-01', endISO: '2027-01-01' })
+  })
+
+  it('week: the anchor Sunday plus seven days', () => {
+    expect(scopeRangeISO('week', '2026-08-16')).toEqual({ startISO: '2026-08-16', endISO: '2026-08-23' })
   })
 })

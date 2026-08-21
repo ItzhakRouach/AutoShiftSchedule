@@ -26,6 +26,8 @@ export function ScopeToggle({ scope }: { scope: Scope }) {
     startTransition(() => {
       const params = new URLSearchParams(searchParams.toString())
       params.set('scope', value)
+      // The period anchor is scope-specific — reset to the new scope's default.
+      params.delete('at')
       router.replace(`${pathname}?${params.toString()}`)
     })
   }

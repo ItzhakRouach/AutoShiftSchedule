@@ -20,3 +20,24 @@ export function scopeStartISO(scope: Scope, now: Date): string {
   if (scope === 'month') return toISODate(new Date(now.getFullYear(), now.getMonth(), 1))
   return toISODate(new Date(now.getFullYear(), 0, 1))
 }
+
+/**
+ * Half-open [startISO, endISO) bounds of the period containing `anchorISO`
+ * (YYYY-MM-DD). Unlike `scopeStartISO`, this bounds BOTH ends, so a past
+ * month/year selected in the dashboard picker shows only its own data. Week
+ * anchors are assumed to already be the period's Sunday (as stored in
+ * `schedule_periods.week_start_date`).
+ */
+export function scopeRangeISO(scope: Scope, anchorISO: string): { startISO: string; endISO: string } {
+  const [y, m, d] = anchorISO.split('-').map(Number)
+  if (scope === 'week') {
+    return { startISO: anchorISO, endISO: toISODate(new Date(y, m - 1, d + 7)) }
+  }
+  if (scope === 'month') {
+    return {
+      startISO: toISODate(new Date(y, m - 1, 1)),
+      endISO: toISODate(new Date(y, m, 1)),
+    }
+  }
+  return { startISO: toISODate(new Date(y, 0, 1)), endISO: toISODate(new Date(y + 1, 0, 1)) }
+}
