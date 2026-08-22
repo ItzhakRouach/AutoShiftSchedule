@@ -16,6 +16,17 @@ import type { ShiftKey } from '@/lib/scheduling/types'
 /** Published weeks for a workplace (newest first) — for the week navigator. */
 export interface PublishedWeek { id: string; weekStart: string; label: string }
 
+/** Weeks strictly BEFORE the editing week — what the manager's history
+ *  navigator may show. Filtering by date (not id) also drops weeks published
+ *  AHEAD of the editing week, which would otherwise land first in the history
+ *  view and dead-end "שבוע קודם" on the editor. */
+export function pastPublishedWeeks(
+  weeks: PublishedWeek[],
+  editingWeekStartISO: string,
+): PublishedWeek[] {
+  return weeks.filter((w) => w.weekStart < editingWeekStartISO)
+}
+
 export async function listPublishedWeeks(
   supabase: SupabaseClient,
   workplaceId: string,

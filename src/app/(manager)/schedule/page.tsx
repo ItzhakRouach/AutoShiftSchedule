@@ -6,7 +6,7 @@ import { getActiveWorkplace } from '@/lib/workplace/current'
 import { toISODateUTC, upcomingWeekStartISO } from '@/lib/dates/week'
 import { ensureUpcomingPeriodId } from '@/lib/schedule/cached-reads'
 import { getScheduleView } from '@/lib/schedule/view-data'
-import { getPublishedScheduleView, listPublishedWeeks } from '@/lib/schedule/published-view'
+import { getPublishedScheduleView, listPublishedWeeks, pastPublishedWeeks } from '@/lib/schedule/published-view'
 import { getEditMeta } from '@/lib/schedule/edit-meta'
 import { getWorkplaceVacations } from '@/lib/vacations/pending'
 import { Card } from '@/components/ui/Card'
@@ -62,11 +62,13 @@ export default async function SchedulePage({
   const rolelessEmployees = (rolelessRaw.data ?? [])
     .filter((e) => (e.employee_roles ?? []).length === 0)
     .map((e) => ({ id: e.id as string, name: e.name as string }))
-  const currentPeriodId = view?.periodId
+  // History navigation covers only weeks strictly BEFORE the editing week —
+  // a week published ahead of it must not appear (it would dead-end שבוע קודם
+  // on the editor); the editing week itself always opens the live editor.
+  const pastWeeks = pastPublishedWeeks(weeks, weekStart)
 
-  // History view: a PUBLISHED week other than the one currently being edited →
-  // read-only.
-  const viewingPast = !!sp?.w && weeks.some((w) => w.id === sp.w) && sp.w !== currentPeriodId
+  // History view: a published PAST week → read-only.
+  const viewingPast = !!sp?.w && pastWeeks.some((w) => w.id === sp.w)
   if (viewingPast) {
     const pubView = await getPublishedScheduleView(supabase, workplace.id, sp.w)
     return (
@@ -78,7 +80,7 @@ export default async function SchedulePage({
               <Icon name="arrowLeft" size={15} /> לסידור הנוכחי
             </Link>
           </div>
-          <WeekNav weeks={weeks} selectedId={sp.w!} />
+          <WeekNav weeks={pastWeeks} selectedId={sp.w!} />
         </div>
         {pubView ? (
           <ScheduleGrids view={pubView} />
@@ -93,10 +95,6 @@ export default async function SchedulePage({
 
   // Current period — the live editor (meta already fetched in the parallel block).
   const editMeta = view ? editMetaRaw : null
-
-  // Published weeks other than the one being edited (newest first) — the entry
-  // point into the read-only history view above.
-  const pastWeeks = weeks.filter((w) => w.id !== currentPeriodId)
 
   return (
     <main className="schedule-main" style={{ background: 'var(--bg)', direction: 'rtl' }}>
