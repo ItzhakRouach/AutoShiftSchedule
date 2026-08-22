@@ -7,8 +7,9 @@ import {
   aggregateFairness,
 } from './aggregate'
 import { buildWeeklyTrends } from './trends'
+import { resolveCurrentWeekStart } from './resolve-week'
 import { scopeRangeISO } from '@/lib/dates/scope'
-import { toISODate } from '@/lib/dates/week'
+import { todayInIsraelISO } from '@/lib/dates/week'
 
 const EMPTY_KPIS = {
   coveragePct: null,
@@ -28,14 +29,16 @@ export async function fetchDashboardStats(
   workplaceId: string,
   scope: Scope,
   anchorISO?: string,
+  todayISO: string = todayInIsraelISO(),
 ): Promise<DashboardStats | null> {
   // Batch A — everything keyed only by workplaceId: employees, shift types,
   // weekly required headcount, and the in-scope periods. Only PUBLISHED periods
   // count — newer collecting/locked rows must not shadow a published one.
-  // WEEK = the anchored week, or the latest published when unanchored;
-  // MONTH/YEAR = published periods inside the anchored calendar range
-  // (defaulting to the current month/year).
-  const range = scope === 'week' ? null : scopeRangeISO(scope, anchorISO ?? toISODate(new Date()))
+  // WEEK = the anchored week, or the CURRENT calendar week when unanchored
+  // (resolved in code — "latest published" would jump to next week the moment
+  // it's published); MONTH/YEAR = published periods inside the anchored
+  // calendar range (defaulting to the current month/year).
+  const range = scope === 'week' ? null : scopeRangeISO(scope, anchorISO ?? todayISO)
   const periodsQuery =
     scope === 'week'
       ? (() => {
@@ -46,8 +49,6 @@ export async function fetchDashboardStats(
             .eq('status', 'published')
           return (anchorISO ? q.eq('week_start_date', anchorISO) : q)
             .order('week_start_date', { ascending: false })
-            .limit(1)
-            .maybeSingle()
         })()
       : supabase
           .from('schedule_periods')
@@ -83,13 +84,17 @@ export async function fetchDashboardStats(
     shiftTypes.map((s) => [s.id, s.is_fallback ?? s.hours >= 12]),
   )
 
+  const allPeriods =
+    (periodsRes.data as { id: string; week_start_date: string; status: string }[] | null) ?? []
   const periods: { id: string; week_start_date: string; status: string }[] =
     scope === 'week'
       ? (() => {
-          const latest = periodsRes.data as { id: string; week_start_date: string; status: string } | null
-          return latest ? [latest] : []
+          if (anchorISO) return allPeriods.slice(0, 1)
+          const target = resolveCurrentWeekStart(allPeriods.map((p) => p.week_start_date), todayISO)
+          const hit = allPeriods.find((p) => p.week_start_date === target)
+          return hit ? [hit] : []
         })()
-      : ((periodsRes.data as { id: string; week_start_date: string; status: string }[] | null) ?? [])
+      : allPeriods
 
   if (periods.length === 0) {
     return {

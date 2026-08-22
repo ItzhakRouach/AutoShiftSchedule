@@ -7,7 +7,24 @@ import {
   resolveAbsenceKind,
   addDaysISO,
   shouldRollToNextWeek,
+  todayInIsraelISO,
 } from './week'
+
+describe('todayInIsraelISO', () => {
+  it('returns the Israel-wall-clock date, not the UTC date (server runs UTC)', () => {
+    // 21:30 UTC on Aug 22 is already 00:30 Aug 23 in Israel (IDT, UTC+3)
+    expect(todayInIsraelISO(new Date('2026-08-22T21:30:00Z'))).toBe('2026-08-23')
+  })
+
+  it('matches the UTC date while both are on the same day', () => {
+    expect(todayInIsraelISO(new Date('2026-08-22T12:00:00Z'))).toBe('2026-08-22')
+  })
+
+  it('handles winter time (IST, UTC+2)', () => {
+    expect(todayInIsraelISO(new Date('2026-01-10T22:30:00Z'))).toBe('2026-01-11')
+    expect(todayInIsraelISO(new Date('2026-01-10T21:30:00Z'))).toBe('2026-01-10')
+  })
+})
 
 describe('upcomingWeekStartISO', () => {
   it('returns the same Sunday when today IS Sunday', () => {

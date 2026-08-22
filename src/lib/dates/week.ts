@@ -31,6 +31,16 @@ export function toISODateUTC(d: Date): string {
   return d.toISOString().slice(0, 10)
 }
 
+/** Today's date (YYYY-MM-DD) on the Israel wall clock. Servers run in UTC, so
+ *  around midnight `toISODateUTC` lags Israel by 2–3h — use this wherever
+ *  "today" means the user's calendar day. */
+export function todayInIsraelISO(now: Date = new Date()): string {
+  // en-CA formats as YYYY-MM-DD.
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Jerusalem', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(now)
+}
+
 /**
  * ISO date of the CURRENT week's Sunday — the Sunday of the week that contains
  * `today` (today itself when it's already Sunday). Distinct from

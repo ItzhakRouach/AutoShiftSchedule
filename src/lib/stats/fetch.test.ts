@@ -62,8 +62,35 @@ describe('fetchDashboardStats — week scope period selection', () => {
       ],
       assignments: [assign('p-pub'), assign('p-pub', 'e2'), assign('p-col')],
     })
-    const stats = await fetchDashboardStats(db, 'wp1', 'week')
+    const stats = await fetchDashboardStats(db, 'wp1', 'week', undefined, '2026-08-20')
     expect(stats?.kpis.filledSlots).toBe(2)
+  })
+
+  it('unanchored ("נוכחי") shows the CURRENT calendar week, not a newer published future week', async () => {
+    // Sat 2026-08-22: week 2026-08-16 is running, next week 2026-08-23 already published.
+    const db = fakeDb({
+      ...BASE,
+      schedule_periods: [
+        { id: 'p-cur', week_start_date: '2026-08-16', status: 'published' },
+        { id: 'p-next', week_start_date: '2026-08-23', status: 'published' },
+      ],
+      assignments: [assign('p-cur'), assign('p-cur', 'e2'), assign('p-next')],
+    })
+    const stats = await fetchDashboardStats(db, 'wp1', 'week', undefined, '2026-08-22')
+    expect(stats?.kpis.filledSlots).toBe(2)
+  })
+
+  it('unanchored falls back to the most recent PAST week when the current one is unpublished', async () => {
+    const db = fakeDb({
+      ...BASE,
+      schedule_periods: [
+        { id: 'p-old', week_start_date: '2026-08-09', status: 'published' },
+        { id: 'p-next', week_start_date: '2026-08-23', status: 'published' },
+      ],
+      assignments: [assign('p-old'), assign('p-next'), assign('p-next', 'e2')],
+    })
+    const stats = await fetchDashboardStats(db, 'wp1', 'week', undefined, '2026-08-19')
+    expect(stats?.kpis.filledSlots).toBe(1)
   })
 
   it('an anchored week pins that exact published period', async () => {
