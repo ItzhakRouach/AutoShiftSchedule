@@ -94,8 +94,22 @@ export default async function SchedulePage({
   // Current period — the live editor (meta already fetched in the parallel block).
   const editMeta = view ? editMetaRaw : null
 
+  // Published weeks other than the one being edited (newest first) — the entry
+  // point into the read-only history view above.
+  const pastWeeks = weeks.filter((w) => w.id !== currentPeriodId)
+
   return (
     <main className="schedule-main" style={{ background: 'var(--bg)', direction: 'rtl' }}>
+      {view && pastWeeks.length > 0 && (
+        <div className="schedule-controls" style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+          <Link
+            href={`/schedule?w=${pastWeeks[0].id}`}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 600, color: 'var(--accent)', textDecoration: 'none' }}
+          >
+            <Icon name="calendar" size={15} /> סידורים קודמים
+          </Link>
+        </div>
+      )}
       {view ? (
         <ScheduleClient view={view} editMeta={editMeta} workerVacations={workerVacations} rolelessEmployees={rolelessEmployees} />
       ) : (
