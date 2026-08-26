@@ -63,3 +63,30 @@ describe('isPublishDue', () => {
     expect(isPublishDue(now, 0, '09:00')).toBe(true)
   })
 })
+
+describe('autoPublishWindow', () => {
+  it('caps maxWeek at the upcoming Sunday — a manager-published current week must not let the cron publish next week early', async () => {
+    const { autoPublishWindow } = await import('./compute')
+    // The 21.8 regression: Friday 2026-08-21 08:13 IDT (05:13 UTC). Week 23.8
+    // was already manually published, and the cron reached into the 30.8 draft.
+    const now = new Date('2026-08-21T05:13:44.917Z')
+    const { minWeek, maxWeek } = autoPublishWindow(now)
+    expect(maxWeek).toBe('2026-08-23') // NOT 2026-08-30
+    expect(minWeek).toBe('2026-08-07') // 14-day retro guard
+  })
+
+  it('on Sunday itself the same-day week is still publishable', async () => {
+    const { autoPublishWindow } = await import('./compute')
+    // Sunday 2026-08-23 09:00 IDT (06:00 UTC) → the week starting today.
+    const { maxWeek } = autoPublishWindow(new Date('2026-08-23T06:00:00Z'))
+    expect(maxWeek).toBe('2026-08-23')
+  })
+
+  it('uses the Israel wall clock at the UTC/Israel date boundary', async () => {
+    const { autoPublishWindow } = await import('./compute')
+    // Saturday 2026-08-22 21:30 UTC is ALREADY Sunday 00:30 IDT → the week
+    // starting 23.8, not 30.8.
+    const { maxWeek } = autoPublishWindow(new Date('2026-08-22T21:30:00Z'))
+    expect(maxWeek).toBe('2026-08-23')
+  })
+})

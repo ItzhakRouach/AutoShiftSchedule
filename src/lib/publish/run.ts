@@ -5,14 +5,9 @@
  */
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { isPublishDue } from './compute'
+import { autoPublishWindow, isPublishDue } from './compute'
 import { buildAndUploadScheduleImage } from './image'
 import { notifyWorkplacePublished } from '@/lib/push/send'
-import { toISODateUTC } from '@/lib/dates/week'
-
-/** Never auto-publish weeks older than this — an abandoned/stale period from
- *  weeks ago must not suddenly go public on the next cron tick. */
-const MAX_RETRO_DAYS = 14
 
 /** Cap concurrent per-workplace publishes (image render + upload is the heavy
  *  part) so the cron finishes fast without stampeding the DB/storage. */
@@ -41,20 +36,25 @@ async function publishForWorkplace(
   // Publish the earliest not-yet-published period. 'locked' is the normal
   // case (deadline cron locked it); 'collecting' covers workplaces with no
   // request deadline configured, so their schedule still goes out on time.
-  const minWeek = toISODateUTC(new Date(now.getTime() - MAX_RETRO_DAYS * 86_400_000))
+  // Bounded to autoPublishWindow (Israel wall clock): when the imminent week
+  // is already manager-published, the cron must NOT reach into next week's
+  // half-built draft — it would go public before its request deadline.
+  const { minWeek, maxWeek } = autoPublishWindow(now)
   const { data: periods, error: periodsErr } = await admin
     .from('schedule_periods')
     .select('id, week_start_date')
     .eq('workplace_id', workplace_id)
     .in('status', ['locked', 'collecting'])
     .gte('week_start_date', minWeek)
+    .lte('week_start_date', maxWeek)
     .order('week_start_date', { ascending: true })
     .limit(1)
 
   if (periodsErr) return { published: 0, errors: [`periods fetch for ${workplace_id}: ${periodsErr.message}`] }
   if (!periods?.length) {
-    // A period older than MAX_RETRO_DAYS is deliberately never auto-published,
-    // but silently skipping it makes the cron look broken — leave a trail.
+    // A period outside the window (stale, or a future week's draft) is
+    // deliberately not auto-published now, but silently skipping it makes the
+    // cron look broken — leave a trail.
     const { data: stale } = await admin
       .from('schedule_periods')
       .select('week_start_date')

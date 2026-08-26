@@ -3,6 +3,7 @@
  * Uses the same Israel-tz pattern as src/lib/deadline/compute.ts.
  */
 import { DateTime } from 'luxon'
+import { addDaysISO, todayInIsraelISO, upcomingWeekStartFromISO } from '@/lib/dates/week'
 
 const DEFAULT_TZ = 'Asia/Jerusalem'
 
@@ -35,4 +36,23 @@ export function isPublishDue(
   const nowMinutes = local.hour * 60 + local.minute
   const targetMinutes = hour * 60 + minute
   return nowMinutes >= targetMinutes
+}
+
+/** Never auto-publish weeks older than this — an abandoned/stale period from
+ *  weeks ago must not suddenly go public on the next cron tick. */
+export const MAX_RETRO_DAYS = 14
+
+/**
+ * The week_start_date window the auto-publish cron may touch, computed on the
+ * Israel wall clock: from MAX_RETRO_DAYS back up to the UPCOMING Sunday.
+ * The upper bound is the fix for the 21.8 incident — when the imminent week is
+ * already manager-published, "earliest unpublished period" must NOT reach into
+ * next week's half-built draft (it would go public before its request deadline).
+ */
+export function autoPublishWindow(now: Date): { minWeek: string; maxWeek: string } {
+  const todayISO = todayInIsraelISO(now)
+  return {
+    minWeek: addDaysISO(todayISO, -MAX_RETRO_DAYS),
+    maxWeek: upcomingWeekStartFromISO(todayISO),
+  }
 }

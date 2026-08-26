@@ -141,7 +141,7 @@ export function ScheduleClient({ view, editMeta, workerVacations, rolelessEmploy
 
       {/* Managers can open the grid to build by hand even before the auto-run
           (empty cells are fillable via drag/tap/temp workers). */}
-      {viewMode === 'schedule' && (hasResult || !!editMeta) && (
+      {viewMode === 'schedule' && (hasResult || published || !!editMeta) && (
         <>
           {editMeta && (
             <>
@@ -157,7 +157,9 @@ export function ScheduleClient({ view, editMeta, workerVacations, rolelessEmploy
             editMeta={editMeta}
           />
           <DayNotesSummary view={view} />
-          {hasResult && (
+          {/* `published` alone (no assignments) still needs the controls: a
+              cron-published empty week is otherwise impossible to unpublish. */}
+          {(hasResult || published) && (
             <PublishControls
               view={view}
               suggestions={suggestions}
