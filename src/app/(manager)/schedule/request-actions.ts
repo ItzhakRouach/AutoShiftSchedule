@@ -82,11 +82,15 @@ export async function managerClearAllRequests(periodId: string): Promise<Result>
 
   const { data: period } = await supabase
     .from('schedule_periods')
-    .select('id')
+    .select('id, status')
     .eq('id', periodId)
     .eq('workplace_id', workplace.id)
     .maybeSingle()
   if (!period) return { error: 'תקופה לא נמצאה' }
+  // Same finality rule as managerSaveDayRequest: a published week's requests
+  // are frozen (also guards a stale client periodId after a mid-session publish).
+  if (period.status === 'published')
+    return { error: 'הסידור לשבוע זה כבר פורסם — יש לבטל פרסום לפני עדכון בקשות' }
 
   const admin = createAdminClient()
   const { error } = await admin.from('requests').delete().eq('period_id', periodId)

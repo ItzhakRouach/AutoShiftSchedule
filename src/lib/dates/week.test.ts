@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   upcomingWeekStartISO,
+  upcomingWeekStartFromISO,
   formatHebDate,
   hebrewDayName,
   isInVacationRange,
@@ -55,6 +56,34 @@ describe('upcomingWeekStartISO', () => {
     // 2026-01-04 is a Sunday
     const result = upcomingWeekStartISO(new Date(2026, 0, 4))
     expect(result).toBe('2026-01-04')
+  })
+})
+
+describe('upcomingWeekStartFromISO', () => {
+  it('returns the same Sunday when today IS Sunday', () => {
+    expect(upcomingWeekStartFromISO('2026-06-07')).toBe('2026-06-07')
+  })
+
+  it('returns the NEXT Sunday when today is a Wednesday', () => {
+    expect(upcomingWeekStartFromISO('2026-06-03')).toBe('2026-06-07')
+  })
+
+  it('returns the NEXT Sunday when today is Saturday', () => {
+    expect(upcomingWeekStartFromISO('2026-06-06')).toBe('2026-06-07')
+  })
+
+  it('rolls over a month boundary', () => {
+    // 2026-06-29 is a Monday → next Sunday is 2026-07-05
+    expect(upcomingWeekStartFromISO('2026-06-29')).toBe('2026-07-05')
+  })
+
+  it('rolls over a year boundary', () => {
+    // 2026-12-28 is a Monday → next Sunday is 2027-01-03
+    expect(upcomingWeekStartFromISO('2026-12-28')).toBe('2027-01-03')
+  })
+
+  it('agrees with upcomingWeekStartISO for a plain local date', () => {
+    expect(upcomingWeekStartFromISO('2026-06-03')).toBe(upcomingWeekStartISO(new Date(2026, 5, 3)))
   })
 })
 

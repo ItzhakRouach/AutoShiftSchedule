@@ -2,7 +2,9 @@
 
 import { useMemo } from 'react'
 import { countUncoveredCells } from '@/lib/schedule/week-table-data'
+import { addDaysISO, formatHebDate } from '@/lib/dates/week'
 import type { ScheduleView } from '@/lib/schedule/view-data'
+import { RolledWeekBanner } from './RolledWeekBanner'
 
 interface Props {
   view: ScheduleView
@@ -16,8 +18,16 @@ interface Props {
 export function ScheduleHeader({ view, pct }: Props) {
   const gaps = useMemo(() => countUncoveredCells(view), [view])
   return (
+    <>
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, gap: 10 }}>
-      <h1 style={{ margin: 0, fontSize: 'var(--text-h1)', fontWeight: 800 }}>סידור עבודה</h1>
+      <div>
+        <h1 style={{ margin: 0, fontSize: 'var(--text-h1)', fontWeight: 800 }}>סידור עבודה</h1>
+        {/* Always name the week being edited — after the auto-roll past a
+            published week, this is what tells the manager WHICH week this is. */}
+        <div data-testid="editing-week-label" style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-2)', marginTop: 3 }}>
+          שבוע {formatHebDate(view.weekStart)} – {formatHebDate(addDaysISO(view.weekStart, 6))}
+        </div>
+      </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <div
           data-testid="live-gaps"
@@ -42,5 +52,7 @@ export function ScheduleHeader({ view, pct }: Props) {
         )}
       </div>
     </div>
+    <RolledWeekBanner skipped={view.skippedPublished} />
+    </>
   )
 }

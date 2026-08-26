@@ -65,7 +65,11 @@ export function useScheduleActions(view: ScheduleView) {
       const res = await publishSchedule(view.periodId)
       if (!res.ok) { setError(res.error ?? 'שגיאה'); return }
       setPublished(true)
-      router.refresh()
+      // Pin the URL to the week we just published: a plain refresh would roll
+      // the editor to the NEXT week (resolveEditWeek skips published weeks)
+      // and hide the share/unpublish controls the manager needs right now.
+      // publishSchedule revalidated /schedule, so this navigation refetches.
+      router.replace(`/schedule?w=${view.periodId}`)
     })
   }
 

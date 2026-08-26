@@ -76,6 +76,7 @@ export function RequestsOverview({ view, workerVacations }: Props) {
   return (
     <div data-testid="requests-overview">
       <RequestsOverviewControls
+        weekLabel={`${view.days[0]?.date ?? ''} – ${view.days[6]?.date ?? ''}`}
         submitted={submitted}
         total={total}
         offTotal={offTotals.total}

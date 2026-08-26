@@ -12,6 +12,18 @@ export function upcomingWeekStartISO(today: Date): string {
   return formatISO(sunday)
 }
 
+/**
+ * Upcoming Sunday computed from a YYYY-MM-DD "today" string — the timezone is
+ * whatever the CALLER used to produce `todayISO` (compose with
+ * `todayInIsraelISO` for the Israel wall clock; `upcomingWeekStartISO` uses
+ * server-local time, which lags Israel by 2–3h around midnight on UTC servers).
+ */
+export function upcomingWeekStartFromISO(todayISO: string): string {
+  const [y, m, d] = todayISO.split('-').map(Number)
+  const day = new Date(Date.UTC(y, m - 1, d)).getUTCDay() // 0 = Sunday
+  return addDaysISO(todayISO, day === 0 ? 0 : 7 - day)
+}
+
 /** Formats a Date as YYYY-MM-DD (local time, zero-padded). */
 function formatISO(d: Date): string {
   const yyyy = d.getFullYear()

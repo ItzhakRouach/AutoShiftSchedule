@@ -8,6 +8,8 @@ const clearBtn = (danger: boolean): React.CSSProperties => ({
 })
 
 interface Props {
+  /** "31.5 – 6.6" week range — names WHICH week these requests belong to. */
+  weekLabel: string
   submitted: number
   total: number
   offTotal: number
@@ -24,13 +26,16 @@ interface Props {
  *  and the "clear all" confirm flow. Split out of RequestsOverview to keep
  *  that component ≤200 lines. */
 export function RequestsOverviewControls({
-  submitted, total, offTotal, offEmployees, hasRequests,
+  weekLabel, submitted, total, offTotal, offEmployees, hasRequests,
   confirmClear, clearing, onClearAll, onConfirmClear, onCancelClear,
 }: Props) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, direction: 'rtl' }}>
+      <span data-testid="requests-week-label" style={{ fontSize: 13.5, fontWeight: 800 }}>
+        בקשות לשבוע {weekLabel}
+      </span>
       <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-2)' }}>
-        הגישו {submitted}/{total} עובדים
+        · הגישו {submitted}/{total} עובדים
       </span>
       <span style={{ fontSize: 12, color: 'var(--text-3)' }}>· לחצו על משבצת כדי להוסיף/לערוך בקשה</span>
       {offTotal > 0 && (

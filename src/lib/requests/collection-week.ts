@@ -12,7 +12,7 @@
  */
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { upcomingWeekStartISO, addDaysISO, shouldRollToNextWeek, toISODate } from '@/lib/dates/week'
+import { upcomingWeekStartFromISO, addDaysISO, shouldRollToNextWeek, todayInIsraelISO } from '@/lib/dates/week'
 import { isPastDeadline } from '@/lib/deadline/compute'
 
 export interface CollectionWeek {
@@ -25,7 +25,9 @@ export interface CollectionWeek {
   maxOffDaysPerWeek: number | null
 }
 
-const MAX_CANDIDATE_WEEKS = 8
+/** How many consecutive weeks the resolvers may roll forward (shared with the
+ *  manager-side `pickEditWeek`). */
+export const MAX_CANDIDATE_WEEKS = 8
 
 /** Pure candidate-week walk: starting at `firstWeek`, roll forward per
  *  `shouldRollToNextWeek` and return the first week still collecting (or the
@@ -72,13 +74,15 @@ export async function resolveCollectionWeek(
   const tz = (wpRow?.timezone as string | null | undefined) ?? 'Asia/Jerusalem'
   const maxOffDaysPerWeek =
     (settingsRow?.max_off_days_per_week as number | null | undefined) ?? null
-  const todayISO = toISODate(now)
+  // Israel wall clock — on UTC servers the local date lags Israel by 2–3h
+  // around midnight, which briefly resolved the WRONG week at the boundary.
+  const todayISO = todayInIsraelISO(now)
   const hasDeadline = dow != null && !!time
 
   // Bulk-prefetch the candidate weeks' period rows (one read), pick the winning
   // week purely, then materialize ONLY that week via the RPC when it has no row
   // yet — instead of an RPC + select round-trip per candidate.
-  const firstWeek = upcomingWeekStartISO(now)
+  const firstWeek = upcomingWeekStartFromISO(todayISO)
   const candidates = Array.from({ length: MAX_CANDIDATE_WEEKS }, (_, i) => addDaysISO(firstWeek, i * 7))
   const { data: periodRows } = await supabase
     .from('schedule_periods')

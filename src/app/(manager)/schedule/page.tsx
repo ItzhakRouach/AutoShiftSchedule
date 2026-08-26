@@ -3,8 +3,8 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getAuthUser } from '@/lib/auth/user'
 import { getActiveWorkplace } from '@/lib/workplace/current'
-import { toISODateUTC, upcomingWeekStartISO } from '@/lib/dates/week'
-import { ensureUpcomingPeriodId } from '@/lib/schedule/cached-reads'
+import { addDaysISO, todayInIsraelISO, toISODateUTC } from '@/lib/dates/week'
+import { resolveEditWeek } from '@/lib/schedule/edit-week'
 import { getScheduleView } from '@/lib/schedule/view-data'
 import { getPublishedScheduleView, listPublishedWeeks, pastPublishedWeeks } from '@/lib/schedule/published-view'
 import { getEditMeta } from '@/lib/schedule/edit-meta'
@@ -32,13 +32,31 @@ export default async function SchedulePage({
 
   const sp = await searchParams
   const todayISO = toISODateUTC(new Date())
-  // Resolve the period id ONCE (cached per-request; getScheduleView reuses it)
-  // so getEditMeta can run inside the same Promise.all instead of serially
-  // after the view — its ~9 reads are also served from the cached readers.
-  const weekStart = upcomingWeekStartISO(new Date())
-  const periodId = await ensureUpcomingPeriodId(supabase, workplace.id, weekStart)
+  // The editing week rolls past PUBLISHED weeks (see resolveEditWeek) — once a
+  // week is published the editor moves on to building the next one. Cached
+  // per-request; getScheduleView resolves the same week for its data.
+  const edit = await resolveEditWeek(supabase, workplace.id)
+
+  // ?w= targets another week. While that week hasn't ENDED it opens the LIVE
+  // editor — so unpublish + manual/12h edits on a published current week stay
+  // possible after the auto-roll. An ended week renders read-only below.
+  let liveOverride: { id: string; weekStart: string } | null = null
+  if (sp?.w && sp.w !== edit?.periodId) {
+    const { data: wRow } = await supabase
+      .from('schedule_periods')
+      .select('id, week_start_date')
+      .eq('id', sp.w)
+      .eq('workplace_id', workplace.id)
+      .maybeSingle()
+    if (wRow && addDaysISO(wRow.week_start_date as string, 6) >= todayInIsraelISO()) {
+      liveOverride = { id: wRow.id as string, weekStart: wRow.week_start_date as string }
+    }
+  }
+  const targetPeriodId = liveOverride?.id ?? edit?.periodId ?? null
+  const targetWeekStart = liveOverride?.weekStart ?? edit?.weekStart ?? null
+
   const [view, weeks, workerVacations, editMetaRaw, rolelessRaw] = await Promise.all([
-    getScheduleView(supabase, workplace.id),
+    getScheduleView(supabase, workplace.id, liveOverride?.id),
     listPublishedWeeks(supabase, workplace.id),
     // Upcoming vacations of ANY status/kind for the "בקשות עובדים" per-worker
     // vacation sheet — richer than view.vacations (approved-only, used for grid
@@ -46,7 +64,9 @@ export default async function SchedulePage({
     // now permits managers to SELECT directly — no service-role needed here,
     // unlike the dashboard's pre-existing admin-client call to this same helper.
     getWorkplaceVacations(supabase, workplace.id, todayISO),
-    periodId ? getEditMeta(supabase, workplace.id, periodId, weekStart) : Promise.resolve(null),
+    targetPeriodId && targetWeekStart
+      ? getEditMeta(supabase, workplace.id, targetPeriodId, targetWeekStart)
+      : Promise.resolve(null),
     // Active (joined) employees with their roles — used to warn the manager about
     // role-less workers, who are silently skipped by the auto-scheduler.
     supabase
@@ -65,10 +85,10 @@ export default async function SchedulePage({
   // History navigation covers only weeks strictly BEFORE the editing week —
   // a week published ahead of it must not appear (it would dead-end שבוע קודם
   // on the editor); the editing week itself always opens the live editor.
-  const pastWeeks = pastPublishedWeeks(weeks, weekStart)
+  const pastWeeks = edit ? pastPublishedWeeks(weeks, edit.weekStart) : []
 
-  // History view: a published PAST week → read-only.
-  const viewingPast = !!sp?.w && pastWeeks.some((w) => w.id === sp.w)
+  // History view: a published week that already ENDED → read-only.
+  const viewingPast = !liveOverride && !!sp?.w && pastWeeks.some((w) => w.id === sp.w)
   if (viewingPast) {
     const pubView = await getPublishedScheduleView(supabase, workplace.id, sp.w)
     return (
@@ -93,23 +113,36 @@ export default async function SchedulePage({
     )
   }
 
-  // Current period — the live editor (meta already fetched in the parallel block).
+  // Live editor — the rolling edit week, or a not-yet-ended ?w= week.
   const editMeta = view ? editMetaRaw : null
 
   return (
     <main className="schedule-main" style={{ background: 'var(--bg)', direction: 'rtl' }}>
-      {view && pastWeeks.length > 0 && (
+      {view && (liveOverride || pastWeeks.length > 0) && (
         <div className="schedule-controls" style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
-          <Link
-            href={`/schedule?w=${pastWeeks[0].id}`}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 600, color: 'var(--accent)', textDecoration: 'none' }}
-          >
-            <Icon name="calendar" size={15} /> סידורים קודמים
-          </Link>
+          {liveOverride ? (
+            <Link
+              href="/schedule"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 600, color: 'var(--accent)', textDecoration: 'none' }}
+            >
+              <Icon name="arrowLeft" size={15} /> לסידור הנוכחי
+            </Link>
+          ) : (
+            <Link
+              href={`/schedule?w=${pastWeeks[0].id}`}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 600, color: 'var(--accent)', textDecoration: 'none' }}
+            >
+              <Icon name="calendar" size={15} /> סידורים קודמים
+            </Link>
+          )}
         </div>
       )}
       {view ? (
-        <ScheduleClient view={view} editMeta={editMeta} workerVacations={workerVacations} rolelessEmployees={rolelessEmployees} />
+        // Keyed by period: client-side nav between the rolling editor and a
+        // ?w= week must REMOUNT the editor — otherwise per-week client state
+        // (selected tab, published flag, undo/drag history) leaks across weeks
+        // and e.g. hides the unpublish button on the published week's view.
+        <ScheduleClient key={view.periodId} view={view} editMeta={editMeta} workerVacations={workerVacations} rolelessEmployees={rolelessEmployees} />
       ) : (
         <p style={{ textAlign: 'right', color: 'var(--text-2)' }}>
           לא ניתן לטעון את נתוני הסידור כרגע.

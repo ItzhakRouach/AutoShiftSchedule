@@ -1,10 +1,9 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { upcomingWeekStartISO } from '@/lib/dates/week'
 import { checkFeasibility } from '@/lib/scheduling'
 import { buildEngineInput } from './build-input'
+import { resolveEditWeek } from './edit-week'
 import {
-  ensureUpcomingPeriodId,
   fetchApprovedVacations,
   fetchAssignmentRows,
   fetchEmployeesFull,
@@ -24,18 +23,28 @@ import { buildRequestedSet, type ScheduleView, type ViewReq, type ViewRequest } 
 
 export * from './view-types'
 
-/** Resolves all data for /schedule. Returns null on missing workplace/period. */
+/** Resolves all data for /schedule. Returns null on missing workplace/period.
+ *  Without `overridePeriodId` the editing week comes from `resolveEditWeek`
+ *  (rolls past published weeks); with it, that exact period is loaded (the
+ *  page's ?w= live view of an already-published week). */
 export async function getScheduleView(
   supabase: SupabaseClient,
   workplaceId: string,
+  overridePeriodId?: string,
 ): Promise<ScheduleView | null> {
-  const weekStart = upcomingWeekStartISO(new Date())
-  // Cached per-request (page.tsx resolves the same id for getEditMeta in parallel).
-  const periodId = await ensureUpcomingPeriodId(supabase, workplaceId, weekStart)
-  if (!periodId) return null
+  let periodId = overridePeriodId ?? null
+  let skippedPublished: ScheduleView['skippedPublished'] = null
+  if (!periodId) {
+    // Cached per-request (page.tsx resolves the same week for getEditMeta).
+    const edit = await resolveEditWeek(supabase, workplaceId)
+    if (!edit) return null
+    periodId = edit.periodId
+    skippedPublished = edit.skippedPublished
+  }
 
   const built = await buildEngineInput(supabase, periodId)
   if (!built) return null
+  const weekStart = built.period.week_start_date
 
   const idToKey: Record<string, ShiftKey> = {}
   for (const [key, id] of Object.entries(built.keyToShiftTypeId)) idToKey[id] = key as ShiftKey
@@ -162,5 +171,6 @@ export async function getScheduleView(
     })),
     imageShareUrl,
     nightBeforeByDay,
+    skippedPublished,
   }
 }

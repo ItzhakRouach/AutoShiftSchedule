@@ -111,6 +111,10 @@ export interface ScheduleView {
    * legacy callers (published-view, tests) that don't populate it.
    */
   nightBeforeByDay?: NightBeforeMap
+  /** Set when the editing week auto-rolled past a just-published week: the most
+   *  recent skipped week, so the UI can explain the jump and link back to it.
+   *  Absent/null for override (?w=) views and legacy callers. */
+  skippedPublished?: { periodId: string; weekStart: string } | null
 }
 
 /**
