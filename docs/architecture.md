@@ -23,7 +23,10 @@ observes_shabbat, observes_holidays, must_accept, status) · `shift_types` (8h b
 (collecting/locked/published) · `requests` (per-day off/preferred shifts + vacation ranges) · `assignments`
 (employee, period, date, shift_type, role, source) · `holidays` (auto-filled, editable) · `invites`
 (code, expiry) · `workplace_settings` (request_deadline, publish_day, min_rest_hours, allow_12h_fallback,
-greenapi config).
+greenapi config) · `day_notes` (period × employee × day → label; marks the employee off-shift with a visible
+reason) · `slot_marks` (period × day × shift_type × role → label; the manager declares a cell intentionally
+empty — e.g. יום כיפור. The cell renders neutral with the label instead of the red "לא מאויש" and is waived
+from every coverage gap count. `label` may be ''; membership, not the text, is what marks the slot).
 
 All tables: **RLS** scoped by org/workplace membership. Migrations are forward-only in `supabase/migrations/`.
 Defaults (roles, shift_types) are seeded on workplace creation, not via migration.

@@ -6,7 +6,7 @@ import { LtrText } from '@/components/ui/LtrText'
 import { RoleChip } from '@/components/ui/RoleChip'
 import { SHIFT_META, type ShiftId } from '@/lib/domain/constants'
 import type { ScheduleView } from '@/lib/schedule/view-data'
-import { buildWeekGrid } from '@/lib/schedule/week-table-data'
+import { buildWeekGrid, buildSlotMarkMap } from '@/lib/schedule/week-table-data'
 import { coveredByTwelve } from '@/lib/schedule/week-table-twelve'
 import { buildDayRoleRow, dayRoleIds } from '@/lib/schedule/day-grid-rows'
 import type { SlotCtx } from './SwapEditor'
@@ -35,6 +35,7 @@ export function DayGrid({ view, selDay, onSlot, assign, selfId }: Props) {
   const roleById = new Map(view.roles.map((r) => [r.id, r]))
   const weekGrid = buildWeekGrid(view)
   const coveredMap = coveredByTwelve(view)
+  const slotMarks = buildSlotMarkMap(view)
   // Held worker already works this day → block quick-placing them again (one
   // shift/day). Greys the empty add-slots and no-ops their taps.
   const heldBusy = !!assign?.heldId && busyDaysOf(view, assign.heldId).has(selDay)
@@ -54,7 +55,7 @@ export function DayGrid({ view, selDay, onSlot, assign, selfId }: Props) {
       {view.shiftKeys.map((shift: ShiftKey) => {
         const m = SHIFT_META[shift]
         const req = view.requirements[selDay]?.[shift] ?? {}
-        const roleIds = dayRoleIds(view, weekGrid, coveredMap, selDay, shift)
+        const roleIds = dayRoleIds(view, weekGrid, coveredMap, selDay, shift, slotMarks)
         return (
           <Card key={shift} pad={0} style={{ overflow: 'hidden' }}>
             <div
@@ -79,16 +80,20 @@ export function DayGrid({ view, selDay, onSlot, assign, selfId }: Props) {
               )}
               {roleIds.map((roleId) => {
                 const need = req[roleId] ?? 0
-                const row = buildDayRoleRow(view, weekGrid, coveredMap, selDay, shift, roleId)
+                const row = buildDayRoleRow(view, weekGrid, coveredMap, selDay, shift, roleId, slotMarks)
                 const role = roleById.get(roleId)
                 const busy = !!assign?.pendingSlot
                   && assign.pendingSlot.day === selDay
                   && assign.pendingSlot.shiftKey === shift
                   && assign.pendingSlot.roleId === roleId
                 // Desktop-parity capacity tint: under → warning, over → danger.
+                // A marked row is empty on purpose — no under-staffed amber.
+                // `waived` (not the caption) is the mark-in-effect flag: a
+                // marked slot that was later filled is scored like any other.
+                const marked = row.waived
                 const rowTint = need > 0 && row.assigned > need
                   ? 'var(--danger-soft)'
-                  : need > 0 && row.assigned < need
+                  : !marked && need > 0 && row.assigned < need
                     ? 'var(--warning-soft)'
                     : undefined
                 return (
@@ -106,10 +111,10 @@ export function DayGrid({ view, selDay, onSlot, assign, selfId }: Props) {
                         style={{
                           fontSize: 12,
                           fontWeight: 700,
-                          color: need > 0 ? (row.assigned >= need ? 'var(--success)' : 'var(--danger)') : 'var(--text-2)',
+                          color: marked || need === 0 ? 'var(--text-2)' : row.assigned >= need ? 'var(--success)' : 'var(--danger)',
                         }}
                       >
-                        {need > 0 ? `${row.assigned}/${need}` : row.assigned}
+                        {marked ? row.assigned : need > 0 ? `${row.assigned}/${need}` : row.assigned}
                       </span>
                     </div>
                     <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
@@ -127,6 +132,22 @@ export function DayGrid({ view, selDay, onSlot, assign, selfId }: Props) {
                       {Array.from({ length: row.covered }).map((_, k) => (
                         <DayCoveredMarker key={'c' + k} />
                       ))}
+                      {marked && (
+                        <span
+                          onClick={busy ? undefined : () => open(shift, roleId, row.baseIds)}
+                          aria-busy={busy || undefined}
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 6,
+                            padding: '6px 13px', borderRadius: 99,
+                            border: '1.5px dashed var(--border)',
+                            color: 'var(--text-3)', fontSize: 13, fontWeight: 600,
+                            cursor: heldBusy ? 'not-allowed' : onSlot && !busy ? 'pointer' : 'default',
+                            opacity: busy ? 0.55 : heldBusy ? 0.4 : 1,
+                          }}
+                        >
+                          {row.markLabel || 'מסומן'}
+                        </span>
+                      )}
                       {Array.from({ length: row.missing }).map((_, k) => (
                         <span
                           key={'e' + k}

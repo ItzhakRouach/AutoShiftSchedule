@@ -3,7 +3,7 @@
 import { formatHebDate, HEBREW_WEEKDAY_SHORTS } from '@/lib/dates/week'
 import type { ShiftId } from '@/lib/domain/constants'
 import type { ShiftKey } from '@/lib/scheduling/types'
-import type { DayInfo, ViewGrid, ViewTwelve, ViewTempEntry } from './view-data'
+import type { DayInfo, ViewGrid, ViewTwelve, ViewTempEntry, ViewSlotMark } from './view-data'
 import { parseTwelveFills } from './twelve-fills'
 
 /** 7-day DayInfo[] from the week's ISO start date. */
@@ -77,4 +77,29 @@ export function splitAssignments(
     ;(byShift[a.role_id] ??= []).push(a.employee_id)
   }
   return { grid, twelve, temps, byDay }
+}
+
+export interface SlotMarkRaw {
+  day_of_week: number
+  shift_type_id: string
+  role_id: string
+  label: string | null
+}
+
+/**
+ * slot_marks rows → view shape, re-keyed from shift_type_id to the shift KEY the
+ * grid uses. A row pointing at a shift type this workplace no longer has is
+ * dropped rather than rendered under an unknown key.
+ */
+export function mapSlotMarks(
+  rows: SlotMarkRaw[],
+  idToAnyKey: Record<string, string>,
+): ViewSlotMark[] {
+  const out: ViewSlotMark[] = []
+  for (const r of rows) {
+    const key = idToAnyKey[r.shift_type_id]
+    if (!key) continue
+    out.push({ day: r.day_of_week, shiftKey: key, roleId: r.role_id, label: r.label ?? '' })
+  }
+  return out
 }

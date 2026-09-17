@@ -115,6 +115,28 @@ export function buildEmpTotals(view: ScheduleView, employees: ViewEmployee[]): E
 // buildDayHealth / buildEmpHours (header heatmap + hour totals) live in
 // week-table-metrics.ts to keep this file within the ≤200-line budget.
 
+/** The one spelling of a cell's identity, shared by every per-slot map here
+ *  (marks, 12h coverage). Note `stats/marked-slots.ts` keys by shift_type_id
+ *  instead — a different key space, deliberately not merged with this one. */
+export function slotKey(day: number, shiftKey: string, roleId: string): string {
+  return `${day}:${shiftKey}:${roleId}`
+}
+
+/**
+ * `slotKey()` → the mark's label, for every cell the manager marked as
+ * intentionally empty. The label may be `''` (blank white cell), so callers
+ * must test membership with `.has()`, never truthiness of `.get()`.
+ *
+ * A mark is never garbage-collected: assigning someone into a marked cell
+ * leaves the row in place, dormant (every consumer honors the mark only while
+ * the cell is empty), and emptying the cell again restores the declaration.
+ */
+export function buildSlotMarkMap(view: ScheduleView): Map<string, string> {
+  const map = new Map<string, string>()
+  for (const m of view.slotMarks ?? []) map.set(slotKey(m.day, m.shiftKey, m.roleId), m.label)
+  return map
+}
+
 export interface CellCapacity {
   /** `"X/Y"` — blank when the slot has no configured requirement. */
   label: string
@@ -141,10 +163,16 @@ export function cellCapacity(assignedCount: number, requiredCount: number): Cell
  * math exactly: `assignedCount = cellEntries.length + coveredCount` (a 12h
  * shift's covered cell counts toward its target without needing a base
  * occupant). Drives the secondary "השלם 12ש׳ אוטומטית" button's visibility.
+ *
+ * Cells the manager marked as intentionally empty (see `buildSlotMarkMap`) are
+ * skipped — they are a deliberate decision, not a gap to chase. The waiver
+ * applies only while the cell really is empty: once someone is placed there the
+ * slot is live again and its requirement is scored as usual.
  */
 export function countUncoveredCells(view: ScheduleView): number {
   const grid = buildWeekGrid(view)
   const coveredMap = coveredByTwelve(view)
+  const marks = buildSlotMarkMap(view)
   let gaps = 0
   for (const dayKey of Object.keys(view.requirements)) {
     const day = Number(dayKey)
@@ -154,8 +182,9 @@ export function countUncoveredCells(view: ScheduleView): number {
       for (const [roleId, requiredCount] of Object.entries(roleReq)) {
         if (requiredCount <= 0) continue
         const cellEntries = grid[day]?.[shift]?.[roleId] ?? []
-        const coveredCount = coveredMap.get(`${day}:${shift}:${roleId}`) ?? 0
+        const coveredCount = coveredMap.get(slotKey(day, shift, roleId)) ?? 0
         const assignedCount = cellEntries.length + coveredCount
+        if (assignedCount === 0 && marks.has(slotKey(day, shift, roleId))) continue
         if (assignedCount < requiredCount) gaps++
       }
     }

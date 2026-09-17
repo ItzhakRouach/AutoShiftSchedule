@@ -118,3 +118,45 @@ describe('dayRoleIds', () => {
     expect(dayRoleIds(view, weekGrid, coveredMap, 0, 'morning')).toEqual(['r-achm', 'r-guard'])
   })
 })
+
+describe('day-grid rows — marked slots', () => {
+  const marks = new Map([['0:morning:r-achm', 'יום כיפור']])
+
+  it('a marked row reports its caption and no missing chips', () => {
+    const view = makeView()
+    const row = buildDayRoleRow(view, buildWeekGrid(view), coveredByTwelve(view), 0, 'morning', 'r-achm', marks)
+    expect(row.markLabel).toBe('יום כיפור')
+    expect(row.missing).toBe(0)
+  })
+
+  it('an unmarked row keeps its missing count and has no caption', () => {
+    const view = makeView()
+    const row = buildDayRoleRow(view, buildWeekGrid(view), coveredByTwelve(view), 0, 'noon', 'r-achm', marks)
+    expect(row.markLabel).toBeUndefined()
+    expect(row.missing).toBe(1)
+  })
+
+  it('a marked row that has an occupant still reports its shortfall', () => {
+    const view = makeView({
+      requirements: { 0: { morning: { 'r-achm': 2 } } },
+      grid: { 0: { morning: { 'r-achm': ['e1'] } } },
+    })
+    const row = buildDayRoleRow(view, buildWeekGrid(view), coveredByTwelve(view), 0, 'morning', 'r-achm', marks)
+    expect(row.missing).toBe(1)
+    // The caption survives (the mark lies dormant) but the waiver does NOT —
+    // the day view must tint and score this row like any other live slot.
+    expect(row.markLabel).toBe('יום כיפור')
+    expect(row.waived).toBe(false)
+  })
+
+  it('waived is true only while the marked slot is empty', () => {
+    const view = makeView()
+    const row = buildDayRoleRow(view, buildWeekGrid(view), coveredByTwelve(view), 0, 'morning', 'r-achm', marks)
+    expect(row.waived).toBe(true)
+  })
+
+  it('a mark surfaces the role row even with no requirement and no entries', () => {
+    const view = makeView({ requirements: {} })
+    expect(dayRoleIds(view, buildWeekGrid(view), coveredByTwelve(view), 0, 'morning', marks)).toEqual(['r-achm'])
+  })
+})

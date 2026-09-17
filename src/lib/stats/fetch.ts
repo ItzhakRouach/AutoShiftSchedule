@@ -7,6 +7,7 @@ import {
   aggregateFairness,
 } from './aggregate'
 import { buildWeeklyTrends } from './trends'
+import { markedRequiredCount, occupiedSlotRefs } from './marked-slots'
 import { resolveCurrentWeekStart } from './resolve-week'
 import { scopeRangeISO } from '@/lib/dates/scope'
 import { todayInIsraelISO } from '@/lib/dates/week'
@@ -63,7 +64,11 @@ export async function fetchDashboardStats(
     supabase.from('employees').select('id, name, color, min_shifts_per_week').eq('workplace_id', workplaceId).order('name'),
     supabase.from('shift_types').select('id, key, hours, is_fallback').eq('workplace_id', workplaceId),
     // shift_requirements is WEEK-shaped, keyed by workplace_id (no period_id column).
-    supabase.from('shift_requirements').select('count').eq('workplace_id', workplaceId),
+    // The slot keys come along so marked slots can be waived from the KPI below.
+    supabase
+      .from('shift_requirements')
+      .select('day_of_week, shift_type_id, role_id, count')
+      .eq('workplace_id', workplaceId),
     periodsQuery,
   ])
 
@@ -80,6 +85,7 @@ export async function fetchDashboardStats(
   const shiftTypes = shiftTypesRaw ?? []
   const hoursById = new Map<string, number>(shiftTypes.map((s) => [s.id, s.hours]))
   const keyById = new Map<string, string>(shiftTypes.map((s) => [s.id, s.key]))
+  const idByKey = new Map<string, string>(shiftTypes.map((s) => [s.key, s.id]))
   const fallbackById = new Map<string, boolean>(
     shiftTypes.map((s) => [s.id, s.is_fallback ?? s.hours >= 12]),
   )
@@ -115,8 +121,8 @@ export async function fetchDashboardStats(
   const periodIds = periods.map((p) => p.id)
   const latestPeriodId = periods[0].id
 
-  // Batch B — both keyed by the resolved periodIds, mutually independent.
-  const [{ data: assignRaw }, { data: reqsRaw }] = await Promise.all([
+  // Batch B — all keyed by the resolved periodIds, mutually independent.
+  const [{ data: assignRaw }, { data: reqsRaw }, { data: marksRaw }] = await Promise.all([
     supabase
       .from('assignments')
       .select('employee_id, day_of_week, shift_type_id, role_id, period_id')
@@ -125,6 +131,10 @@ export async function fetchDashboardStats(
       .from('requests')
       .select('employee_id, period_id, day_of_week, is_off, preferred_shift_ids')
       .in('period_id', periodIds),
+    supabase
+      .from('slot_marks')
+      .select('day_of_week, shift_type_id, role_id')
+      .eq('period_id', latestPeriodId),
   ])
 
   const allAssignments = (assignRaw ?? []).map((a) => ({
@@ -136,8 +146,14 @@ export async function fetchDashboardStats(
   // Period assignments = latest period only (for KPI accuracy)
   const periodAssignments = allAssignments.filter((a) => a.period_id === latestPeriodId)
 
-  const required = (reqRaw ?? []).reduce((s: number, r: { count: number }) => s + r.count, 0)
-  const requirementSummary = { filled: periodAssignments.length, required }
+  const requirements = reqRaw ?? []
+  const required = requirements.reduce((s: number, r: { count: number }) => s + r.count, 0)
+  // Slots the manager marked as intentionally empty in the LATEST period stop
+  // being a target there — so they never surface as "משבצות לא מאוישות". The
+  // trends line keeps the raw weekly total, which spans several periods.
+  const occupied = occupiedSlotRefs(periodAssignments, keyById, idByKey)
+  const requiredForPeriod = Math.max(0, required - markedRequiredCount(requirements, marksRaw ?? [], occupied))
+  const requirementSummary = { filled: periodAssignments.length, required: requiredForPeriod }
 
   const requests = reqsRaw ?? []
   const latestRequests = requests.filter((r) => r.period_id === latestPeriodId)

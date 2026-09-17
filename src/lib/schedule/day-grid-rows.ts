@@ -3,9 +3,11 @@
  * (day, shift) section, sharing WeekTable's 12h semantics — the 12h worker's
  * chip appears in its anchor shift's role row, and covered-but-empty slots
  * count toward the requirement (rendered as a "12ש׳" marker, not "לא מאויש").
+ * Slots the manager marked as intentionally empty carry their caption instead
+ * of a shortfall — pass the `buildSlotMarkMap` result as `marks`.
  */
 import type { ScheduleView } from './view-data'
-import type { CellEntry, WeekGrid } from './week-table-data'
+import { slotKey, type CellEntry, type WeekGrid } from './week-table-data'
 
 export interface DayRoleRow {
   /** Base + 12h-anchor + temp entries for this (day, shift, role) cell. */
@@ -16,6 +18,13 @@ export interface DayRoleRow {
   missing: number
   /** Base 8h roster ids only — what the slot editor (SwapEditor) operates on. */
   baseIds: string[]
+  /** The mark's caption when the manager left this slot empty on purpose;
+   *  undefined when unmarked. `''` means marked with no caption. */
+  markLabel?: string
+  /** The mark is IN EFFECT — marked and still empty. Every mark-aware bit of
+   *  UI must key off this, never off `markLabel` alone: a marked slot that was
+   *  later filled is a live slot again and must be tinted/scored as one. */
+  waived: boolean
 }
 
 export function buildDayRoleRow(
@@ -25,16 +34,24 @@ export function buildDayRoleRow(
   selDay: number,
   shift: string,
   roleId: string,
+  marks?: Map<string, string>,
 ): DayRoleRow {
   const entries = weekGrid[selDay]?.[shift]?.[roleId] ?? []
-  const covered = coveredMap.get(`${selDay}:${shift}:${roleId}`) ?? 0
+  const covered = coveredMap.get(slotKey(selDay, shift, roleId)) ?? 0
   const need = view.requirements[selDay]?.[shift]?.[roleId] ?? 0
   const assigned = entries.length + covered
+  // A marked slot is empty on purpose — it shows its caption, never a red
+  // "לא מאויש" chip, so its shortfall is reported as zero. Once someone is
+  // placed there the slot is live again and its shortfall counts as usual.
+  const markLabel = marks?.get(slotKey(selDay, shift, roleId))
+  const waived = markLabel !== undefined && assigned === 0
   return {
     entries,
     covered,
     assigned,
-    missing: Math.max(0, need - assigned),
+    missing: waived ? 0 : Math.max(0, need - assigned),
+    markLabel,
+    waived,
     baseIds: entries.filter((e) => !e.is12h && !e.tempName).map((e) => e.employeeId),
   }
 }
@@ -49,6 +66,7 @@ export function dayRoleIds(
   coveredMap: Map<string, number>,
   selDay: number,
   shift: string,
+  marks?: Map<string, string>,
 ): string[] {
   const req = view.requirements[selDay]?.[shift] ?? {}
   return view.roles
@@ -57,6 +75,7 @@ export function dayRoleIds(
       (rid) =>
         (req[rid] ?? 0) > 0 ||
         (weekGrid[selDay]?.[shift]?.[rid]?.length ?? 0) > 0 ||
-        (coveredMap.get(`${selDay}:${shift}:${rid}`) ?? 0) > 0,
+        (coveredMap.get(slotKey(selDay, shift, rid)) ?? 0) > 0 ||
+        marks?.has(slotKey(selDay, shift, rid)) === true,
     )
 }

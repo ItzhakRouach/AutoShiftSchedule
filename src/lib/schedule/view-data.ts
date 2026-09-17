@@ -14,7 +14,7 @@ import {
 import { weekDatesFrom } from './map-rows'
 import { shiftMetaFromRow, type ShiftDisplay } from '@/lib/domain/meta'
 import { buildNightBeforeByDay, toSerializable } from './night-before'
-import { buildDayInfos, splitAssignments } from './view-data-grid'
+import { buildDayInfos, mapSlotMarks, splitAssignments } from './view-data-grid'
 import { getSignedScheduleImageUrl } from '@/lib/publish/image'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { FeasibilityResult, ShiftKey } from '@/lib/scheduling/types'
@@ -59,6 +59,7 @@ export async function getScheduleView(
     allShiftTypes,
     requestsRaw,
     { data: dayNotesRaw },
+    { data: slotMarksRaw },
     vacationsRaw,
   ] = await Promise.all([
     fetchRolesAll(supabase, workplaceId),
@@ -73,6 +74,10 @@ export async function getScheduleView(
     supabase
       .from('day_notes')
       .select('employee_id, day_of_week, label')
+      .eq('period_id', periodId),
+    supabase
+      .from('slot_marks')
+      .select('day_of_week, shift_type_id, role_id, label')
       .eq('period_id', periodId),
     fetchApprovedVacations(supabase, workplaceId),
   ])
@@ -152,6 +157,7 @@ export async function getScheduleView(
     grid,
     twelve,
     temps,
+    slotMarks: mapSlotMarks(slotMarksRaw ?? [], idToAnyKey),
     shiftTypeIdByKey,
     shiftMeta,
     hasAssignments: (assignsRaw ?? []).length > 0,

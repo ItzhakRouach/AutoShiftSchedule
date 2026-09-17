@@ -1,7 +1,7 @@
 'use client'
 
 import { shiftMetaFromRow, roleMetaFromRow } from '@/lib/domain/meta'
-import { cellCapacity, type WeekGrid } from '@/lib/schedule/week-table-data'
+import { cellCapacity, slotKey, type WeekGrid } from '@/lib/schedule/week-table-data'
 import type { ConflictReason } from '@/lib/schedule/conflict-flags'
 import { conflictLabel } from '@/lib/schedule/conflict-flags'
 import type { ScheduleView } from '@/lib/schedule/view-data'
@@ -20,6 +20,8 @@ interface Props {
   empById: Map<string, { name: string; color: string }>
   weekGrid: WeekGrid
   coveredMap: Map<string, number>
+  /** "day:shift:role" → the mark's caption, for slots left empty on purpose. */
+  slotMarks: Map<string, string>
   conflictFlags: Map<string, ConflictReason>
   selectedId: string | null
   editable: boolean
@@ -35,7 +37,7 @@ interface Props {
 /** The week table's <tbody> — one shift-group of role rows per base shift.
  *  Split out of WeekTable to keep both files ≤200 lines. */
 export function WeekTableBody(props: Props) {
-  const { view, orderedRoleIds, roleById, empById, weekGrid, coveredMap, conflictFlags } = props
+  const { view, orderedRoleIds, roleById, empById, weekGrid, coveredMap, slotMarks, conflictFlags } = props
   const { selectedId, editable, showUnfilled, assign, heldBusyDays, onCellClick, onDrop, onRemoveEmployee } = props
   const days = view.days
   return (
@@ -68,12 +70,16 @@ export function WeekTableBody(props: Props) {
               {days.map((d) => {
                 const requiredCount = view.requirements[d.index]?.[shift]?.[roleId] ?? 0
                 const cellEntries = weekGrid[d.index]?.[shift]?.[roleId] ?? []
-                const coveredCount = coveredMap.get(`${d.index}:${shift}:${roleId}`) ?? 0
+                const coveredCount = coveredMap.get(slotKey(d.index, shift, roleId)) ?? 0
                 const covered = coveredCount > 0
                 const assignedCount = cellEntries.length + coveredCount
                 const capacity = cellCapacity(assignedCount, requiredCount)
+                // undefined = unmarked; '' = marked with no caption. The mark
+                // only takes effect while the cell is genuinely empty — an
+                // occupied cell is scored and tinted like any other.
+                const markLabel = assignedCount === 0 ? slotMarks.get(slotKey(d.index, shift, roleId)) : undefined
                 const isBusy = !!assign?.pendingSlot && assign.pendingSlot.day === d.index && assign.pendingSlot.shiftKey === shift && assign.pendingSlot.roleId === roleId
-                const cellLabel = buildCellLabel(d.index, m.name, role?.name ?? roleId, cellEntries, empById, covered)
+                const cellLabel = buildCellLabel(d.index, m.name, role?.name ?? roleId, cellEntries, empById, covered, markLabel)
                 const heldBlocked = !!heldBusyDays?.has(d.index) && !cellEntries.some((e) => e.employeeId === assign?.heldId)
                 // Worst conflict among this cell's occupants (rest > overmax).
                 let conflict: ConflictReason | undefined
@@ -91,6 +97,8 @@ export function WeekTableBody(props: Props) {
                     selectedId={selectedId}
                     onClick={editable ? () => onCellClick(d.index, shift, roleId) : undefined}
                     showUnfilled={showUnfilled}
+                    marked={markLabel !== undefined}
+                    markLabel={markLabel}
                     isBusy={isBusy}
                     onDropEmployee={assign ? (id, src) => onDrop(d.index, shift, roleId, id, src) : undefined}
                     onDragEmployee={assign ? assign.clearHeld : undefined}

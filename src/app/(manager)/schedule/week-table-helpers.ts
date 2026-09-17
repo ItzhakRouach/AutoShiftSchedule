@@ -24,7 +24,9 @@ export function busyDaysOf(view: ScheduleView, employeeId: string): Set<number> 
 // header uses the shorter `DayInfo.short` form.
 import { HEBREW_WEEKDAYS as DAY_NAMES_FULL } from '@/lib/dates/week'
 
-/** "<day>, <shift>, <role>: <names | לא מאויש>" for the cell's aria-label. */
+/** "<day>, <shift>, <role>: <names | לא מאויש>" for the cell's aria-label.
+ *  `markLabel` (undefined = unmarked, '' = marked without a caption) replaces
+ *  the "לא מאויש" reading on a slot the manager left empty on purpose. */
 export function buildCellLabel(
   dayIndex: number,
   shiftName: string,
@@ -32,10 +34,18 @@ export function buildCellLabel(
   entries: { employeeId: string; tempName?: string }[],
   empById: Map<string, { name: string }>,
   covered: boolean,
+  markLabel?: string,
 ): string {
   const names = entries
     .map((e) => e.tempName ?? empById.get(e.employeeId)?.name)
     .filter((n): n is string => !!n)
-  const who = names.length > 0 ? names.join(', ') : covered ? 'מאויש ע״י משמרת 12 שעות' : 'לא מאויש'
+  const marked = markLabel !== undefined
+  const who = names.length > 0
+    ? names.join(', ')
+    : covered
+      ? 'מאויש ע״י משמרת 12 שעות'
+      : marked
+        ? markLabel || 'משבצת מסומנת'
+        : 'לא מאויש'
   return `${DAY_NAMES_FULL[dayIndex] ?? ''}, ${shiftName}, ${roleName}: ${who}`
 }

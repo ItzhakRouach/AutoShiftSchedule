@@ -73,7 +73,8 @@ export async function hasManualAssignments(periodId: string): Promise<boolean> {
 
 /**
  * Wipe ALL assignments for a period so the manager can generate a fresh
- * schedule from scratch (auto + manual + 12h rows). If the period was
+ * schedule from scratch (auto + manual + 12h rows) along with its slot marks —
+ * "from scratch" must not leave whitened cells behind. If the period was
  * published, it's unpublished first (clears the shared image + flips status).
  */
 export async function clearSchedule(periodId: string): Promise<RunResult> {
@@ -108,6 +109,15 @@ export async function clearSchedule(periodId: string): Promise<RunResult> {
     .delete()
     .eq('period_id', periodId)
   if (error) return { ok: false, error: GENERIC_ERROR }
+
+  // Marked-as-intentionally-empty cells are part of the wiped schedule: leaving
+  // them would show white captioned cells on an otherwise blank week and keep
+  // their slots out of the gap counters.
+  const { error: marksError } = await supabase
+    .from('slot_marks')
+    .delete()
+    .eq('period_id', periodId)
+  if (marksError) return { ok: false, error: GENERIC_ERROR }
 
   // Reopen the worker request window if the deadline hasn't passed (a locked
   // period left over from a prior publish/unpublish shouldn't stay closed when

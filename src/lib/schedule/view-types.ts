@@ -45,6 +45,19 @@ export interface ViewTempEntry {
   name: string
 }
 
+/**
+ * A manager-placed mark on a single (day, shift, role) cell: the slot is
+ * intentionally left empty (e.g. יום כיפור). The cell renders neutral with the
+ * free-text `label` instead of the red "לא מאויש", and stops counting as a gap.
+ * An empty label is legal — a plain blank cell with no caption.
+ */
+export interface ViewSlotMark {
+  day: number
+  shiftKey: string // base ShiftKey the mark sits on
+  roleId: string
+  label: string
+}
+
 /** One employee's request for a single day. */
 export interface ViewRequest {
   employeeId: string
@@ -81,6 +94,8 @@ export interface ScheduleView {
   twelve: ViewTwelve[]
   /** Ad-hoc free-text temp workers placed in cells (no roster employee). */
   temps: ViewTempEntry[]
+  /** Manager marks on intentionally-empty cells. Optional for legacy callers. */
+  slotMarks?: ViewSlotMark[]
   /** base shiftKey → shift_type_id (for opening the editor on a base slot). */
   shiftTypeIdByKey: Record<string, string>
   /** base shiftKey → display meta (name/time/color) from the workplace's DB rows. */

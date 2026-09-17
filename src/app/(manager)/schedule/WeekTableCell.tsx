@@ -13,6 +13,10 @@ const S = {
     borderLeft: '3px solid var(--text)', borderBottom: '1px solid var(--border)',
     fontSize: 13, textAlign: 'center',
   } as React.CSSProperties,
+  markLabel: {
+    color: 'var(--text-3)', fontWeight: 600, fontSize: 11.5, lineHeight: 1.3,
+    display: 'inline-block', maxWidth: '100%', wordBreak: 'break-word',
+  } as React.CSSProperties,
 }
 
 export interface WeekTableCellProps {
@@ -24,6 +28,11 @@ export interface WeekTableCellProps {
   selectedId: string | null
   onClick?: () => void
   showUnfilled: boolean
+  /** Manager marked this slot as intentionally empty — renders neutral instead
+   *  of the red "לא מאויש", and its capacity badge is suppressed. */
+  marked?: boolean
+  /** The mark's free-text caption. `''` is legal — a blank marked cell. */
+  markLabel?: string
   /** True when this cell is the pending target for click-to-assign. */
   isPending?: boolean
   /** This cell's own dispatch is in flight — dims + blocks taps/drops. */
@@ -60,19 +69,24 @@ export interface WeekTableCellProps {
  */
 function WeekTableCellImpl(props: WeekTableCellProps) {
   const { entries, empById, isFilled, covered, selectedId, onClick, showUnfilled } = props
+  const { marked, markLabel } = props
   const { isPending, isBusy, onDropEmployee, onDragEmployee, onRemoveTemp, onRemoveEmployee } = props
   const { capacityLabel, capacityStatus, cellLabel, topDivider, heldBlocked } = props
   const { conflictReason, conflictTitle, srcSlot } = props
   const hasSelected = selectedId !== null
   const cellHasSelected = hasSelected && entries.some((e) => e.employeeId === selectedId)
   const empty = entries.length === 0 && !isFilled && !covered
-  const bg = empty && showUnfilled
-    ? 'color-mix(in srgb, var(--danger) 6%, transparent)'
-    : capacityStatus === 'under'
-      ? 'var(--warning-soft)'
-      : capacityStatus === 'over'
-        ? 'var(--danger-soft)'
-        : 'var(--surface)'
+  // A marked slot is empty ON PURPOSE: no red "unfilled" wash, no under-staffed
+  // amber — it reads as a plain cell whatever the requirement says.
+  const bg = marked
+    ? 'var(--surface)'
+    : empty && showUnfilled
+      ? 'color-mix(in srgb, var(--danger) 6%, transparent)'
+      : capacityStatus === 'under'
+        ? 'var(--warning-soft)'
+        : capacityStatus === 'over'
+          ? 'var(--danger-soft)'
+          : 'var(--surface)'
   const dimCell = hasSelected && !cellHasSelected
   const highlightCell = cellHasSelected || isPending
 
@@ -88,7 +102,7 @@ function WeekTableCellImpl(props: WeekTableCellProps) {
     transition: 'opacity 0.15s, outline 0.15s, background 0.15s',
   }
 
-  const showBadge = capacityStatus === 'under' || capacityStatus === 'over'
+  const showBadge = !marked && (capacityStatus === 'under' || capacityStatus === 'over')
   const capacityBadge = capacityLabel && showBadge && (
     <div style={{ fontSize: 10, color: capacityStatus === 'over' ? 'var(--danger)' : 'var(--text-3)', fontWeight: 600, marginTop: 2 }}>{capacityLabel}</div>
   )
@@ -114,6 +128,11 @@ function WeekTableCellImpl(props: WeekTableCellProps) {
       <td style={cellStyle} onClick={clickHandler} aria-busy={isBusy || undefined} aria-label={cellLabel} {...dropProps}>
         {covered ? (
           <span title="מאויש ע״י משמרת 12 שעות" style={{ color: 'var(--text-3)', fontWeight: 700, fontSize: 11 }}>12ש׳</span>
+        ) : marked ? (
+          // A caption-less mark still needs a trace in the EDIT view (showUnfilled),
+          // else an accidental empty submit whitens a cell with nothing to find.
+          // Read-only views keep it perfectly blank — that is the point of it.
+          <span style={S.markLabel}>{markLabel || (showUnfilled ? '—' : '')}</span>
         ) : (
           showUnfilled && <span style={{ color: 'var(--danger)', fontWeight: 600, fontSize: 12 }}>לא מאויש</span>
         )}

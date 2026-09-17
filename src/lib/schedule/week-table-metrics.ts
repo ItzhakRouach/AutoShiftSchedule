@@ -4,7 +4,7 @@
  * Pure — no IO.
  */
 import type { ScheduleView } from './view-data'
-import { buildWeekGrid } from './week-table-data'
+import { buildWeekGrid, buildSlotMarkMap, slotKey } from './week-table-data'
 import { coveredByTwelve } from './week-table-twelve'
 
 /** Per-day coverage health for the week-table heatmap: how many required
@@ -21,11 +21,15 @@ export interface DayHealth {
 /**
  * Per-day fill health for all 7 days, mirroring the WeekTable cell math
  * (`assignedCount = cellEntries.length + coveredCount`, capped at required).
+ * Slots marked as intentionally empty drop out of BOTH sums, the same waiver
+ * `countUncoveredCells` applies — otherwise a fully-marked day would read
+ * "מלא" in the header stat while its column tinted solid red.
  * Pure — drives the day-header heatmap tint + the live gaps counter.
  */
 export function buildDayHealth(view: ScheduleView): DayHealth[] {
   const grid = buildWeekGrid(view)
   const coveredMap = coveredByTwelve(view)
+  const marks = buildSlotMarkMap(view)
   return Array.from({ length: 7 }, (_, day) => {
     let required = 0
     let filled = 0
@@ -34,7 +38,8 @@ export function buildDayHealth(view: ScheduleView): DayHealth[] {
       const roleReq = dayReq[shift] ?? {}
       for (const [roleId, reqCount] of Object.entries(roleReq)) {
         if (reqCount <= 0) continue
-        const assigned = (grid[day]?.[shift]?.[roleId] ?? []).length + (coveredMap.get(`${day}:${shift}:${roleId}`) ?? 0)
+        const assigned = (grid[day]?.[shift]?.[roleId] ?? []).length + (coveredMap.get(slotKey(day, shift, roleId)) ?? 0)
+        if (assigned === 0 && marks.has(slotKey(day, shift, roleId))) continue
         required += reqCount
         filled += Math.min(assigned, reqCount)
       }

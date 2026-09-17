@@ -10,7 +10,7 @@ import { formatHebDate } from '@/lib/dates/week'
 import { weekDatesFrom } from './map-rows'
 import { shiftMetaFromRow, type ShiftDisplay } from '@/lib/domain/meta'
 import { buildRequestedSet, type ScheduleView, type ViewRequest } from './view-data'
-import { buildDayInfos, splitAssignments } from './view-data-grid'
+import { buildDayInfos, mapSlotMarks, splitAssignments } from './view-data-grid'
 import type { ShiftKey } from '@/lib/scheduling/types'
 
 /** Published weeks for a workplace (newest first) — for the week navigator. */
@@ -71,6 +71,7 @@ export async function getPublishedScheduleView(
     { data: shiftTypesRaw },
     { data: requestsRaw },
     { data: dayNotesRaw },
+    { data: slotMarksRaw },
   ] = await Promise.all([
     supabase.from('roles').select('id, name, color, rank').eq('workplace_id', workplaceId).eq('is_active', true).order('rank', { ascending: false }),
     // Coworker roster via a SECURITY DEFINER RPC that returns ONLY id/name/color
@@ -88,6 +89,10 @@ export async function getPublishedScheduleView(
     supabase
       .from('day_notes')
       .select('employee_id, day_of_week, label')
+      .eq('period_id', period.id),
+    supabase
+      .from('slot_marks')
+      .select('day_of_week, shift_type_id, role_id, label')
       .eq('period_id', period.id),
   ])
 
@@ -127,6 +132,7 @@ export async function getPublishedScheduleView(
     grid,
     twelve,
     temps,
+    slotMarks: mapSlotMarks(slotMarksRaw ?? [], idToKey),
     shiftTypeIdByKey,
     shiftMeta,
     hasAssignments: (assignsRaw ?? []).length > 0,

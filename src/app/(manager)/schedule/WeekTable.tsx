@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { type ShiftId } from '@/lib/domain/constants'
-import { buildWeekGrid, buildEmpTotals } from '@/lib/schedule/week-table-data'
+import { buildWeekGrid, buildEmpTotals, buildSlotMarkMap } from '@/lib/schedule/week-table-data'
 import { buildEmpHours, buildDayHealth } from '@/lib/schedule/week-table-metrics'
 import { coveredByTwelve } from '@/lib/schedule/week-table-twelve'
 import { buildConflictFlags } from '@/lib/schedule/conflict-flags'
@@ -38,6 +38,7 @@ export function WeekTable({ view, onSlot, onDayPair, assign, initialSelectedId, 
   // Heavy derived data — recompute only when inputs actually change.
   const weekGrid = useMemo(() => buildWeekGrid(view), [view])
   const coveredMap = useMemo(() => coveredByTwelve(view), [view])
+  const slotMarks = useMemo(() => buildSlotMarkMap(view), [view])
   const empTotals = useMemo(() => buildEmpTotals(view, view.employees), [view])
   const empHours = useMemo(() => buildEmpHours(view), [view])
   const dayHealth = useMemo(() => buildDayHealth(view), [view])
@@ -132,6 +133,7 @@ export function WeekTable({ view, onSlot, onDayPair, assign, initialSelectedId, 
             empById={empById}
             weekGrid={weekGrid}
             coveredMap={coveredMap}
+            slotMarks={slotMarks}
             conflictFlags={conflictFlags}
             selectedId={selectedId}
             editable={editable}

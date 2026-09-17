@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useTransition } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Sheet } from '@/components/ui/Sheet'
 import { Avatar } from '@/components/ui/Avatar'
@@ -8,13 +8,18 @@ import { Btn } from '@/components/ui/Btn'
 import { InlineAlert } from '@/components/ui/InlineAlert'
 import { SHIFT_META, type ShiftId } from '@/lib/domain/constants'
 import { slotAtCapacity } from '@/lib/schedule/validate-edit-core'
+import { buildWeekGrid, buildSlotMarkMap } from '@/lib/schedule/week-table-data'
+import { coveredByTwelve } from '@/lib/schedule/week-table-twelve'
+import { buildDayRoleRow } from '@/lib/schedule/day-grid-rows'
 import type { EditMeta } from '@/lib/schedule/edit-meta'
 import type { ScheduleView } from '@/lib/schedule/view-data'
 import type { UndoSnapshot } from '@/lib/schedule/undo-core'
 import { assignSlot, unassignSlot } from './edit-actions'
 import { assignTempName } from './temp-actions'
+import { setSlotMark, clearSlotMark } from './slot-mark-actions'
 import { CandidateList } from './CandidateList'
 import { TempNamePrompt } from './TempNamePrompt'
+import { SlotMarkPrompt } from './SlotMarkPrompt'
 import { TwelveHourAssign } from './TwelveHourAssign'
 
 export interface SlotCtx {
@@ -58,6 +63,21 @@ export function SwapEditor({ slot, onClose, view, meta, onDone }: Props) {
     }
   }, [])
 
+  // Marking only reads on a cell with nothing in it — no occupant, no 12h
+  // coverage. Reuses the day-view row builder so "empty" means exactly what the
+  // table and the day cards mean by it. Memoized because the sheet re-renders
+  // on every keystroke in SlotMarkPrompt, and this rebuilds the whole week grid.
+  const markRow = useMemo(
+    () =>
+      slot
+        ? buildDayRoleRow(
+            view, buildWeekGrid(view), coveredByTwelve(view),
+            slot.day, slot.shiftKey, slot.roleId, buildSlotMarkMap(view),
+          )
+        : null,
+    [view, slot],
+  )
+
   if (!slot) return null
   const empById = new Map(view.employees.map((e) => [e.id, e]))
 
@@ -70,7 +90,10 @@ export function SwapEditor({ slot, onClose, view, meta, onDone }: Props) {
   const requiredCount = view.requirements[slot.day]?.[slot.shiftKey]?.[slot.roleId] ?? 0
   const atCapacity = slotAtCapacity(slot.assignedIds.length, requiredCount)
 
-  function run(fn: () => Promise<{ ok: boolean; error?: string; warning?: string; undo?: UndoSnapshot }>) {
+  function run(
+    fn: () => Promise<{ ok: boolean; error?: string; warning?: string; undo?: UndoSnapshot }>,
+    okText = 'שובץ ✓',
+  ) {
     setMsg(null)
     setBusy(true)
     void (async () => {
@@ -91,7 +114,7 @@ export function SwapEditor({ slot, onClose, view, meta, onDone }: Props) {
         if (res.warning) {
           setMsg({ text: res.warning, kind: 'warning' })
         } else {
-          setMsg({ text: 'שובץ ✓', kind: 'success' })
+          setMsg({ text: okText, kind: 'success' })
           closeTimer.current = window.setTimeout(onClose, 800)
         }
         onDone?.(res.undo)
@@ -100,6 +123,8 @@ export function SwapEditor({ slot, onClose, view, meta, onDone }: Props) {
       }
     })()
   }
+
+  const canMark = !!markRow && markRow.entries.length === 0 && markRow.covered === 0
 
   function pick(employeeId: string) {
     run(() => assignSlot(view.periodId, slot!.day, slot!.shiftTypeId, slot!.roleId, employeeId))
@@ -142,6 +167,24 @@ export function SwapEditor({ slot, onClose, view, meta, onDone }: Props) {
         busy={busy}
         onSubmit={(name) => run(() => assignTempName(view.periodId, slot.day, slot.shiftTypeId, slot.roleId, name))}
       />
+
+      {canMark && (
+        <SlotMarkPrompt
+          // Remount when the stored caption changes underneath us (another tab
+          // or device) so the input never submits a stale value back.
+          key={markRow?.markLabel ?? '\u2205'}
+          busy={busy}
+          currentLabel={markRow?.markLabel}
+          onSubmit={(label) => run(
+            () => setSlotMark(view.periodId, slot.day, slot.shiftTypeId, slot.roleId, label),
+            'סומן ✓',
+          )}
+          onClear={() => run(
+            () => clearSlotMark(view.periodId, slot.day, slot.shiftTypeId, slot.roleId),
+            'הסימון הוסר ✓',
+          )}
+        />
+      )}
     </Sheet>
   )
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildWeekGrid, buildEmpTotals, cellCapacity, countUncoveredCells } from './week-table-data'
+import { buildWeekGrid, buildEmpTotals, cellCapacity, countUncoveredCells, buildSlotMarkMap } from './week-table-data'
 import { buildDayHealth } from './week-table-metrics'
 import type { ScheduleView } from './view-data'
 
@@ -210,5 +210,93 @@ describe('countUncoveredCells', () => {
       twelve: [{ day: 0, variant: 'm12_day', roleId: 'r-guard', employeeId: 'e1' }],
     })
     expect(countUncoveredCells(view)).toBe(0)
+  })
+})
+
+describe('buildSlotMarkMap', () => {
+  it('keys marks by "day:shift:role" and carries the label', () => {
+    const view = makeView({
+      slotMarks: [{ day: 0, shiftKey: 'night', roleId: 'r-achm', label: 'יום כיפור' }],
+    })
+    const map = buildSlotMarkMap(view)
+    expect(map.get('0:night:r-achm')).toBe('יום כיפור')
+    expect(map.get('0:night:r-guard')).toBeUndefined()
+  })
+
+  it('an empty label still registers the mark (blank white cell)', () => {
+    const view = makeView({ slotMarks: [{ day: 1, shiftKey: 'morning', roleId: 'r-moked', label: '' }] })
+    expect(buildSlotMarkMap(view).has('1:morning:r-moked')).toBe(true)
+  })
+
+  it('a view with no marks yields an empty map', () => {
+    expect(buildSlotMarkMap(makeView()).size).toBe(0)
+  })
+})
+
+describe('countUncoveredCells — marked slots', () => {
+  it('a marked empty cell is not counted as a gap', () => {
+    // Default makeView has 7 gaps on day 0; marking two of them leaves 5.
+    const view = makeView({
+      slotMarks: [
+        { day: 0, shiftKey: 'night', roleId: 'r-achm', label: 'יום כיפור' },
+        { day: 0, shiftKey: 'night', roleId: 'r-guard', label: '' },
+      ],
+    })
+    expect(countUncoveredCells(view)).toBe(5)
+  })
+
+  it('a mark on a slot with no requirement changes nothing', () => {
+    const view = makeView({
+      slotMarks: [{ day: 3, shiftKey: 'morning', roleId: 'r-achm', label: 'חג' }],
+    })
+    expect(countUncoveredCells(view)).toBe(7)
+  })
+})
+
+describe('countUncoveredCells — a mark only waives an EMPTY slot', () => {
+  it('a marked slot that later gained an occupant is scored normally', () => {
+    // day 0 / morning / r-achm requires 2 and holds 1 → still a gap, mark or no.
+    const view = makeView({
+      requirements: { 0: { morning: { 'r-achm': 2 }, noon: {}, night: {} } },
+      grid: { 0: { morning: { 'r-achm': ['e1'] }, noon: {}, night: {} } },
+      slotMarks: [{ day: 0, shiftKey: 'morning', roleId: 'r-achm', label: 'חג' }],
+    })
+    expect(countUncoveredCells(view)).toBe(1)
+  })
+
+  it('a marked slot covered by a 12h shift is not double-counted', () => {
+    const view = makeView({
+      requirements: { 0: { morning: { 'r-guard': 1 }, noon: { 'r-guard': 1 }, night: {} } },
+      grid: { 0: { morning: {}, noon: {}, night: {} } },
+      twelve: [{ day: 0, variant: 'm12_day', roleId: 'r-guard', employeeId: 'e1' }],
+      slotMarks: [{ day: 0, shiftKey: 'noon', roleId: 'r-guard', label: '' }],
+    })
+    expect(countUncoveredCells(view)).toBe(0)
+  })
+})
+
+describe('buildDayHealth — marked slots', () => {
+  it('a marked empty slot drops out of the day health sums', () => {
+    // Day 0 requires 3 morning roles; two are marked, the third is filled →
+    // the header must read a full day, matching countUncoveredCells.
+    const view = makeView({
+      requirements: { 0: { morning: { 'r-achm': 1, 'r-moked': 1, 'r-guard': 1 } } },
+      grid: { 0: { morning: { 'r-achm': ['e1'] } } },
+      slotMarks: [
+        { day: 0, shiftKey: 'morning', roleId: 'r-moked', label: 'יום כיפור' },
+        { day: 0, shiftKey: 'morning', roleId: 'r-guard', label: '' },
+      ],
+    })
+    expect(buildDayHealth(view)[0]).toEqual({ required: 1, filled: 1, ratio: 1 })
+    expect(countUncoveredCells(view)).toBe(0)
+  })
+
+  it('a marked slot that has an occupant stays in the sums', () => {
+    const view = makeView({
+      requirements: { 0: { morning: { 'r-achm': 2 } } },
+      grid: { 0: { morning: { 'r-achm': ['e1'] } } },
+      slotMarks: [{ day: 0, shiftKey: 'morning', roleId: 'r-achm', label: 'חג' }],
+    })
+    expect(buildDayHealth(view)[0]).toEqual({ required: 2, filled: 1, ratio: 0.5 })
   })
 })
