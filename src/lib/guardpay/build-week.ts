@@ -6,6 +6,7 @@
  */
 import { DateTime } from 'luxon'
 import type { GuardPayShift } from './types'
+import { kippurOverlapHours, kippurWindowsForWeek, withoutKippurDates } from './kippur-hours'
 
 const ZONE = 'Asia/Jerusalem'
 
@@ -39,6 +40,13 @@ export function buildWeekShifts(args: {
   const { weekStart, assignments, shiftTypesById, holidaySet } = args
   const out: GuardPayShift[] = []
 
+  // Yom Kippur is priced by the fast window rather than the civil date (the
+  // workplace pays 200% inside it, flat), so its dates are pulled out of the
+  // chag set — otherwise a 23:00 shift hours after havdalah would still read as
+  // a holiday. Everything else keeps the existing date-based rule.
+  const kippurWindows = kippurWindowsForWeek(weekStart)
+  const chagDates = withoutKippurDates(holidaySet, kippurWindows)
+
   for (const a of assignments) {
     const st = shiftTypesById[a.shift_type_id]
     if (!st) continue
@@ -47,15 +55,21 @@ export function buildWeekShifts(args: {
     const end = start.plus({ hours: st.hours })
     const date = day.toISODate()!
     const nextDate = day.plus({ days: 1 }).toISODate()!
+    const startISO = start.toUTC().toISO()!
+    const endISO = end.toUTC().toISO()!
+    const kippurHours = kippurOverlapHours(startISO, endISO, kippurWindows)
     // GuardPay pays a chag like Shabbat, and its weekend window opens at 16:00
     // on the eve — mirror that: the chag date itself, or an erev-chag shift
     // starting 16:00+.
-    const isHoliday = holidaySet.has(date) || (st.start_hour >= 16 && holidaySet.has(nextDate))
+    const isChag = chagDates.has(date) || (st.start_hour >= 16 && chagDates.has(nextDate))
     out.push({
-      start: start.toUTC().toISO()!,
-      end: end.toUTC().toISO()!,
-      isHoliday,
+      start: startISO,
+      end: endISO,
+      // is_holiday also picks the payslip row's label ("חג" vs "שבת"), so a
+      // shift touching the fast keeps it even though pricing is flat.
+      isHoliday: isChag || kippurHours > 0,
       comment: `יובא ממשמרת · ${st.name}`,
+      ...(kippurHours > 0 ? { kippurHours } : {}),
     })
   }
 

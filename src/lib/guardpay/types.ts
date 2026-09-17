@@ -4,6 +4,11 @@ export interface GuardPayShift {
   end: string
   isHoliday: boolean
   comment: string
+  /** Hours of this shift inside the Yom Kippur fast (candle lighting → havdalah,
+   *  Tel Aviv), exact to the minute. Omitted when 0. Its presence switches
+   *  GuardPay to flat 200%/100% pricing for this shift — see kippur-pay.js in
+   *  the GuardPay-Functions repo. */
+  kippurHours?: number
 }
 
 export interface FindAccountOk {

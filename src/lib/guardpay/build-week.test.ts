@@ -111,3 +111,72 @@ describe('buildWeekShifts — holidays, comments, ordering', () => {
     expect(shifts[0].start < shifts[1].start).toBe(true)
   })
 })
+
+describe('buildWeekShifts — Yom Kippur', () => {
+  // Week of Sunday 2026-09-20: erev Yom Kippur is day 0, Yom Kippur is day 1.
+  // The fast runs 20/09 18:22 → 21/09 19:15 (Tel Aviv). holidaySet is left EMPTY
+  // on purpose: the window alone must drive everything.
+  const WEEK = '2026-09-20'
+
+  it('the worked example: Kippur noon 15:00–23:00 → 4.25h inside', () => {
+    const [s] = build(WEEK, [{ day_of_week: 1, shift_type_id: 'noon' }])
+    expect(s.kippurHours).toBe(4.25)
+    expect(s.isHoliday).toBe(true)
+    expect(s.start).toBe('2026-09-21T12:00:00.000Z')
+  })
+
+  it('erev-Kippur noon starts BEFORE candle lighting and is still flagged', () => {
+    // Today this shift is isHoliday=false (erev YK carries no CHAG bit and
+    // start_hour 15 < 16), so all 8h are billed at 100%.
+    const [s] = build(WEEK, [{ day_of_week: 0, shift_type_id: 'noon' }])
+    expect(s.kippurHours).toBe(4.63)
+    expect(s.isHoliday).toBe(true)
+  })
+
+  it('erev-Kippur night 23:00→07:00 is entirely inside the fast', () => {
+    const [s] = build(WEEK, [{ day_of_week: 0, shift_type_id: 'night' }])
+    expect(s.kippurHours).toBe(8)
+    expect(s.isHoliday).toBe(true)
+  })
+
+  it('Kippur morning 07:00–15:00 is entirely inside the fast', () => {
+    const [s] = build(WEEK, [{ day_of_week: 1, shift_type_id: 'morning' }])
+    expect(s.kippurHours).toBe(8)
+  })
+
+  it('motzei-Kippur night 23:00→07:00 is an ordinary weekday shift', () => {
+    // Havdalah was 19:15 — nothing of this shift is in the fast. The civil date
+    // is still Yom Kippur, so the chag set must not hand it holiday rates.
+    const [s] = build(WEEK, [{ day_of_week: 1, shift_type_id: 'night' }], ['2026-09-21'])
+    expect(s.kippurHours).toBeUndefined()
+    expect(s.isHoliday).toBe(false)
+  })
+
+  it('erev-Kippur morning ends before the fast begins', () => {
+    const [s] = build(WEEK, [{ day_of_week: 0, shift_type_id: 'morning' }], ['2026-09-21'])
+    expect(s.kippurHours).toBeUndefined()
+    expect(s.isHoliday).toBe(false)
+  })
+
+  it('a shift two days later is untouched', () => {
+    const [s] = build(WEEK, [{ day_of_week: 2, shift_type_id: 'morning' }])
+    expect(s.kippurHours).toBeUndefined()
+    expect(s.isHoliday).toBe(false)
+  })
+
+  it('2028 — Yom Kippur on Shabbat: Friday noon crosses candle lighting 18:09', () => {
+    const [s] = build('2028-09-24', [{ day_of_week: 5, shift_type_id: 'noon' }])
+    expect(s.kippurHours).toBe(4.85)
+    expect(s.isHoliday).toBe(true)
+  })
+
+  it('an ordinary week carries no kippurHours at all', () => {
+    const shifts = build('2026-07-19', [
+      { day_of_week: 0, shift_type_id: 'morning' },
+      { day_of_week: 3, shift_type_id: 'night' },
+      { day_of_week: 5, shift_type_id: 'noon' },
+    ], ['2026-07-22'])
+    for (const s of shifts) expect(s).not.toHaveProperty('kippurHours')
+    expect(shifts.some((s) => s.isHoliday)).toBe(true) // the real chag still works
+  })
+})
