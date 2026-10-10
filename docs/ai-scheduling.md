@@ -211,3 +211,34 @@ action measured 143-191s.
 thinking also draws on the budget — 8,000 truncated a whole run outright, and
 the client correctly refused to act on the partial reply. Only tokens actually
 produced are billed, so a generous cap is free insurance.
+
+### Verified on the live site
+
+Driven through a real browser against production (a throwaway workplace,
+deleted afterwards; אגירה שאובה untouched):
+
+| | result |
+|---|---|
+| Panel appeared | **22s** and **25s** (not 143-191s — latency scales with roster size; a 3-person week has far less to reason about) |
+| Cost | **$0.05-0.06** per check |
+| Swaps found / applied | 1 and 3, applied successfully |
+| Apply | confirmed in ~4s, grid changed, **persisted across reload** |
+
+So the production env var is picked up and the 300s budget is ample at this
+size. The real workplace remains the 143-191s case.
+
+Live testing also found two bugs, both now fixed:
+
+1. **The report table showed no change even when swaps were applied.** Both
+   runs improved only the אחמ״ש distribution (3/3/0 → 2/2/2), which was absent
+   from the score. `managerRoleSpread` was added and is shown in the table.
+2. **`role-balance`'s giver guard froze an unequal אחמ״ש split.** It compared
+   only against `ceil(N/2)`, which is unreachable for everyone when manager
+   slots are under-supplied — so a 0/3/3 split stood while a legal 2/2/2 was
+   available. The AI was proposing exactly the swaps the guard forbade. The
+   floor is now `min(target, equal share of the manager work that exists)`.
+
+A third wrinkle, not a bug but worth knowing: the model's Hebrew `notes` describe
+what it PROPOSED, while the header count is what SURVIVED validation. One run
+proposed two swaps and reported "נמצאו 1 החלפות משפרות" — the header is the
+authoritative number.

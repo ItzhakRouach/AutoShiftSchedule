@@ -157,8 +157,12 @@ Modules: `diversity.ts` (cost + orchestration), `moves.ts` (swap/3-cycle primiti
   keep their role). Manager cells used to be excluded, which left the אחמ״ש *count* unequal even though
   manager-balance guaranteed each holder's own ≥ceil(N/2) ratio: a 7/4/4/3/2/1 split satisfies every
   individual ratio while being lopsided. A manager cell is now swappable, but only while the GIVER stays
-  at/above their own ceil(total/2) target, so manager-balance's guarantee survives — the pass redistributes
-  only the surplus above it. (Measured on a real week: manager-window spread 6→3, 8h-only spread 4→2, with
+  at/above `min(own ceil(total/2) target, equal share of the manager work that EXISTS)` (`mgrGiveFloor`).
+  The equal-share term matters when manager slots are under-supplied: with 6 אחמ״ש slots and 3 holders
+  working 6 shifts each every target is 3 and they sum to 9 — unreachable for everyone — and guarding on
+  the target alone froze a 0/3/3 split while a legal 2/2/2 was available. When slots are plentiful the
+  equal share exceeds the target, the floor reduces to the target exactly, and manager-balance's
+  guarantee survives untouched. (Measured on a real week: manager-window spread 6→3, 8h-only spread 4→2, with
   coverage and total satisfied requests unchanged.) `moveLegal` allows a SOFT off only for same-day swaps
   (the mover already works that day — e.g. placed by coverage-rescue); cross-day moves honor soft offs
   strictly.

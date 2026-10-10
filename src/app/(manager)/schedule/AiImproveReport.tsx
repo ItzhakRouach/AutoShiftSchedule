@@ -8,6 +8,7 @@ const ROWS: { key: keyof AiMetrics; label: string; lowerIsBetter: boolean }[] = 
   { key: 'belowMinCount', label: 'עובדים מתחת למינימום', lowerIsBetter: true },
   { key: 'nightImbalanceCount', label: 'אי-איזון לילות', lowerIsBetter: true },
   { key: 'nightSpread', label: 'פער לילות (מקס׳−מינ׳)', lowerIsBetter: true },
+  { key: 'managerRoleSpread', label: 'פער משמרות אחמ״ש', lowerIsBetter: true },
   { key: 'twelveHourCount', label: 'משמרות 12ש׳', lowerIsBetter: true },
 ]
 

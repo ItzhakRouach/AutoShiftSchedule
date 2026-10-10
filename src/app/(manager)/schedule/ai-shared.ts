@@ -33,6 +33,7 @@ export interface AiMetrics {
   nightSpread: number
   nightImbalanceCount: number
   twelveHourCount: number
+  managerRoleSpread: number
 }
 
 export const metricsOf = (s: ScheduleScore): AiMetrics => ({
@@ -43,4 +44,5 @@ export const metricsOf = (s: ScheduleScore): AiMetrics => ({
   nightSpread: s.nightSpread,
   nightImbalanceCount: s.nightImbalanceCount,
   twelveHourCount: s.twelveHourCount,
+  managerRoleSpread: s.managerRoleSpread,
 })

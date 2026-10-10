@@ -27,6 +27,26 @@ const mgrCount = (st: FillState, mgr: string, id: string): number =>
 const mgrTarget = (st: FillState, id: string): number =>
   Math.ceil((st.committed[id]?.length ?? 0) / 2)
 
+/**
+ * The floor a manager-holder may be given down to.
+ *
+ * `ceil(N/2)` is the guarantee manager-balance makes, but it is only
+ * achievable when enough manager slots exist to go around. With 6 manager
+ * slots and 3 holders working 6 shifts each, every target is 3 and they sum to
+ * 9 — unreachable for everyone — and guarding on the target alone froze a
+ * 0/3/3 split while a legal 2/2/2 was available.
+ *
+ * So the floor is the LESSER of the holder's own target and their equal share
+ * of the manager work that actually exists. When slots are plentiful the equal
+ * share exceeds the target and this reduces to the target exactly, preserving
+ * manager-balance's guarantee.
+ */
+const mgrGiveFloor = (st: FillState, mgr: string, holders: string[], id: string): number => {
+  const total = holders.reduce((n, h) => n + mgrCount(st, mgr, h), 0)
+  const equalShare = holders.length > 0 ? Math.floor(total / holders.length) : 0
+  return Math.min(mgrTarget(st, id), equalShare)
+}
+
 export function runRoleBalancePass(
   input: EngineInput,
   st: FillState,
@@ -55,7 +75,7 @@ export function runRoleBalancePass(
         // Giving up a manager cell must not drop the giver below their own
         // in-role target — that guarantee belongs to manager-balance, and this
         // pass only redistributes the SURPLUS above it.
-        if (role === mgr && mgrCount(st, mgr, g) - 1 < mgrTarget(st, g)) continue
+        if (role === mgr && mgrCount(st, mgr, g) - 1 < mgrGiveFloor(st, mgr, holders, g)) continue
         for (const r of receivers) {
           if (r === g) continue
           if (count(g, role) - count(r, role) < 2) break // ascending → no later r closes the gap

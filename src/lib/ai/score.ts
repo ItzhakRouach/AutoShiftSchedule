@@ -22,6 +22,13 @@ export interface ScheduleScore {
   nightSpread: number
   nightImbalanceCount: number
   twelveHourCount: number
+  /** max − min manager-role (אחמ״ש) shifts across the holders who WORKED this
+   *  week (holders with no shifts at all are excluded — see scoreSchedule).
+   *  Surfaced because on real weeks this is often the ONLY thing a swap can
+   *  improve — leaving it out made the UI claim an improvement while every
+   *  displayed metric read identical. 0 when there is no manager role or only
+   *  one holder. */
+  managerRoleSpread: number
   diversityCost: number
 }
 
@@ -32,6 +39,19 @@ export function scoreSchedule(input: EngineInput, result: EngineResult): Schedul
     .filter((e) => pool.has(e.id))
     .map((e) => nightCount(result.assignmentsByEmployee[e.id] ?? []))
 
+  const mgr = input.managerRoleId
+  // Only holders who actually WORKED this week. A holder on vacation holds zero
+  // manager shifts, and counting them would report a large spread that no swap
+  // could ever close — you cannot give manager work to someone who is not
+  // working at all.
+  const mgrCounts = mgr
+    ? input.employees
+        .filter((e) => e.roleIds.includes(mgr))
+        .map((e) => result.assignmentsByEmployee[e.id] ?? [])
+        .filter((rows) => rows.length > 0)
+        .map((rows) => rows.filter((a) => a.roleId === mgr).length)
+    : []
+
   return {
     requiredSlots: result.coverage.requiredSlots,
     filledSlots: result.coverage.filledSlots,
@@ -41,6 +61,7 @@ export function scoreSchedule(input: EngineInput, result: EngineResult): Schedul
     nightSpread: nights.length > 0 ? Math.max(...nights) - Math.min(...nights) : 0,
     nightImbalanceCount: result.nightImbalance.length,
     twelveHourCount: result.twelveHourAssignments.length,
+    managerRoleSpread: mgrCounts.length > 1 ? Math.max(...mgrCounts) - Math.min(...mgrCounts) : 0,
     diversityCost: diversityCost(input.employees, result.assignmentsByEmployee, {
       idealRestHours: input.settings.idealRestHours,
       nightThreshold: buildNightThresholds(input),
@@ -58,6 +79,7 @@ export function compareScores(a: ScheduleScore, b: ScheduleScore): number {
     a.nightImbalanceCount - b.nightImbalanceCount ||
     a.nightSpread - b.nightSpread ||
     a.twelveHourCount - b.twelveHourCount ||
+    a.managerRoleSpread - b.managerRoleSpread ||
     a.diversityCost - b.diversityCost
   )
 }

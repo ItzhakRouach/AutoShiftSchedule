@@ -122,11 +122,15 @@ describe('role-balance pass (unit)', () => {
     }
   })
 
-  it('U4b: a manager cell is NOT given up when that would breach the giver own target', () => {
+  // The giver floor is min(own ceil(N/2) target, equal share of the manager work
+  // that EXISTS). Here only 2 manager cells exist for 2 holders, so b's target
+  // of 2 is unreachable alongside giving a any share at all — the equal share is
+  // 1, and evening to 1/1 is both legal and better. An earlier version of this
+  // test guarded on the target alone and froze a 0/2 split; the AI improvement
+  // pass proposed exactly the swap that guard was forbidding.
+  it('U4b: a manager cell IS given up when the ceil(N/2) target is unreachable', () => {
     const both = (id: string) => emp(id, { roleIds: [SHIFT_MGR, GUARD] })
     const inp = input({ employees: [both('a'), both('b')], managerRoleId: SHIFT_MGR })
-    // b: 3 shifts, 2 in אחמ״ש ⇒ target ceil(3/2) = 2. Giving one up leaves 1 < 2,
-    // so the manager gap of 2 (b=2, a=0) must stay unclosed.
     const st = stateFrom(
       [
         { emp: 'a', day: 0, shift: 'morning', role: GUARD },
@@ -134,6 +138,26 @@ describe('role-balance pass (unit)', () => {
         { emp: 'b', day: 0, shift: 'morning', role: SHIFT_MGR },
         { emp: 'b', day: 1, shift: 'morning', role: SHIFT_MGR },
         { emp: 'b', day: 2, shift: 'morning', role: GUARD },
+      ],
+      ['a', 'b'],
+    )
+    runRoleBalancePass(inp, st, metasOf(inp))
+    expect(roleCount(st, 'a', SHIFT_MGR)).toBe(1)
+    expect(roleCount(st, 'b', SHIFT_MGR)).toBe(1)
+    // Neither holder falls below the equal share of the 2 manager cells.
+    for (const id of ['a', 'b']) expect(roleCount(st, id, SHIFT_MGR)).toBeGreaterThanOrEqual(1)
+  })
+
+  it('U4c: a manager cell is NOT given up below the equal share', () => {
+    const both = (id: string) => emp(id, { roleIds: [SHIFT_MGR, GUARD] })
+    const inp = input({ employees: [both('a'), both('b')], managerRoleId: SHIFT_MGR })
+    // Already at the equal share (1 each of 2 cells): no give may happen.
+    const st = stateFrom(
+      [
+        { emp: 'a', day: 0, shift: 'morning', role: SHIFT_MGR },
+        { emp: 'a', day: 1, shift: 'morning', role: GUARD },
+        { emp: 'b', day: 0, shift: 'morning', role: GUARD },
+        { emp: 'b', day: 1, shift: 'morning', role: SHIFT_MGR },
       ],
       ['a', 'b'],
     )
