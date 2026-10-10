@@ -13,17 +13,19 @@ import { buildTwelveHourSuggestions } from './fallback'
 import { collectWarnings, computeCoverage, computeStats } from './grid'
 import { computeNightImbalance } from './night-targets'
 import { runFillHardDaysAware } from './fill'
+import type { FillState } from './dayfill'
 
 function reqOf(input: EngineInput, empId: string, day: number) {
   return input.requests[empId]?.[day] ?? { off: false, preferred: [] }
 }
 
-export function generateSchedule(input: EngineInput): EngineResult {
-  // Run the engine's real fill (chronological, with a hard-days-first retry
-  // when Fri/Sat/holiday slots stay open). Feasibility is derived from this same
-  // result (FIX B), guaranteeing coverage.filledSlots == feasibility.maxStaffable.
-  const st = runFillHardDaysAware(input, input.skipTwelve ?? false)
-
+/**
+ * Derive a full EngineResult from a committed FillState. This is the shared
+ * tail of generateSchedule, extracted so an alternative producer of a schedule
+ * (the AI second-opinion path) yields the EXACT same result shape and therefore
+ * flows through the same rendering, persistence and reporting code. Pure.
+ */
+export function resultFromFillState(input: EngineInput, st: FillState): EngineResult {
   const warnings = collectWarnings(input, st.grid)
   const feasibility = feasibilityFromFill(input, st)
   const coverage = computeCoverage(feasibility.requiredSlots, warnings)
@@ -42,6 +44,13 @@ export function generateSchedule(input: EngineInput): EngineResult {
     nightImbalance: computeNightImbalance(input, st.committed),
     ...(st.timings ? { timings: st.timings } : {}),
   }
+}
+
+export function generateSchedule(input: EngineInput): EngineResult {
+  // Run the engine's real fill (chronological, with a hard-days-first retry
+  // when Fri/Sat/holiday slots stay open). Feasibility is derived from this same
+  // result (FIX B), guaranteeing coverage.filledSlots == feasibility.maxStaffable.
+  return resultFromFillState(input, runFillHardDaysAware(input, input.skipTwelve ?? false))
 }
 
 /** Re-validate a single proposed assignment against current committed state. */

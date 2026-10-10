@@ -26,6 +26,7 @@ export type AiErrorCode =
   | 'REFUSED' // safety decline (stop_reason: 'refusal')
   | 'TRUNCATED' // hit max_tokens — output is incomplete, never use it
   | 'EMPTY' // no text block came back
+  | 'BAD_SHAPE' // reply did not match the structured-output schema
   | 'CALL_FAILED'
 
 export interface AiUsage {
@@ -45,7 +46,7 @@ export function isAiConfigured(): boolean {
   return Boolean(process.env.ANTHROPIC_API_KEY)
 }
 
-interface RawUsage {
+export interface RawUsage {
   input_tokens?: number
   output_tokens?: number
   cache_read_input_tokens?: number | null
@@ -62,7 +63,7 @@ export function costUsd(u: RawUsage): number {
   )
 }
 
-const toUsage = (u: RawUsage): AiUsage => ({
+export const toUsage = (u: RawUsage): AiUsage => ({
   inputTokens: u.input_tokens ?? 0,
   outputTokens: u.output_tokens ?? 0,
   cacheReadTokens: u.cache_read_input_tokens ?? 0,
@@ -70,7 +71,7 @@ const toUsage = (u: RawUsage): AiUsage => ({
   costUsd: costUsd(u),
 })
 
-const EMPTY_USAGE: AiUsage = {
+export const EMPTY_USAGE: AiUsage = {
   inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, costUsd: 0,
 }
 
@@ -126,7 +127,7 @@ export async function callText(params: CallTextParams): Promise<AiResult<string>
   }
 }
 
-function classify(err: unknown): AiErrorCode {
+export function classify(err: unknown): AiErrorCode {
   if (err instanceof Anthropic.RateLimitError) return 'RATE_LIMITED'
   if (err instanceof Anthropic.BadRequestError) {
     // The credit-exhausted case arrives as a 400 mentioning the credit balance.

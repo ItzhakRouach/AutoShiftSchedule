@@ -54,7 +54,10 @@ function ctxFor(input: EngineInput, meta: DayMeta, shift: ShiftKey, roleId: stri
 
 /** First failing hard constraint for a candidate already known to be un-assignable
  *  even with a soft-off waiver — i.e. the reason asking them wouldn't help. */
-function hardReason(ctx: CheckContext): GapReason {
+/** First failing hard constraint for a candidate. Exported so the AI proposal
+ *  validator can tell the model WHY a row was rejected, not merely that it was.
+ *  Assumes the caller already checked role match. */
+export function hardReason(ctx: CheckContext): GapReason {
   const { request: req, shift, meta, emp, current } = ctx
   if (req.off && !req.preferred.includes(shift) && req.offHard) return 'off'
   if (!availabilityAllows(emp, meta.index, shift)) return 'availability'

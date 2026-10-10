@@ -1,6 +1,6 @@
 // Public API for the pure scheduling engine.
 export * from './types'
-export { generateSchedule, validateAssignment } from './engine'
+export { generateSchedule, validateAssignment , resultFromFillState } from './engine'
 export { checkFeasibility, countRequiredSlots, maxStaffableSlots } from './feasibility'
 export {
   buildTwelveHourSuggestions,

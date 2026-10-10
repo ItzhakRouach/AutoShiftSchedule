@@ -30,6 +30,7 @@ const ERRORS: Record<AiErrorCode, string> = {
   TRUNCATED: 'ההסבר נקטע באמצע. נסו שוב.',
   EMPTY: 'לא התקבל הסבר. נסו שוב.',
   CALL_FAILED: 'שגיאה בפנייה ל-AI. נסו שוב.',
+  BAD_SHAPE: 'התשובה מה-AI הגיעה בפורמט שגוי. נסו שוב.',
 }
 
 const schema = z.object({ periodId: z.string().uuid() })
