@@ -1,7 +1,7 @@
-// ROLE-BALANCE pass: each non-manager role's shifts split evenly across its
-// holders via same-shift role swaps (the diversity pass cannot do these — its
-// move shape bans same-day cells — and manager-balance only covers the manager
-// role's own ≥50% ratio).
+// ROLE-BALANCE pass: each role's shifts (the manager role included) split evenly
+// across its holders via same-shift role swaps (the diversity pass cannot do
+// these — its move shape bans same-day cells — and manager-balance only covers
+// each holder's own ≥50% ratio, not the even split across holders).
 import { describe, it, expect } from 'vitest'
 import { generateSchedule } from './engine'
 import { runRoleBalancePass } from './role-balance'
@@ -92,7 +92,11 @@ describe('role-balance pass (unit)', () => {
     expect(JSON.stringify(st.committed)).toBe(before)
   })
 
-  it('U4: manager-role cells are never used as a swap leg', () => {
+  // Part A2: manager cells ARE swappable now — manager-balance guarantees each
+  // holder's own ≥ceil(N/2) ratio, but it does not even the manager role's COUNT
+  // across holders (a 6/3/3 split satisfies every individual ratio). This pass
+  // redistributes only the surplus ABOVE each giver's own target.
+  it('U4: manager cells are swapped to even the manager role when the giver keeps its target', () => {
     const both = (id: string) => emp(id, { roleIds: [SHIFT_MGR, GUARD] })
     const inp = input({ employees: [both('a'), both('b')], managerRoleId: SHIFT_MGR })
     const st = stateFrom(
@@ -104,10 +108,37 @@ describe('role-balance pass (unit)', () => {
       ],
       ['a', 'b'],
     )
+    runRoleBalancePass(inp, st, metasOf(inp))
+    // Both roles were piled 2/0; one same-shift swap evens both to 1/1.
+    expect(roleCount(st, 'a', SHIFT_MGR)).toBe(1)
+    expect(roleCount(st, 'b', SHIFT_MGR)).toBe(1)
+    expect(roleCount(st, 'a', GUARD)).toBe(1)
+    expect(roleCount(st, 'b', GUARD)).toBe(1)
+    // Each holder still meets their own ceil(total/2) in-role target.
+    for (const id of ['a', 'b']) {
+      expect(roleCount(st, id, SHIFT_MGR)).toBeGreaterThanOrEqual(
+        Math.ceil(st.committed[id].length / 2),
+      )
+    }
+  })
+
+  it('U4b: a manager cell is NOT given up when that would breach the giver own target', () => {
+    const both = (id: string) => emp(id, { roleIds: [SHIFT_MGR, GUARD] })
+    const inp = input({ employees: [both('a'), both('b')], managerRoleId: SHIFT_MGR })
+    // b: 3 shifts, 2 in אחמ״ש ⇒ target ceil(3/2) = 2. Giving one up leaves 1 < 2,
+    // so the manager gap of 2 (b=2, a=0) must stay unclosed.
+    const st = stateFrom(
+      [
+        { emp: 'a', day: 0, shift: 'morning', role: GUARD },
+        { emp: 'a', day: 1, shift: 'morning', role: GUARD },
+        { emp: 'b', day: 0, shift: 'morning', role: SHIFT_MGR },
+        { emp: 'b', day: 1, shift: 'morning', role: SHIFT_MGR },
+        { emp: 'b', day: 2, shift: 'morning', role: GUARD },
+      ],
+      ['a', 'b'],
+    )
     const before = JSON.stringify(st.committed)
     runRoleBalancePass(inp, st, metasOf(inp))
-    // GUARD is piled 2/0 on `a`, but the only same-shift counterpart cells are
-    // manager cells — the ≥50% rule owns those, so nothing may move.
     expect(JSON.stringify(st.committed)).toBe(before)
   })
 

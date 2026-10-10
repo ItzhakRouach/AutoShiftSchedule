@@ -178,9 +178,12 @@ describe('dev-only pass timings (collectTimings)', () => {
         'night-unload',
         'diversity',
         'senior-swaps',
+        'night-evenness',
+        'night-floor',
         'night-then-off',
         'coverage-rescue',
         'twelve-fill',
+        'role-balance',
       ]),
     )
     for (const k of keys) expect(typeof res.timings![k]).toBe('number')

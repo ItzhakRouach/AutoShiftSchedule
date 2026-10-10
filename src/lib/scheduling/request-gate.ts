@@ -103,3 +103,23 @@ export function preservesRequestsFor(
   if (sBefore >= floor && sAfter < floor) return false
   return true
 }
+
+/**
+ * RELAXED request gate, used ONLY by the night-floor pass. Nights have a floor
+ * as well as a cap, and the strict gate above forbids any drop in satisfied
+ * requests — which is precisely why a heavy requester can escape nights
+ * entirely. This gate lets a move spend granted requests, but never takes an
+ * employee BELOW their own floorTarget (max(min(2, rc), ceil(rc / 2))), so a
+ * heavy requester keeps at least half of what they asked for.
+ */
+export function preservesRequestFloorFor(
+  input: EngineInput,
+  empId: string,
+  before: Assignment[],
+  after: Assignment[],
+): boolean {
+  const sBefore = satisfiedCount(input, empId, before)
+  const sAfter = satisfiedCount(input, empId, after)
+  if (sAfter >= sBefore) return true
+  return sAfter >= floorTarget(input, empId)
+}

@@ -101,9 +101,12 @@ export interface OverriddenOff {
   roleId: string
 }
 
-/** A worker over their even-share night target (see night-targets.ts). */
+/** A worker OVER their even-share night target, or UNDER their night floor
+ *  (see night-targets.ts). `nights > target` ⇒ carrying too many;
+ *  `nights < floor` ⇒ escaped their share (the floor pass found no legal swap). */
 export interface NightImbalance {
   employeeId: string
   nights: number
   target: number
+  floor: number
 }

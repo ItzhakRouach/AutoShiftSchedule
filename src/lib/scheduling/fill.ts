@@ -7,8 +7,10 @@ import { openSlotsForDay, type FillState } from './dayfill'
 import { isHardDay, prioritizeDays } from './day-order'
 import { runTwelveFill } from './twelve-fill'
 import { runDiversityPass, buildNightThresholds } from './diversity'
+import { buildNightFloors } from './night-targets'
 import { runNightUnloadPass } from './night-unload'
 import { runNightEvennessPass } from './night-evenness'
+import { runNightFloorPass } from './night-floor'
 import { runSeniorRolePass } from './senior-role'
 import { runManagerBalancePass } from './manager-balance'
 import { runRoleBalancePass } from './role-balance'
@@ -110,6 +112,19 @@ export function runFill(
     // coverage and requests allow (below the caps night-unload enforces).
     timed(st, 'night-evenness', () => {
       runNightEvennessPass(input, st, metas, nightThresholds)
+      for (const e of input.employees) {
+        st.satisfied[e.id] = recountSatisfied(input, e.id, st.committed[e.id])
+      }
+    })
+    // NIGHT FLOOR: everything above is a CAP, and all of it runs through the
+    // strict request gate — so a heavy day-shift requester satisfies every
+    // request and escapes nights entirely, with no pass able to correct it.
+    // This one may spend a granted request to lift someone to their floor, but
+    // never below their own floorTarget (half their requests, min 2). Floors
+    // are proportional to committed shifts, so they must be built HERE, after
+    // the fill has settled who works how much.
+    timed(st, 'night-floor', () => {
+      runNightFloorPass(input, st, metas, nightThresholds, buildNightFloors(input, st.committed))
       for (const e of input.employees) {
         st.satisfied[e.id] = recountSatisfied(input, e.id, st.committed[e.id])
       }

@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { runFill } from './fill'
 import { nightCount } from './fairness'
-import { buildNightThresholds, computeNightImbalance } from './night-targets'
+import { floorTarget, satisfiedCount } from './request-gate'
+import { buildNightFloors, buildNightThresholds, computeNightImbalance } from './night-targets'
 import { emp, input, reqFor, mergeReqs, buildRequests, GUARD } from './fixtures'
 import type { EngineInput } from './types'
 
@@ -86,10 +87,13 @@ describe('even night distribution (strong preference)', () => {
     }
   })
 
-  it('I4: best-effort — a receiver pinned by requested mornings leaves 2/2/0 stuck, no warning', () => {
+  // Part A1: this used to leave 2/2/0 stuck — c requested MORNING on every
+  // night-day, so one-shift/day blocked c from those nights and the STRICT
+  // request gate forbade moving c off any of them. The night-FLOOR pass is now
+  // allowed to spend ONE granted request to lift c to their floor, bounded by
+  // c's own floorTarget, so the week settles at 2/1/1 instead.
+  it('I4: the night floor lifts a requester pinned by requested mornings off zero', () => {
     const employees = [emp('a'), emp('b'), emp('c')]
-    // c requests MORNING on every night-day (0–3): one-shift/day blocks c from
-    // any of those nights, and the request gate forbids moving c off them.
     const requests = buildRequests(employees, (id, day) =>
       id === 'c' && day < 4 ? { preferred: ['morning'] } : {},
     )
@@ -100,12 +104,21 @@ describe('even night distribution (strong preference)', () => {
     )
     const inp = input({ employees, requirements, requests, seed: 1 })
     const st = runFill(inp)
-    const cMornings = st.committed['c'].filter((x) => x.shift === 'morning' && x.day < 4)
-    expect(cMornings).toHaveLength(4)
-    expect(nightCount(st.committed['c'])).toBe(0)
-    // a/b split the 4 nights 2/2 — within cap (T=2), so no imbalance warning.
-    expect(nightCount(st.committed['a'])).toBe(2)
-    expect(nightCount(st.committed['b'])).toBe(2)
+    const floors = buildNightFloors(inp, st.committed)
+    // c no longer escapes nights entirely, and every floor is met.
+    expect(floors['c']).toBe(1)
+    for (const id of ['a', 'b', 'c']) {
+      expect(nightCount(st.committed[id])).toBeGreaterThanOrEqual(floors[id])
+    }
+    // The 4 nights now spread 2/1/1 rather than 2/2/0.
+    const counts = ['a', 'b', 'c'].map((id) => nightCount(st.committed[id]))
+    expect(counts.reduce((x, y) => x + y, 0)).toBe(4)
+    expect(Math.max(...counts) - Math.min(...counts)).toBeLessThanOrEqual(1)
+    // c paid exactly one request for it and stays above their own floorTarget.
+    expect(satisfiedCount(inp, 'c', st.committed['c'])).toBe(3)
+    expect(satisfiedCount(inp, 'c', st.committed['c'])).toBeGreaterThanOrEqual(
+      floorTarget(inp, 'c'),
+    )
     expect(computeNightImbalance(inp, st.committed)).toEqual([])
   })
 

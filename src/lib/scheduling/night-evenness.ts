@@ -9,7 +9,7 @@
 // prove too limited in practice.
 import type { DayMeta, EngineInput } from './types'
 import type { FillState } from './dayfill'
-import { moveLegal, applyMove, type Move, type SlotRef } from './moves'
+import { moveLegal, applyMove, type Move, type RequestGate, type SlotRef } from './moves'
 import { nightCount } from './fairness'
 import { DEFAULT_NIGHT_CAP } from './night-targets'
 
@@ -18,13 +18,19 @@ const MAX_PASSES = 200
 const capOf = (thresholds: Record<string, number>, id: string): number =>
   thresholds[id] ?? DEFAULT_NIGHT_CAP
 
-/** Swap one of g's nights with one of r's non-nights; true if a legal swap ran. */
-function trySwap(
+/**
+ * Swap one of g's plain-8h NIGHT cells with one of r's plain-8h NON-night
+ * cells; true if a legal swap ran. Shared with the night-FLOOR pass, which
+ * passes a relaxed `requestGate` (see night-floor.ts) — hence the hook.
+ * Deterministic: canonical cell enumeration, first-legal-accept.
+ */
+export function tryNightForNonNightSwap(
   input: EngineInput,
   st: FillState,
   metas: Record<number, DayMeta>,
   g: string,
   r: string,
+  requestGate?: RequestGate,
 ): boolean {
   const gNights = st.committed[g]
     .map((a, idx) => ({ a, idx }))
@@ -44,7 +50,7 @@ function trySwap(
       const legG: SlotRef = { empId: g, idx: gn.idx, a: gn.a }
       const legR: SlotRef = { empId: r, idx: rc.idx, a: rc.a }
       const move: Move = { legs: [legG, legR] } // g → r's cell, r → g's night
-      if (moveLegal(input, metas, st, move)) {
+      if (moveLegal(input, metas, st, move, { requestGate })) {
         applyMove(st, move)
         return true
       }
@@ -85,7 +91,7 @@ export function runNightEvennessPass(
         if (r === g) continue
         if (counts[g] - counts[r] < 2) break // receivers ascending → no later r closes the gap
         if (counts[r] + 1 > capOf(thresholds, r)) continue // receiver stays ≤ cap
-        if (trySwap(input, st, metas, g, r)) {
+        if (tryNightForNonNightSwap(input, st, metas, g, r)) {
           moved = true
           break outer
         }

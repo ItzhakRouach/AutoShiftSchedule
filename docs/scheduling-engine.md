@@ -138,14 +138,35 @@ Modules: `diversity.ts` (cost + orchestration), `moves.ts` (swap/3-cycle primiti
 - **Night evenness** (`night-evenness.ts`, after night-unload-2): actively splits nights evenly BELOW the
   caps — while one finite-threshold worker holds ≥2 more nights than another, swap a night for a non-night
   cell (same-day or cross-day). Requested nights never move; night-only workers exempt.
+- **Night FLOOR** (`night-floor.ts`, after night-evenness): the lower bound. Everything above is a CAP and
+  runs through the STRICT request gate, so a worker who requests day shifts all week satisfies every request
+  and escapes nights entirely — requests outrank fairness (steps 3–4 vs 5), so no other pass has the
+  authority to fix it. This pass does, narrowly: while someone is below their floor, take a night from
+  someone holding more (who stays at/above their OWN floor) using the **relaxed** gate
+  (`request-gate.ts preservesRequestFloorFor`), which may spend a granted request but never drops an
+  employee below their own `floorTarget` (half their requests, min 2). Floor is
+  `min(max(0, T−1), floor(shifts/2))` (`night-targets.ts buildNightFloors`) — **proportional**, so a
+  one-shift week is never forced to be a night. Floor 0 for anyone the night pool excludes (availability
+  bars nights, no night role, must_accept without night requests) and for night-only workers. Built AFTER
+  the fill settles, since it depends on committed shift counts. Terminates: every swap strictly decreases
+  `Σ max(0, floor − nights)²`.
 - **Manager balance** (`manager-balance.ts`, runs TWICE — after senior swaps AND again after
   coverage-rescue + 12h, which add shifts and can dilute an אחמ״ש below their ceil(total/2) in-role target).
-- **Role balance** (`role-balance.ts`, last): splits every non-manager role's shifts evenly across its
-  holders via same-shift role swaps (gap ≥2, global Σcount² strictly decreasing; seniors keep their role;
-  manager cells excluded). `moveLegal` allows a SOFT off only for same-day swaps (the mover already works
-  that day — e.g. placed by coverage-rescue); cross-day moves honor soft offs strictly.
+- **Role balance** (`role-balance.ts`, last): splits **every** role's shifts — the manager role included —
+  evenly across its holders via same-shift role swaps (gap ≥2, global Σcount² strictly decreasing; seniors
+  keep their role). Manager cells used to be excluded, which left the אחמ״ש *count* unequal even though
+  manager-balance guaranteed each holder's own ≥ceil(N/2) ratio: a 7/4/4/3/2/1 split satisfies every
+  individual ratio while being lopsided. A manager cell is now swappable, but only while the GIVER stays
+  at/above their own ceil(total/2) target, so manager-balance's guarantee survives — the pass redistributes
+  only the surplus above it. (Measured on a real week: manager-window spread 6→3, 8h-only spread 4→2, with
+  coverage and total satisfied requests unchanged.) `moveLegal` allows a SOFT off only for same-day swaps
+  (the mover already works that day — e.g. placed by coverage-rescue); cross-day moves honor soft offs
+  strictly.
 
 Per-shift-type counts are surfaced on `EmployeeStat.byType { morning, noon, night }` for transparency/tests.
+`NightImbalance { employeeId, nights, target, floor }` now reports BOTH directions — `nights > target`
+(carrying too many) and `nights < floor` (escaped their share, no legal swap found) — and
+`CoverageIssues.tsx` renders them with different Hebrew copy.
 
 ## 12h auto-coverage policy (CONFIRMED product rules)
 Base shifts are 8h (morning 07–15 / noon 15–23 / night 23–07). **Full coverage is mandatory.** After the

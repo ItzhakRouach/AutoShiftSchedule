@@ -91,7 +91,10 @@ export function nightEligible(input: EngineInput): string[] {
  *  max(T, nights they explicitly requested) with T the even-division target.
  *  Falls back to DEFAULT_NIGHT_CAP when there are no required nights or no
  *  eligible workers. */
-export function buildNightThresholds(input: EngineInput): Record<string, number> {
+/** The even-division night target T, and whether we had to fall back to the
+ *  default cap. Shared by the threshold (upper bound) and floor (lower bound)
+ *  builders so the two can never drift apart. */
+export function nightTarget(input: EngineInput): { target: number; fallback: boolean } {
   const total = countRequiredNights(input.requirements)
   const pool = nightEligible(input)
   const fallback = total === 0 || pool.length === 0
@@ -113,6 +116,11 @@ export function buildNightThresholds(input: EngineInput): Record<string, number>
     const spread = nonRequesters.length > 0 ? nonRequesters.length : pool.length
     target = Math.ceil(remaining / spread)
   }
+  return { target, fallback }
+}
+
+export function buildNightThresholds(input: EngineInput): Record<string, number> {
+  const { target, fallback } = nightTarget(input)
 
   const map: Record<string, number> = {}
   for (const e of input.employees) {
@@ -125,20 +133,59 @@ export function buildNightThresholds(input: EngineInput): Record<string, number>
   return map
 }
 
-/** Workers left above their (finite) night threshold after all rebalance
- *  passes — an even division was impossible without breaking hard constraints
- *  or coverage, so the manager is warned instead. */
+/**
+ * Per-employee night FLOOR — the lower bound that stops a heavy requester from
+ * satisfying every request and escaping their night share entirely (the
+ * thresholds above are caps only, and night-evenness cannot spend a granted
+ * request to fix it).
+ *
+ * floor = min(max(0, T - 1), floor(shifts / 2))
+ *
+ * The `T - 1` leaves one night of slack so the floor never collides with the
+ * cap. The `shifts / 2` term makes it PROPORTIONAL: a flat T-1 would demand a
+ * night from someone who works a single shift that week, forcing that one shift
+ * to be a night. Floor 0 for anyone the night pool excludes (availability bars
+ * nights, no night-required role, must_accept without night requests) and for
+ * night-only workers, who are never short of nights anyway.
+ */
+export function buildNightFloors(
+  input: EngineInput,
+  committed: Record<string, Assignment[]>,
+): Record<string, number> {
+  const { target, fallback } = nightTarget(input)
+  const pool = new Set(nightEligible(input))
+  const base = fallback ? 0 : Math.max(0, target - 1)
+
+  const map: Record<string, number> = {}
+  for (const e of input.employees) {
+    if (!pool.has(e.id) || nightOnlyAvailable(e)) {
+      map[e.id] = 0
+      continue
+    }
+    const shifts = (committed[e.id] ?? []).length
+    map[e.id] = Math.min(base, Math.floor(shifts / 2))
+  }
+  return map
+}
+
+/** Workers left above their (finite) night threshold, or BELOW their night
+ *  floor, after all rebalance passes — an even division was impossible without
+ *  breaking hard constraints or coverage, so the manager is warned instead. */
 export function computeNightImbalance(
   input: EngineInput,
   committed: Record<string, Assignment[]>,
 ): NightImbalance[] {
   const thresholds = buildNightThresholds(input)
+  const floors = buildNightFloors(input, committed)
   const out: NightImbalance[] = []
   for (const e of input.employees) {
     const target = thresholds[e.id]
     if (!Number.isFinite(target)) continue
     const nights = nightCount(committed[e.id] ?? [])
-    if (nights > target) out.push({ employeeId: e.id, nights, target })
+    const floor = floors[e.id] ?? 0
+    if (nights > target || nights < floor) {
+      out.push({ employeeId: e.id, nights, target, floor })
+    }
   }
   return out
 }

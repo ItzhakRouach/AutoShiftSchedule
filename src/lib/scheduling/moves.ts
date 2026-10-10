@@ -20,6 +20,15 @@ export interface Move {
   legs: SlotRef[]
 }
 
+/** Request-preservation predicate. Defaults to the strict `preservesRequestsFor`;
+ *  the night-floor pass supplies the relaxed floor-only variant. */
+export type RequestGate = (
+  input: EngineInput,
+  empId: string,
+  before: Assignment[],
+  after: Assignment[],
+) => boolean
+
 function reqOf(input: EngineInput, empId: string, day: number) {
   return input.requests[empId]?.[day] ?? { off: false, preferred: [] }
 }
@@ -62,7 +71,9 @@ export function moveLegal(
   metas: Record<number, DayMeta>,
   st: FillState,
   move: Move,
+  opts: { requestGate?: RequestGate } = {},
 ): boolean {
+  const requestGate = opts.requestGate ?? preservesRequestsFor
   const n = move.legs.length
   for (let k = 0; k < n; k++) {
     const from = move.legs[k]
@@ -78,7 +89,7 @@ export function moveLegal(
     if (!legal(input, emp, metas[to.a.day], to.a.shift, to.a.roleId, rest, sameDay)) return false
     // ...and the proposed full assignment set (rest + the cell they move into).
     const proposed = [...rest, { ...to.a, employeeId: from.empId }]
-    if (!preservesRequestsFor(input, from.empId, st.committed[from.empId], proposed)) {
+    if (!requestGate(input, from.empId, st.committed[from.empId], proposed)) {
       return false
     }
   }

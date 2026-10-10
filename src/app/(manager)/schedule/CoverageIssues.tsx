@@ -106,7 +106,10 @@ export function CoverageIssues({
           <Section title={`חלוקת לילות לא שוויונית (${nightImbalance.length})`}>
             {nightImbalance.map((n, i) => (
               <li key={i}>
-                <strong style={{ color: 'var(--text)' }}>{nameOf(n.employeeId)}</strong> — {n.nights} לילות (יעד ≈ {n.target})
+                <strong style={{ color: 'var(--text)' }}>{nameOf(n.employeeId)}</strong> — {n.nights} לילות{' '}
+                {n.nights < n.floor
+                  ? `(מתחת למינימום ${n.floor} — פחות מחלקו ההוגן)`
+                  : `(יעד ≈ ${n.target})`}
               </li>
             ))}
           </Section>
@@ -122,7 +125,13 @@ export function CoverageIssues({
               <li>ללחוץ על &quot;השלם 12ש׳ אוטומטית&quot; כדי לנסות לכסות את החוסרים במשמרות 12 שעות, או לשבץ 12 שעות ידנית.</li>
             )}
             {nightImbalance.length > 0 && (
-              <li>לא נמצאה החלפה חוקית שתאזן את הלילות — אפשר לאזן ידנית או להרחיב זמינות של עובדים נוספים ללילות.</li>
+              <li>
+                לא נמצאה החלפה חוקית שתאזן את הלילות
+                {nightImbalance.some((n) => n.nights < n.floor)
+                  ? ' (מי שמתחת למינימום נחסם ע״י בקשות או זמינות)'
+                  : ''}
+                {' '}— אפשר לאזן ידנית או להרחיב זמינות של עובדים נוספים ללילות.
+              </li>
             )}
             <li>לבקש מעובד לוותר על בקשת חופש באותו יום, או להגדיל את מכסת החופשים.</li>
             <li>לערוך ידנית את הסידור (לחיצה על משבצת) לפי שיקול דעתך.</li>

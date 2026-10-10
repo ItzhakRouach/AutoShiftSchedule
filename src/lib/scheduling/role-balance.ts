@@ -1,12 +1,13 @@
-// Coverage-preserving ROLE-BALANCE pass. Splits every NON-manager role's
-// shifts evenly across its holders via same-shift role swaps (a giver's cell
+// Coverage-preserving ROLE-BALANCE pass. Splits every role's shifts (the
+// manager role included) evenly across its holders via same-shift role swaps (a giver's cell
 // in role R trades with a receiver's same-day+shift cell in role X). The
 // diversity pass cannot make these moves (its move shape bans same-day cells)
 // and manager-balance only guards the manager role's own ≥50% ratio.
 //
 // Same-shift swaps keep coverage, who-works-which-day, rest, night counts and
-// satisfied requests invariant (requests key on day+shift, not role). Manager-
-// role cells are never a swap leg — the ≥50% rule owns them. Senior holders
+// satisfied requests invariant (requests key on day+shift, not role). A manager
+// cell is only ever GIVEN UP while the giver stays at/above their own ≥50%
+// target, so manager-balance's guarantee survives. Senior holders
 // are never displaced from their senior role (either side). A swap is accepted
 // only when it strictly decreases the GLOBAL per-role Σcount² potential, so
 // evening out R can never just shuffle the pile into X (and the pass provably
@@ -17,6 +18,14 @@ import { isSeniorForRole } from './scoring'
 import { moveLegal, applyMove, type Move, type SlotRef } from './moves'
 
 const MAX_PASSES = 200
+
+/** Manager shifts held, incl. any 12h manager window (as manager-balance counts). */
+const mgrCount = (st: FillState, mgr: string, id: string): number =>
+  (st.committed[id] ?? []).filter((a) => a.roleId === mgr).length
+
+/** The holder's own in-role target: ceil(total shifts / 2). */
+const mgrTarget = (st: FillState, id: string): number =>
+  Math.ceil((st.committed[id]?.length ?? 0) / 2)
 
 export function runRoleBalancePass(
   input: EngineInput,
@@ -29,9 +38,10 @@ export function runRoleBalancePass(
   const count = (id: string, role: string) =>
     st.committed[id].filter((a) => a.roleId === role && !a.is12h).length
 
-  const roles = [...new Set(ids.flatMap((id) => st.committed[id].map((a) => a.roleId)))]
-    .filter((r) => r !== mgr)
-    .sort()
+  // The MANAGER role is balanced here too: manager-balance only guarantees each
+  // holder's own ≥ceil(N/2) ratio, which a 6/3/3 split satisfies while still
+  // being lopsided. The giver guard below keeps that ratio intact.
+  const roles = [...new Set(ids.flatMap((id) => st.committed[id].map((a) => a.roleId)))].sort()
 
   for (let pass = 0; pass < MAX_PASSES; pass++) {
     let moved = false
@@ -42,6 +52,10 @@ export function runRoleBalancePass(
       const receivers = [...holders].sort((a, b) => count(a, role) - count(b, role) || (a < b ? -1 : 1))
       for (const g of givers) {
         if (isSeniorForRole(empById.get(g)!, role)) continue
+        // Giving up a manager cell must not drop the giver below their own
+        // in-role target — that guarantee belongs to manager-balance, and this
+        // pass only redistributes the SURPLUS above it.
+        if (role === mgr && mgrCount(st, mgr, g) - 1 < mgrTarget(st, g)) continue
         for (const r of receivers) {
           if (r === g) continue
           if (count(g, role) - count(r, role) < 2) break // ascending → no later r closes the gap
