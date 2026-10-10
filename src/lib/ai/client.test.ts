@@ -1,7 +1,7 @@
 // The Claude client's non-network behavior: config gating, fake mode, the
 // production guard on fake mode, and cost arithmetic. No network in these tests.
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { isAiConfigured, callText, costUsd, FAKE_TEXT } from './client'
+import { isAiConfigured, callText, costUsd, fakeModeActive, FAKE_TEXT } from './client'
 
 const saved = { ...process.env }
 afterEach(() => {
@@ -63,5 +63,26 @@ describe('costUsd', () => {
   })
   it('is 0 for an empty usage record', () => {
     expect(costUsd({})).toBe(0)
+  })
+})
+
+describe('fakeModeActive', () => {
+  it('is false when AI_FAKE is unset', () => {
+    delete process.env.AI_FAKE
+    expect(fakeModeActive()).toBe(false)
+  })
+
+  it('is true outside production when AI_FAKE=1', () => {
+    process.env.AI_FAKE = '1'
+    vi.stubEnv('NODE_ENV', 'test')
+    expect(fakeModeActive()).toBe(true)
+  })
+
+  it('is false in production, and warns, so a stray flag cannot fake output', () => {
+    process.env.AI_FAKE = '1'
+    vi.stubEnv('NODE_ENV', 'production')
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    expect(fakeModeActive()).toBe(false)
+    expect(warn).toHaveBeenCalled()
   })
 })

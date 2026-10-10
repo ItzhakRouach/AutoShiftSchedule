@@ -10,7 +10,7 @@
 // call; production passes the real structured-output client.
 import type { EngineInput, EngineResult } from '@/lib/scheduling/types'
 import { generateSchedule } from '@/lib/scheduling'
-import type { AiResult, AiUsage } from './client'
+import { fakeModeActive, EMPTY_USAGE, type AiResult, type AiUsage } from './client'
 import { callStructured, type StructuredOk } from './client-structured'
 import { ProposalSchema, toProposal, type ProposalWire } from './schedule-schema'
 import { buildGeneratePrompt, buildRepairUser } from './schedule-prompt'
@@ -24,6 +24,13 @@ export type Proposer = (
   system: string,
   messages: Anthropic.MessageParam[],
 ) => Promise<AiResult<StructuredOk<ProposalWire>>>
+
+/** e2e/unit fixture: an empty week, which the engine then completes. */
+const fakeProposer: Proposer = async () => ({
+  ok: true,
+  data: { parsed: { assignments: [], twelveHour: [], notes: '[AI_FAKE]' }, raw: [] },
+  usage: EMPTY_USAGE,
+})
 
 const realProposer: Proposer = (system, messages) =>
   callStructured({ system, messages, schema: ProposalSchema, maxTokens: 32000, effort: 'high' })
@@ -65,7 +72,7 @@ export async function generateAiSchedule(
   input: EngineInput,
   opts: GenerateOpts = {},
 ): Promise<AiResult<AiScheduleOutcome>> {
-  const propose = opts.propose ?? realProposer
+  const propose = opts.propose ?? (fakeModeActive() ? fakeProposer : realProposer)
   const maxRepairs = opts.maxRepairs ?? 1
   const { system, user } = buildGeneratePrompt(input)
 

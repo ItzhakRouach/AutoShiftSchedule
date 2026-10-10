@@ -6,6 +6,7 @@ import { Spinner } from '@/components/ui/Spinner'
 import { countUncoveredCells } from '@/lib/schedule/week-table-data'
 import type { ScheduleView } from '@/lib/schedule/view-data'
 import type { EditMeta } from '@/lib/schedule/edit-meta'
+import { AiImprove } from './AiImprove'
 
 interface Props {
   view: ScheduleView
@@ -73,6 +74,8 @@ export function GenerateControls({
           </Btn>
         </>
       )}
+
+      {hasResult && status !== 'published' && <AiImprove periodId={view.periodId} />}
 
       {showComplete && (
         <>

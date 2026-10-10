@@ -46,6 +46,21 @@ export function isAiConfigured(): boolean {
   return Boolean(process.env.ANTHROPIC_API_KEY)
 }
 
+/**
+ * Whether fixture mode is in effect. Fake mode exists for e2e and unit runs so
+ * they never hit the paid API; a stray AI_FAKE=1 in production must never
+ * silently fabricate a schedule or an explanation, so it is refused (loudly)
+ * there. Every caller that can short-circuit a real call goes through this.
+ */
+export function fakeModeActive(): boolean {
+  if (process.env.AI_FAKE !== '1') return false
+  if (process.env.NODE_ENV === 'production') {
+    console.warn('[ai] AI_FAKE=1 ignored in production')
+    return false
+  }
+  return true
+}
+
 export interface RawUsage {
   input_tokens?: number
   output_tokens?: number
@@ -91,16 +106,7 @@ export interface CallTextParams {
  * dominate the per-run cost.
  */
 export async function callText(params: CallTextParams): Promise<AiResult<string>> {
-  // Fake mode is for e2e/unit only. A stray AI_FAKE=1 in production must never
-  // silently fabricate a schedule explanation, so it is ignored there.
-  if (process.env.AI_FAKE === '1') {
-    if (process.env.NODE_ENV === 'production') {
-      console.warn('[ai] AI_FAKE=1 ignored in production')
-    } else {
-      return { ok: true, data: FAKE_TEXT, usage: EMPTY_USAGE }
-    }
-  }
-
+  if (fakeModeActive()) return { ok: true, data: FAKE_TEXT, usage: EMPTY_USAGE }
   if (!isAiConfigured()) return { ok: false, code: 'NO_KEY' }
 
   try {

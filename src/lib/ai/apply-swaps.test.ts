@@ -123,3 +123,18 @@ describe('applySwaps', () => {
     expect(out.applied).toBe(0) // a self-swap is not an improvement
   })
 })
+
+describe('applySwaps — accepted list for server-side re-apply', () => {
+  it('returns the swaps it accepted, so apply can re-validate from scratch', () => {
+    const i = swappableWeek()
+    const st = runFillHardDaysAware(i)
+    const g = K(i).roleKey(GUARD)!
+    const out = applySwaps(i, st, [
+      { a: { emp: 'e99', day: 0, shift: 'M', role: g }, b: { emp: 'e0', day: 1, shift: 'M', role: g } },
+    ])
+    expect(out.accepted).toEqual([])
+    expect(out.applied).toBe(0)
+    // accepted.length always equals applied, so the apply step can replay it.
+    expect(out.accepted.length).toBe(out.applied)
+  })
+})

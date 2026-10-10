@@ -17,6 +17,9 @@ import { WeekNav } from './WeekNav'
 
 // Always reflect the live published state (history view + current editor).
 export const dynamic = 'force-dynamic'
+// The AI improvement action calls Claude and measured 143-191s on real weeks,
+// so the default function budget is too tight. 300s is the platform maximum.
+export const maxDuration = 300
 
 export default async function SchedulePage({
   searchParams,

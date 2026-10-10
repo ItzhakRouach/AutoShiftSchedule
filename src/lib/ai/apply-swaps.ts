@@ -46,6 +46,10 @@ export type SwapRejection =
 
 export interface SwapOutcome {
   applied: number
+  /** The swaps that passed both gates, so the apply step can replay them
+   *  server-side against a freshly rebuilt base instead of trusting the
+   *  client with a schedule. `accepted.length === applied` always. */
+  accepted: ProposedSwap[]
   rejected: { swap: ProposedSwap; reason: SwapRejection }[]
 }
 
@@ -77,6 +81,7 @@ export function applySwaps(
 ): SwapOutcome {
   const maps = buildKeyMaps(input)
   const rejected: SwapOutcome['rejected'] = []
+  const accepted: ProposedSwap[] = []
   let applied = 0
 
   type Resolved =
@@ -125,8 +130,9 @@ export function applySwaps(
     st.grid = trial.grid
     st.committed = trial.committed
     st.satisfied = trial.satisfied
+    accepted.push(swap)
     applied++
   }
 
-  return { applied, rejected }
+  return { applied, accepted, rejected }
 }

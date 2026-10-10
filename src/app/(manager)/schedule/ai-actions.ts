@@ -9,8 +9,9 @@ import { generateSchedule } from '@/lib/scheduling'
 import { explainSchedule } from '@/lib/ai/explain'
 import { encodeWeek } from '@/lib/ai/encode-week'
 import { substituteNames } from '@/lib/ai/names'
-import { isAiConfigured, type AiErrorCode } from '@/lib/ai/client'
+import { isAiConfigured } from '@/lib/ai/client'
 import { GENERIC_ERROR } from './run-actions-shared'
+import { AI_ERRORS } from './ai-shared'
 
 export interface AiExplainResult {
   ok: boolean
@@ -22,16 +23,6 @@ export interface AiExplainResult {
   error?: string
 }
 
-const ERRORS: Record<AiErrorCode, string> = {
-  NO_KEY: 'תכונת ה-AI אינה מוגדרת (חסר מפתח API).',
-  NO_CREDIT: 'נגמר הקרדיט החודשי ל-API. הסבר AI יהיה זמין שוב במחזור החיוב הבא.',
-  RATE_LIMITED: 'יותר מדי בקשות כרגע. נסו שוב בעוד רגע.',
-  REFUSED: 'המודל סירב לנתח את הבקשה הזו.',
-  TRUNCATED: 'ההסבר נקטע באמצע. נסו שוב.',
-  EMPTY: 'לא התקבל הסבר. נסו שוב.',
-  CALL_FAILED: 'שגיאה בפנייה ל-AI. נסו שוב.',
-  BAD_SHAPE: 'התשובה מה-AI הגיעה בפורמט שגוי. נסו שוב.',
-}
 
 const schema = z.object({ periodId: z.string().uuid() })
 
@@ -50,7 +41,7 @@ export async function explainSchedulePeriod(periodId: string): Promise<AiExplain
   const parsed = schema.safeParse({ periodId })
   if (!parsed.success) return { ok: false, error: GENERIC_ERROR }
   if (!isAiConfigured() && process.env.AI_FAKE !== '1') {
-    return { ok: false, error: ERRORS.NO_KEY }
+    return { ok: false, error: AI_ERRORS.NO_KEY }
   }
 
   const supabase = await createClient()
@@ -73,7 +64,7 @@ export async function explainSchedulePeriod(periodId: string): Promise<AiExplain
   }
 
   const res = await explainSchedule(built.input, result)
-  if (!res.ok) return { ok: false, error: ERRORS[res.code] }
+  if (!res.ok) return { ok: false, error: AI_ERRORS[res.code] }
 
   const [{ data: emps }, { data: manual }] = await Promise.all([
     supabase.from('employees').select('id, name').eq('workplace_id', workplace.id),

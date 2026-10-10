@@ -10,7 +10,7 @@
 import type { EngineInput, EngineResult } from '@/lib/scheduling/types'
 import { resultFromFillState } from '@/lib/scheduling'
 import { runFillHardDaysAware } from '@/lib/scheduling/fill'
-import type { AiResult } from './client'
+import { fakeModeActive, EMPTY_USAGE, type AiResult } from './client'
 import { callStructured, type StructuredOk } from './client-structured'
 import { SwapsSchema, type SwapsWire } from './improve-schema'
 import { buildImprovePrompt } from './improve-prompt'
@@ -22,6 +22,14 @@ export type SwapProposer = (
   system: string,
   messages: Anthropic.MessageParam[],
 ) => Promise<AiResult<StructuredOk<SwapsWire>>>
+
+/** e2e/unit fixture: a well-formed reply that proposes nothing, so the flow is
+ *  exercised end to end without a paid call. */
+const fakeProposer: SwapProposer = async () => ({
+  ok: true,
+  data: { parsed: { swaps: [], notes: '[AI_FAKE] לא הוצעו החלפות.' }, raw: [] },
+  usage: EMPTY_USAGE,
+})
 
 const realProposer: SwapProposer = (system, messages) =>
   // The VISIBLE reply is short (a handful of swaps), but adaptive thinking also
@@ -39,6 +47,8 @@ export interface ImproveOutcome {
   baseScore: ScheduleScore
   improved: boolean
   applied: number
+  /** Exactly the swaps that were kept — replayed by the apply action. */
+  accepted: ProposedSwap[]
   rejected: { swap: ProposedSwap; reason: SwapRejection }[]
   notes: string
 }
@@ -51,7 +61,7 @@ export async function improveSchedule(
   input: EngineInput,
   opts: ImproveOpts = {},
 ): Promise<AiResult<ImproveOutcome>> {
-  const propose = opts.propose ?? realProposer
+  const propose = opts.propose ?? (fakeModeActive() ? fakeProposer : realProposer)
 
   // The engine's week, kept pristine for comparison...
   const baseResult = resultFromFillState(input, runFillHardDaysAware(input, input.skipTwelve ?? false))
@@ -77,6 +87,7 @@ export async function improveSchedule(
       baseScore,
       improved: compareScores(score, baseScore) < 0,
       applied: outcome.applied,
+      accepted: outcome.accepted,
       rejected: outcome.rejected,
       notes: call.data.parsed.notes,
     },
