@@ -84,3 +84,49 @@ Shifts are `M`=בוקר 07–15, `A`=צהריים 15–23, `N`=לילה 23–07.
 role names are mapped to short keys with a bidirectional map built per request;
 the model's reply is translated back before validation, and any id it invents
 fails the roster check.
+
+## What is built (Part B1 — Hebrew explanation)
+
+Read-only. It describes a finished `EngineResult` in prose and cannot produce or
+change an assignment, so there is nothing to validate.
+
+| File | Role |
+|---|---|
+| `src/lib/ai/keys.ts` | employee/role ↔ short-key maps; also the trust boundary — an invented key resolves to `undefined` |
+| `src/lib/ai/encode-week.ts` | `EngineInput` → the terse week table |
+| `src/lib/ai/encode-result.ts` | `EngineResult` → grid, gaps+reasons, 12h, overridden offs, night imbalance, per-worker stats |
+| `src/lib/ai/ruleset.ts` | the byte-stable system prompt (cacheable); deliberately not the whole engine doc |
+| `src/lib/ai/explain.ts` | `buildExplainPrompt` (pure, testable) + `explainSchedule` |
+| `src/lib/ai/client.ts` | server-only client; never throws, typed error codes, `AI_FAKE` fixtures ignored in production |
+| `src/lib/ai/names.ts` | puts real names back; guards the `e1`-inside-`e10` prefix collision |
+| `src/app/(manager)/schedule/ai-actions.ts` | the server action (Zod-validated, auth + workplace scoped) |
+| `src/app/(manager)/schedule/AiExplain*.tsx` | opt-in button in the coverage popup + a minimal non-HTML renderer |
+
+### Measured on the real week
+
+First call: 2,496 input + 1,627 cache-write + 1,838 output tokens = **$0.069**.
+Repeat calls read the cached prefix instead of writing it, so steady state is
+**~$0.047**. System prompt is 1,627 cached tokens, versus 7,380 had we shipped
+`docs/scheduling-engine.md` verbatim.
+
+The output correctly identified full 63/63 coverage, the three below-minimum
+workers and the hard `X` off-requests behind them, the unapproved requests and
+which availability map blocked each, ניר ממן at 3 nights against a target of 2,
+and why Saturday needed a 12h pair (Shabbat observers plus hard offs left too
+few אחמ״ש for three 8h shifts) — with a concrete alternative.
+
+### Known limitation
+
+The action regenerates the schedule to explain it. The engine is deterministic
+(seed from the period id), so this reproduces the persisted AUTO schedule
+exactly — but **manual and 12h edits are not reflected**, and the UI says so
+when the period has any. Explaining the persisted grid verbatim needs
+`resultFromFillState` (extracting the tail of `engine.ts`), which belongs with
+the second-opinion generator.
+
+### Not yet built
+
+Cost tracking (`ai_runs`) and the per-workplace budget guard arrive with the
+second-opinion generator, which needs a table anyway to hold proposals
+server-side. Until then the enforceable cap is the Console workspace spend
+limit, and the monthly credit itself hard-stops.

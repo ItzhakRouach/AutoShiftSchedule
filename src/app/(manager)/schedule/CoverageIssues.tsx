@@ -1,6 +1,7 @@
 'use client'
 
 import { Btn } from '@/components/ui/Btn'
+import { AiExplain } from './AiExplain'
 import { SHIFT_META, type ShiftId } from '@/lib/domain/constants'
 import type { ScheduleView } from '@/lib/schedule/view-data'
 import type { GapReason, NightImbalance, OverriddenOff, Warning } from '@/lib/scheduling/types'
@@ -137,6 +138,8 @@ export function CoverageIssues({
             <li>לערוך ידנית את הסידור (לחיצה על משבצת) לפי שיקול דעתך.</li>
           </ul>
         </div>
+
+        <AiExplain periodId={view.periodId} />
 
         <div style={{ marginTop: 14 }}>
           <Btn variant="primary" size="md" style={{ width: '100%' }} onClick={onClose}>
