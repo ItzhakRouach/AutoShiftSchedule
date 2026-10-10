@@ -138,3 +138,54 @@ describe('applySwaps — accepted list for server-side re-apply', () => {
     expect(out.accepted.length).toBe(out.applied)
   })
 })
+
+describe('applySwaps — stale references in a batch', () => {
+  // Found while brute-forcing the real week: once an earlier swap moves people,
+  // a later swap naming the OLD occupant of a cell must be rejected, never
+  // silently applied to whoever sits there now.
+  it('rejects a later swap whose cell no longer holds the named worker', () => {
+    const employees = ['u1', 'u2', 'u3'].map((id) => emp(id, { roleIds: [GUARD, SHIFT_MGR] }))
+    const i = input({
+      employees,
+      requirements: mergeReqs(
+        reqFor([0], 'morning', GUARD, 1),
+        reqFor([0], 'noon', SHIFT_MGR, 1),
+        reqFor([1], 'morning', GUARD, 1),
+      ),
+      managerRoleId: SHIFT_MGR,
+    })
+    const st = runFillHardDaysAware(i)
+    const g = K(i).roleKey(GUARD)!
+    const holder = st.grid[0].morning[GUARD][0]
+    const key = K(i).empKey(holder)!
+
+    // Name the same cell twice. Whatever happens to the first swap, the second
+    // must not be applied on the strength of a reference that may now be stale.
+    const out = applySwaps(i, st, [
+      { a: { emp: key, day: 0, shift: 'M', role: g }, b: { emp: key, day: 1, shift: 'M', role: g } },
+      { a: { emp: key, day: 0, shift: 'M', role: g }, b: { emp: key, day: 1, shift: 'M', role: g } },
+    ])
+    // Both legs name the same worker, so neither swap can be a real exchange.
+    expect(out.applied).toBe(0)
+    expect(out.accepted).toEqual([])
+    expect(out.rejected).toHaveLength(2)
+  })
+
+  it('rejects a cell reference naming a worker who never held it', () => {
+    const i = swappableWeek()
+    const st = runFillHardDaysAware(i)
+    const g = K(i).roleKey(GUARD)!
+    const holder0 = st.grid[0].morning[GUARD][0]
+    const other = i.employees.find((e) => e.id !== holder0)!
+    // `other` does not hold day-0 morning; naming them there must not resolve
+    // to the actual occupant.
+    const out = applySwaps(i, st, [
+      {
+        a: { emp: K(i).empKey(other.id)!, day: 0, shift: 'M', role: g },
+        b: { emp: K(i).empKey(holder0)!, day: 0, shift: 'M', role: g },
+      },
+    ])
+    expect(out.applied).toBe(0)
+    expect(out.rejected[0].reason).toBe('no_such_cell')
+  })
+})

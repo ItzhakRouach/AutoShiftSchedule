@@ -130,3 +130,84 @@ Cost tracking (`ai_runs`) and the per-workplace budget guard arrive with the
 second-opinion generator, which needs a table anyway to hold proposals
 server-side. Until then the enforceable cap is the Console workspace spend
 limit, and the monthly credit itself hard-stops.
+
+---
+
+## Part B2 — the second opinion
+
+### Why it is an IMPROVEMENT pass, not a generator
+
+The first implementation asked Claude to build a week from scratch. Measured on
+the real week (אגירה שאובה 2026-10-11) it **lost to the engine**:
+
+| | AI from scratch | engine |
+|---|---|---|
+| Coverage | 62/63 | **63/63** |
+| Requests satisfied | **18** | 16 |
+| Below minimum | 6 | **3** |
+| Night-imbalance warnings | 3 | **1** |
+
+It cost **$1.06** and ran **398s** — past the 300s function limit. The framing
+was wrong: it made the model re-solve a constraint problem the engine already
+solves well, trading coverage and minimums for granted requests.
+
+The model now starts FROM the engine's finished week and may only propose
+**swaps of two filled 8h cells**. That bounds it to "better or equal":
+
+- a swap exchanges occupants, so **coverage is invariant by construction**;
+- each swap must pass the engine's own `moveLegal` — all 8 hard constraints,
+  re-checked for both movers against their state minus the vacated cell;
+- it is kept only if the overall score **strictly improves**, by the same
+  comparator as the side-by-side, so it cannot trade coverage or a minimum away
+  for a granted request;
+- each is tried on a clone, so a rejected swap leaves no trace.
+
+The floor is therefore "no swaps applied, result identical to the engine".
+
+### Measured, live, on two real weeks
+
+Every row independently re-validated afterwards; **0 illegal rows** in both.
+
+| | 2026-10-11 (easy) | 2026-09-27 (contended) |
+|---|---|---|
+| Coverage | 63/63 → 63/63 | 60/63 → 60/63 |
+| Night imbalance | 1 → 1 | **1 → 0** |
+| Swaps applied / rejected | 2 / 0 | 1 / 2 |
+| Cost | $0.38 | $0.29 |
+| Wall time | 191s | 143s |
+
+On the easy week nothing manager-visible changed — only the engine's internal
+diversity cost fell. On the contended week it moved e11's third night (over
+cap) to e9 who held one, clearing the imbalance outright. So: **little value on
+a well-staffed week, real value when the week is tight, never worse.**
+
+A brute-force over the easy week's own grid found **6 improving swaps among
+1,646 legal candidate pairs** (1,252 rejected as illegal, 35 as no improvement)
+— the engine leaves very little headroom, which is why the AI finds so little.
+
+### Structural limit
+
+A swap never changes anyone's shift **count**, so it can never fix a
+below-minimum worker. Those are blocked by hard `X` off-requests and need a
+request change, not a swap. The model identified this itself, correctly.
+
+### Trust boundary
+
+`requestImprovement` writes nothing. `applyImproved` takes **only the swaps**
+from the client and replays them through `applySwaps` against a freshly rebuilt
+deterministic base, so every hard constraint and the improvement test are
+re-checked server-side — a forged or stale swap is rejected, never misapplied
+to whoever occupies the cell now (`no_such_cell`). It refuses on a published
+period, and refuses when manual/12h edits exist rather than overwriting them.
+There is **no `ai_runs` table and no migration**: the proposal never round-trips
+through the database.
+
+`schedule/page.tsx` sets `maxDuration = 300` (the platform maximum) because the
+action measured 143-191s.
+
+### max_tokens
+
+`improve.ts` uses 32,000. The visible reply is a handful of swaps, but adaptive
+thinking also draws on the budget — 8,000 truncated a whole run outright, and
+the client correctly refused to act on the partial reply. Only tokens actually
+produced are billed, so a generous cap is free insurance.
