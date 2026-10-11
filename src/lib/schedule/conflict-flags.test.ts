@@ -6,7 +6,7 @@ import type { ScheduleView } from './view-data'
 function emp(over: Partial<EmployeeEditMeta> = {}): EmployeeEditMeta {
   return {
     id: 'e1', roleIds: [], availability: null, offDays: [], preferred: {},
-    maxShifts: null, observesShabbat: false, committed: {}, absentDays: [], ...over,
+    maxShifts: null, minShifts: null, observesShabbat: false, committed: {}, absentDays: [], ...over,
   }
 }
 

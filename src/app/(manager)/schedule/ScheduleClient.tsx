@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Segmented } from '@/components/ui/Segmented'
+import { InlineAlert } from '@/components/ui/InlineAlert'
 import type { ScheduleView } from '@/lib/schedule/view-data'
 import type { EditMeta } from '@/lib/schedule/edit-meta'
 import type { WorkplaceVacation } from '@/lib/vacations/pending'
@@ -18,6 +19,7 @@ import { DayNoteEditor } from './DayNoteEditor'
 import { DayNotesSummary } from './DayNotesSummary'
 import { Generating } from './parts'
 import { RegenerateConfirm } from './RegenerateConfirm'
+import { DistributionDrawer } from './DistributionDrawer'
 import { PublishControls } from './PublishControls'
 import { WorkerPalette } from './WorkerPalette'
 import { AssignToast } from './AssignToast'
@@ -48,6 +50,7 @@ export function ScheduleClient({ view, editMeta, workerVacations, rolelessEmploy
   const [slot, setSlot] = useState<SlotCtx | null>(null)
   const [pairDay, setPairDay] = useState<number | null>(null)
   const [showDayNotes, setShowDayNotes] = useState(false)
+  const [showDist, setShowDist] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('schedule')
   const router = useRouter()
   const [copying, startCopy] = useTransition()
@@ -86,7 +89,7 @@ export function ScheduleClient({ view, editMeta, workerVacations, rolelessEmploy
       )}
 
       <div className="schedule-controls">
-      <ScheduleHeader view={view} pct={pct} />
+      <ScheduleHeader view={view} pct={pct} onOpenDistribution={() => setShowDist(true)} />
 
       <RolelessNotice employees={rolelessEmployees} />
 
@@ -94,19 +97,7 @@ export function ScheduleClient({ view, editMeta, workerVacations, rolelessEmploy
 
       <CoverageIssues open={showIssues} overridden={overriddenOff} uncovered={uncovered} nightImbalance={nightImbalance} view={view} onClose={() => setShowIssues(false)} />
 
-      {error && (
-        <div style={{
-          padding: '10px 14px',
-          borderRadius: 'var(--r-md)',
-          background: 'rgba(235,106,78,0.1)',
-          color: '#EB6A4E',
-          fontSize: 13.5,
-          fontWeight: 600,
-          marginBottom: 14,
-        }}>
-          {error}
-        </div>
-      )}
+      {error && <InlineAlert kind="error" style={{ marginBottom: 14 }}>{error}</InlineAlert>}
 
       {!hasResult && <EmptyStateCard view={view} />}
 
@@ -157,6 +148,8 @@ export function ScheduleClient({ view, editMeta, workerVacations, rolelessEmploy
             editMeta={editMeta}
           />
           <DayNotesSummary view={view} />
+
+      <DistributionDrawer open={showDist} onClose={() => setShowDist(false)} view={view} editMeta={editMeta} />
           {/* `published` alone (no assignments) still needs the controls: a
               cron-published empty week is otherwise impossible to unpublish. */}
           {(hasResult || published) && (

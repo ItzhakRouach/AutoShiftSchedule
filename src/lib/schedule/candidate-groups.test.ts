@@ -7,7 +7,7 @@ const ROLE = 'r1'
 function emp(over: Partial<EmployeeEditMeta> = {}): EmployeeEditMeta {
   return {
     id: 'x', roleIds: [ROLE], availability: null, offDays: [],
-    preferred: {}, maxShifts: null, observesShabbat: false, committed: {}, absentDays: [], ...over,
+    preferred: {}, maxShifts: null, minShifts: null, observesShabbat: false, committed: {}, absentDays: [], ...over,
   }
 }
 

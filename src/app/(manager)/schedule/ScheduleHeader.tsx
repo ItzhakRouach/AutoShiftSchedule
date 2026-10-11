@@ -4,18 +4,21 @@ import { useMemo } from 'react'
 import { countUncoveredCells } from '@/lib/schedule/week-table-data'
 import { addDaysISO, formatHebDate } from '@/lib/dates/week'
 import type { ScheduleView } from '@/lib/schedule/view-data'
+import { Icon } from '@/components/ui/Icon'
 import { RolledWeekBanner } from './RolledWeekBanner'
 
 interface Props {
   view: ScheduleView
   /** Coverage % from the last generate run (null before a run). */
   pct: number | null
+  /** Opens the worker-distribution drawer. Omitted on the read-only view. */
+  onOpenDistribution?: () => void
 }
 
 /** Page title + at-a-glance week health: a LIVE unfilled-shifts counter (always
  *  accurate, recomputed from the current grid) alongside the generate-time
  *  coverage %. Split out to keep ScheduleClient ≤200 lines. */
-export function ScheduleHeader({ view, pct }: Props) {
+export function ScheduleHeader({ view, pct, onOpenDistribution }: Props) {
   const gaps = useMemo(() => countUncoveredCells(view), [view])
   return (
     <>
@@ -49,6 +52,24 @@ export function ScheduleHeader({ view, pct }: Props) {
             <div className="tabular" style={{ fontSize: 20, fontWeight: 800, color: pct >= 95 ? 'var(--success)' : 'var(--danger-2)', lineHeight: 1 }} data-testid="coverage">{pct}%</div>
             <div style={{ fontSize: 10.5, color: 'var(--text-2)', fontWeight: 600, marginTop: 2 }}>כיסוי</div>
           </div>
+        )}
+        {onOpenDistribution && (
+          <button
+            type="button"
+            data-testid="distribution-btn"
+            onClick={onOpenDistribution}
+            aria-label="חלוקת משמרות בין העובדים"
+            title="חלוקת משמרות בין העובדים"
+            style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+              borderRadius: 'var(--r-md)', padding: '8px 13px',
+              background: 'var(--surface-2)', border: '1px solid var(--border)',
+              color: 'var(--text-2)', cursor: 'pointer', font: 'inherit',
+            }}
+          >
+            <Icon name="chart" size={20} stroke={2} color="var(--text)" />
+            <span style={{ fontSize: 10.5, fontWeight: 600 }}>חלוקה</span>
+          </button>
         )}
       </div>
     </div>

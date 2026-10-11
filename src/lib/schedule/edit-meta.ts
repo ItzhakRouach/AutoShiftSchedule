@@ -28,6 +28,11 @@ export interface EmployeeEditMeta {
   /** day → preferred base shift keys (for the "✓ ביקש" badge). */
   preferred: Record<number, ShiftId[]>
   maxShifts: number | null
+  /** Weekly floor. min_shifts_per_week is ALREADY selected in
+   *  cached-reads.ts:40, so surfacing it costs no extra round-trip — and it
+   *  gives a below-minimum flag that stays live after manual edits, unlike the
+   *  engine's EngineResult.stats value, which runSchedule discards. */
+  minShifts: number | null
   observesShabbat: boolean
   /** day → committed shiftKey (base or 12h) for one-per-day/rest checks. */
   committed: Record<number, ShiftId>
@@ -87,6 +92,7 @@ export async function getEditMeta(
       offDays: [],
       preferred: {},
       maxShifts: e.max_shifts_per_week ?? null,
+      minShifts: e.min_shifts_per_week ?? null,
       observesShabbat: e.observes_shabbat ?? false,
       committed: {},
       absentDays: [],
