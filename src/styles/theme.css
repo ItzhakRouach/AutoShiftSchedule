@@ -45,6 +45,11 @@
   --r-sm: 11px;
   --r-pill: 999px;
 
+  /* Font family. DesignTemplate's buildThemeVars() produced --font, and ~30
+     components still set `fontFamily: 'var(--font)'`. Without this definition
+     every one of those silently inherited the body font. */
+  --font: var(--font-assistant), sans-serif;
+
   /* type scale (theme-independent) */
   --text-h1: 22px;
   --text-h2: 17px;

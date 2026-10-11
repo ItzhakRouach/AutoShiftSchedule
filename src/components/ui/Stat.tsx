@@ -20,6 +20,7 @@ export function Stat({ value, label, sub, color, icon }: StatProps) {
         <div style={{ marginBottom: 7, color: color ?? 'var(--accent)' }}>{iconEl}</div>
       )}
       <div
+        className="tabular"
         style={{
           fontSize: 25,
           fontWeight: 800,

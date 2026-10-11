@@ -96,7 +96,9 @@ afterAll(async () => {
   if (testUserId) await admin.auth.admin.deleteUser(testUserId)
 })
 
-describe('lockExpiredPeriods', () => {
+// Live cloud-DB round-trips: the 5s vitest default is too tight and made this
+// file intermittently red. Same 30s budget demo-coverage.test.ts uses.
+describe('lockExpiredPeriods', { timeout: 30000 }, () => {
   it('locks the past-deadline period and leaves the future period as collecting', async () => {
     const now = new Date()
 

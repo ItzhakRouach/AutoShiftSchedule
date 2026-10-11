@@ -40,6 +40,9 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#3457F0",
+  // Without viewport-fit=cover every env(safe-area-inset-*) resolves to 0, so
+  // the notch/home-bar padding in TopNav and InstallPrompt did nothing.
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

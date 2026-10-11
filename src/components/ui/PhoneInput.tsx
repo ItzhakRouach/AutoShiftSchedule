@@ -25,7 +25,7 @@ const boxStyle: React.CSSProperties = {
   background: 'var(--surface-2)', border: '1.5px solid var(--border)', borderRadius: 'var(--r-md)',
   boxSizing: 'border-box', outline: 'none',
 }
-const errorStyle: React.CSSProperties = { fontSize: 12.5, color: '#D8423B', marginTop: 4 }
+const errorStyle: React.CSSProperties = { fontSize: 12.5, color: 'var(--danger)', marginTop: 4 }
 
 /** Format the raw subscriber digits for display: a dash after the first 3. */
 function withDash(digits: string): string {
@@ -68,7 +68,7 @@ export function PhoneInput({ initialValue, name = 'phone', label, error, require
     <div>
       {label && (
         <label htmlFor={id} style={labelStyle}>
-          {label}{required && <span style={{ color: '#D8423B' }}> *</span>}
+          {label}{required && <span style={{ color: 'var(--danger)' }}> *</span>}
         </label>
       )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, direction: 'ltr' }}>

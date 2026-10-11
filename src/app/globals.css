@@ -94,6 +94,10 @@ body {
   animation: skeleton-pulse 1.2s ease-in-out infinite;
 }
 
+/* ── Numeric readouts: fixed-width digits so counts/percentages/hours line up
+   in columns and don't shift width as the value changes. */
+.tabular { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+
 /* ── Accessibility: visible keyboard focus everywhere (mouse clicks unaffected) */
 button:focus-visible,
 a:focus-visible,

@@ -58,8 +58,8 @@ export function Btn({
       border: '1px solid var(--border-strong)',
     },
     danger: {
-      background: 'rgba(220,70,70,0.12)',
-      color: '#D8423B',
+      background: 'var(--danger-soft)',
+      color: 'var(--danger)',
       border: '1px solid transparent',
     },
   }

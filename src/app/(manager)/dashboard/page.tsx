@@ -15,7 +15,6 @@ import { Icon } from '@/components/ui/Icon'
 import { ScopeToggle } from './ScopeToggle'
 import { PeriodPicker } from './PeriodPicker'
 import { buildPeriodOptions } from '@/lib/stats/period-options'
-import { DashNav } from './DashNav'
 import { CoverageCard } from './CoverageCard'
 import { DashPanels } from './DashPanels'
 import { TrendsCard } from './TrendsCard'
@@ -165,7 +164,6 @@ export default async function DashboardPage({
         </>
       )}
 
-      <DashNav />
     </main>
   )
 }

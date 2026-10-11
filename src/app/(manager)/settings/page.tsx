@@ -3,7 +3,6 @@ import { createClient } from '@/lib/supabase/server'
 import { getAuthUser } from '@/lib/auth/user'
 import { getActiveWorkplace } from '@/lib/workplace/current'
 import { hhmm } from '@/lib/dates/time'
-import { signOut } from '@/app/(auth)/actions'
 import { DeleteAccountButton } from '@/components/account/DeleteAccountButton'
 import { deleteManagerAccount } from './account-actions'
 import { DeadlineForm } from './DeadlineForm'
@@ -138,27 +137,9 @@ export default async function SettingsPage() {
             חשבון
           </h2>
           <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '0 0 20px', lineHeight: 1.5 }}>
-            התנתקות מהמערכת תחזיר אותך למסך הכניסה.
+            להתנתקות השתמשו בתפריט שבראש העמוד.
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
-            <form action={signOut}>
-              <button
-                type="submit"
-                style={{
-                  background: 'none',
-                  border: '1px solid var(--border-strong)',
-                  borderRadius: 'var(--r-pill)',
-                  padding: '10px 24px',
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: 'var(--text-2)',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                }}
-              >
-                התנתקות
-              </button>
-            </form>
             <DeleteAccountButton
               action={deleteManagerAccount}
               description="פעולה זו תמחק את הארגון, מקום העבודה, כל העובדים והסידורים — לצמיתות. לא ניתן לבטל."

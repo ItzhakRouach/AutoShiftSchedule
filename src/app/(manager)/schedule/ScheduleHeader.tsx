@@ -37,7 +37,7 @@ export function ScheduleHeader({ view, pct }: Props) {
             background: gaps > 0 ? 'var(--danger-soft)' : 'var(--success-soft)',
           }}
         >
-          <div style={{ fontSize: 20, fontWeight: 800, lineHeight: 1, color: gaps > 0 ? 'var(--danger)' : 'var(--success)' }}>
+          <div className="tabular" style={{ fontSize: 20, fontWeight: 800, lineHeight: 1, color: gaps > 0 ? 'var(--danger)' : 'var(--success)' }}>
             {gaps > 0 ? gaps : '✓'}
           </div>
           <div style={{ fontSize: 10.5, color: 'var(--text-2)', fontWeight: 600, marginTop: 2 }}>
@@ -45,8 +45,8 @@ export function ScheduleHeader({ view, pct }: Props) {
           </div>
         </div>
         {pct !== null && (
-          <div style={{ textAlign: 'center', background: pct >= 95 ? 'rgba(19,169,142,0.12)' : 'rgba(235,106,78,0.12)', borderRadius: 'var(--r-md)', padding: '8px 13px' }}>
-            <div style={{ fontSize: 20, fontWeight: 800, color: pct >= 95 ? '#13A98E' : '#EB6A4E', lineHeight: 1 }} data-testid="coverage">{pct}%</div>
+          <div style={{ textAlign: 'center', background: pct >= 95 ? 'var(--success-soft)' : 'color-mix(in srgb, var(--danger-2) 12%, transparent)', borderRadius: 'var(--r-md)', padding: '8px 13px' }}>
+            <div className="tabular" style={{ fontSize: 20, fontWeight: 800, color: pct >= 95 ? 'var(--success)' : 'var(--danger-2)', lineHeight: 1 }} data-testid="coverage">{pct}%</div>
             <div style={{ fontSize: 10.5, color: 'var(--text-2)', fontWeight: 600, marginTop: 2 }}>כיסוי</div>
           </div>
         )}

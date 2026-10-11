@@ -26,7 +26,7 @@ export function InlineAlert({ kind, children, style }: InlineAlertProps) {
       role="status"
       style={{
         padding: '9px 12px',
-        borderRadius: 12,
+        borderRadius: 'var(--r-sm)',
         background: bg,
         color: fg,
         fontSize: 13,
