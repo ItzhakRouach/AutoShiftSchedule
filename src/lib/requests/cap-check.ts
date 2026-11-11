@@ -39,3 +39,58 @@ export function perDayCapBlocks(cap: number | null | undefined, dayOffCount: num
 export function perDayCapMessage(dayOffCount: number, cap: number): string {
   return `כבר ${dayOffCount} עובדים ביקשו חופש ביום זה — המכסה היומית (${cap}) מלאה`
 }
+
+// ── Request-day cap (any day with a request counts once) ─────────────────────
+
+/** Minimal row shape shared by the employee + manager request readers. */
+export interface RequestDayRow {
+  is_off: boolean
+  preferred_shift_ids: string[]
+}
+
+/**
+ * How many DAYS carry a real request: off-marked OR at least one preferred
+ * shift. A day with several options still counts once; junk empty rows
+ * (`is_off=false`, no shifts — the manager path can persist those) count zero.
+ */
+export function countRequestDays(rows: RequestDayRow[]): number {
+  let n = 0
+  for (const r of rows) {
+    if (r.is_off || (r.preferred_shift_ids?.length ?? 0) > 0) n += 1
+  }
+  return n
+}
+
+/**
+ * Whether saving a NON-EMPTY request on a new day would breach the weekly
+ * request-day cap. `unlimited` is the per-employee exemption flag;
+ * `usedExcludingThisDay` counts the employee's OTHER request days this week.
+ */
+export function requestCapBlocks(
+  cap: number | null | undefined,
+  unlimited: boolean,
+  usedExcludingThisDay: number,
+): boolean {
+  if (unlimited) return false
+  return weeklyCapBlocks(cap, usedExcludingThisDay)
+}
+
+/** Hebrew error message for a weekly request-day cap breach. */
+export function requestCapMessage(cap: number): string {
+  return `ניתן לבקש עד ${cap} ימים בשבוע — הגעת למקסימום`
+}
+
+/**
+ * UI twin of the server checks: is the cap reached for the day currently being
+ * edited? The active day is excluded when it already counts toward `current`
+ * (its save replaces itself), so editing/clearing an existing day never reads
+ * as "reached". `null`/`<=0` cap → never reached.
+ */
+export function capReachedExcludingActive(
+  cap: number | null | undefined,
+  current: number,
+  activeCounted: boolean,
+): boolean {
+  if (cap == null || cap <= 0) return false
+  return current - (activeCounted ? 1 : 0) >= cap
+}
