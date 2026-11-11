@@ -13,6 +13,8 @@ export function parseFormData(formData: FormData) {
   const observesShabbat = observesShabbatRaw || observesHolidaysRaw
   const observesHolidays = observesShabbatRaw || observesHolidaysRaw
   const mustAccept = formData.get('mustAccept') === 'true'
+  // Absent (legacy payload) → false, i.e. the workplace request-day cap applies.
+  const unlimitedRequests = formData.get('unlimitedRequests') === 'true'
 
   // employmentType
   const rawType = (formData.get('employmentType') as string | null) ?? 'full'
@@ -50,8 +52,8 @@ export function parseFormData(formData: FormData) {
 
   return {
     name, phone, minShifts, maxShifts, employmentType,
-    observesShabbat, observesHolidays, mustAccept, roleIds, seniorRoleIds, availability,
-    customAvailability,
+    observesShabbat, observesHolidays, mustAccept, unlimitedRequests, roleIds, seniorRoleIds,
+    availability, customAvailability,
   }
 }
 

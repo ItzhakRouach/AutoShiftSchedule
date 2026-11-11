@@ -8,7 +8,7 @@ interface ToggleRowDef {
   key: string
   label: string
   desc: string
-  icon: 'moon' | 'sun' | 'shield'
+  icon: 'moon' | 'sun' | 'shield' | 'calendar'
   value: boolean
   setter: (v: boolean) => void
 }
@@ -19,6 +19,8 @@ interface EmployeeSettingsTogglesProps {
   setObservesShabbat: (v: boolean) => void
   mustAccept: boolean
   setMustAccept: (v: boolean) => void
+  unlimitedRequests: boolean
+  setUnlimitedRequests: (v: boolean) => void
 }
 
 export function EmployeeSettingsToggles({
@@ -26,6 +28,8 @@ export function EmployeeSettingsToggles({
   setObservesShabbat,
   mustAccept,
   setMustAccept,
+  unlimitedRequests,
+  setUnlimitedRequests,
 }: EmployeeSettingsTogglesProps) {
   const rows: ToggleRowDef[] = [
     {
@@ -43,6 +47,14 @@ export function EmployeeSettingsToggles({
       icon: 'shield',
       value: mustAccept,
       setter: setMustAccept,
+    },
+    {
+      key: 'unlimitedRequests',
+      label: 'ללא הגבלת בקשות',
+      desc: 'יכול לבקש כל כמות ימים בשבוע, מעבר למגבלת מקום העבודה',
+      icon: 'calendar',
+      value: unlimitedRequests,
+      setter: setUnlimitedRequests,
     },
   ]
 

@@ -7,7 +7,7 @@ import { fetchSeniorRoleIds } from '@/lib/employees/roles'
 import { getLatestInvite } from './invite-actions'
 import { TeamClient } from './TeamClient'
 import { InvitePanel } from './InvitePanel'
-import type { RoleOption, EmployeeData } from './EmployeeEditor'
+import type { RoleOption, EmployeeData } from './types'
 import type { ShiftTypeOption } from './AvailabilityGrid'
 import type { AvailabilityItem } from '@/lib/validation/employee'
 import type { EmploymentType } from '@/lib/validation/employee'
@@ -51,7 +51,7 @@ export default async function TeamPage() {
         .order('start_hour'),
       supabase
         .from('employees')
-        .select('id, name, phone, color, min_shifts_per_week, max_shifts_per_week, employment_type, observes_shabbat, observes_holidays, must_accept, status, employee_roles(role_id)')
+        .select('id, name, phone, color, min_shifts_per_week, max_shifts_per_week, employment_type, observes_shabbat, observes_holidays, must_accept, unlimited_requests, status, employee_roles(role_id)')
         .eq('workplace_id', workplace.id)
         .order('name'),
     ])
@@ -110,6 +110,7 @@ export default async function TeamPage() {
       observesShabbat: e.observes_shabbat ?? false,
       observesHolidays: e.observes_holidays ?? false,
       mustAccept: e.must_accept ?? false,
+      unlimitedRequests: e.unlimited_requests ?? false,
       status: e.status,
       roleIds: (e.employee_roles ?? []).map((er: { role_id: string }) => er.role_id),
       seniorRoleIds: seniorByEmployee[e.id] ?? [],

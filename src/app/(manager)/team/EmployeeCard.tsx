@@ -6,7 +6,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { RoleChip } from '@/components/ui/RoleChip'
 import { Icon } from '@/components/ui/Icon'
 import { PendingInviteButton } from './PendingInviteButton'
-import type { EmployeeData, RoleOption } from './EmployeeEditor'
+import type { EmployeeData, RoleOption } from './types'
 
 interface EmployeeCardProps {
   employee: EmployeeData

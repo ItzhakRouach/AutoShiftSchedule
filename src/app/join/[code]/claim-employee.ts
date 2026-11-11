@@ -27,7 +27,8 @@ export interface ClaimParams {
  *
  * Match key is the normalized phone, which both `createEmployee` and the join
  * form run through `toLocalIsraeliPhone`. Manager-configured fields
- * (employment_type, shift bounds, roles, must_accept) are preserved on a claim;
+ * (employment_type, shift bounds, roles, must_accept, unlimited_requests) are
+ * preserved on a claim;
  * only the account link + the employee's own personal fields are written.
  *
  * Returns null on success, or a Hebrew error string.

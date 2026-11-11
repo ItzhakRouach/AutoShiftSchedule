@@ -41,6 +41,9 @@ export const employeeSchema = z.object({
   observesShabbat: z.boolean(),
   observesHolidays: z.boolean(),
   mustAccept: z.boolean(),
+  // Exempt from the workplace's weekly request-day cap. Optional so legacy
+  // payloads that predate the flag still parse (→ false = capped).
+  unlimitedRequests: z.boolean().optional().default(false),
 
   roleIds: z
     .array(z.string().uuid({ message: 'מזהה תפקיד לא תקין' }))

@@ -37,7 +37,8 @@ export async function createEmployee(
 
   const {
     name, phone, minShifts, maxShifts, employmentType,
-    observesShabbat, observesHolidays, mustAccept, roleIds, seniorRoleIds, availability,
+    observesShabbat, observesHolidays, mustAccept, unlimitedRequests, roleIds, seniorRoleIds,
+    availability,
   } = parsed.data
   const seniorSet = new Set(seniorRoleIds.filter((rid) => roleIds.includes(rid)))
 
@@ -74,6 +75,7 @@ export async function createEmployee(
       observes_shabbat: observesShabbat,
       observes_holidays: observesHolidays,
       must_accept: mustAccept,
+      unlimited_requests: unlimitedRequests,
       status: 'pending',
     })
     .select('id')
@@ -126,7 +128,8 @@ export async function updateEmployee(
 
   const {
     name, phone, minShifts, maxShifts, employmentType,
-    observesShabbat, observesHolidays, mustAccept, roleIds, seniorRoleIds, availability,
+    observesShabbat, observesHolidays, mustAccept, unlimitedRequests, roleIds, seniorRoleIds,
+    availability,
   } = parsed.data
 
   const ownErr = await workplaceOwnershipError(
@@ -150,6 +153,7 @@ export async function updateEmployee(
       observes_shabbat: observesShabbat,
       observes_holidays: observesHolidays,
       must_accept: mustAccept,
+      unlimited_requests: unlimitedRequests,
     })
     .eq('id', id)
 

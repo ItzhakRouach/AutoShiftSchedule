@@ -55,3 +55,17 @@ describe('parseFormData — combined שומר שבת וחג toggle', () => {
     expect(result.observesShabbat).toBe(false)
   })
 })
+
+describe('parseFormData — ללא הגבלת בקשות toggle', () => {
+  it('unlimitedRequests=true → true', () => {
+    expect(parseFormData(makeForm({ unlimitedRequests: 'true' })).unlimitedRequests).toBe(true)
+  })
+
+  it('unlimitedRequests=false → false', () => {
+    expect(parseFormData(makeForm({ unlimitedRequests: 'false' })).unlimitedRequests).toBe(false)
+  })
+
+  it('field absent (legacy payload) → false, so the workplace cap applies', () => {
+    expect(parseFormData(makeForm()).unlimitedRequests).toBe(false)
+  })
+})

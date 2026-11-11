@@ -9,32 +9,8 @@ import { RoleSelector } from './RoleSelector'
 import { EmployeeSettingsToggles } from './EmployeeSettingsToggles'
 import { EmploymentTypeSelector } from './EmploymentTypeSelector'
 import { AvailabilityGrid, type ShiftTypeOption } from './AvailabilityGrid'
-import type { EmploymentType } from '@/lib/validation/employee'
-import type { AvailabilityItem } from '@/lib/validation/employee'
-
-export interface RoleOption {
-  id: string
-  name: string
-  color: string
-  rank: number
-}
-
-export interface EmployeeData {
-  id: string
-  name: string
-  phone: string | null
-  color: string
-  minShifts: number
-  maxShifts: number | null
-  employmentType: EmploymentType
-  observesShabbat: boolean
-  observesHolidays: boolean
-  mustAccept: boolean
-  roleIds: string[]
-  seniorRoleIds?: string[]
-  status: string
-  availability: AvailabilityItem[] | null
-}
+import type { EmploymentType, AvailabilityItem } from '@/lib/validation/employee'
+import type { RoleOption, EmployeeData } from './types'
 
 interface EmployeeEditorProps {
   roles: RoleOption[]
@@ -79,6 +55,7 @@ export function EmployeeEditor({ roles, shiftTypes, employee, onSuccess }: Emplo
     (employee?.observesShabbat ?? false) || (employee?.observesHolidays ?? false),
   )
   const [mustAccept, setMustAccept] = useState(employee?.mustAccept ?? false)
+  const [unlimitedRequests, setUnlimitedRequests] = useState(employee?.unlimitedRequests ?? false)
   const [selectedRoleIds, setSelectedRoleIds] = useState<Set<string>>(new Set(employee?.roleIds ?? []))
   const [seniorRoleIds, setSeniorRoleIds] = useState<Set<string>>(new Set(employee?.seniorRoleIds ?? []))
   const [availability, setAvailability] = useState<AvailabilityItem[] | null>(employee?.availability ?? null)
@@ -159,6 +136,7 @@ export function EmployeeEditor({ roles, shiftTypes, employee, onSuccess }: Emplo
       <EmployeeSettingsToggles
         observesShabbat={observesShabbat} setObservesShabbat={setObservesShabbat}
         mustAccept={mustAccept} setMustAccept={setMustAccept}
+        unlimitedRequests={unlimitedRequests} setUnlimitedRequests={setUnlimitedRequests}
       />
 
       <AvailabilityGrid
