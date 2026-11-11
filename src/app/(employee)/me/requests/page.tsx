@@ -17,6 +17,7 @@ export default async function RequestsPage() {
   const {
     employee, weekStart, period, isReadOnly, shiftTypes, requestsByDay, vacations,
     submittedAt, deadlineLabel, maxOffDaysPerWeek, currentOffDayCount,
+    maxRequestDaysPerWeek, currentRequestDayCount,
   } = ctx
 
   const days = Array.from({ length: 7 }, (_, i) => {
@@ -54,6 +55,8 @@ export default async function RequestsPage() {
         isReadOnly={isReadOnly}
         maxOffDaysPerWeek={maxOffDaysPerWeek}
         currentOffDayCount={currentOffDayCount}
+        maxRequestDaysPerWeek={maxRequestDaysPerWeek}
+        currentRequestDayCount={currentRequestDayCount}
       />
 
       <VacationSection

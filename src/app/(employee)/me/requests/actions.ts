@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { saveDayRequestSchema } from '@/lib/validation/request'
-import { weeklyCapBlocks, weeklyCapMessage, perDayCapBlocks, perDayCapMessage } from '@/lib/requests/cap-check'
+import { requestCapViolation } from './cap-guards'
 import { resolveEmployee, periodInWorkplace, requestWindowLocked, type ActionResult } from './request-helpers'
 
 export async function saveDayRequest(input: unknown): Promise<ActionResult> {
@@ -28,57 +28,19 @@ export async function saveDayRequest(input: unknown): Promise<ActionResult> {
     return { error: 'הבקשות נעולות — חלון ההגשה נסגר' }
   }
 
-  // Enforce the workplace cap on "יום חופש / לא זמין" requests. Only when the
-  // employee is FLIPPING a day TO off (isOff=true). Counts existing off-days
-  // for OTHER days in the same period; the day being saved is excluded since
-  // the upsert will replace it.
-  if (isOff) {
-    const { data: settingsRow } = await supabase
-      .from('workplace_settings')
-      .select('max_off_days_per_week, max_off_per_day')
-      .eq('workplace_id', employee.workplace_id)
-      .maybeSingle()
-    const cap = (settingsRow?.max_off_days_per_week as number | null) ?? null
-    // When cap is null (no limit configured), skip the count query entirely —
-    // there's nothing to compare against, and it saves a round-trip.
-    if (cap != null && cap > 0) {
-      const { data: otherOffs } = await supabase
-        .from('requests')
-        .select('day_of_week')
-        .eq('period_id', periodId)
-        .eq('employee_id', employeeId)
-        .eq('is_off', true)
-        .neq('day_of_week', dayOfWeek)
-      const usedExcludingThisDay = (otherOffs ?? []).length
-      if (weeklyCapBlocks(cap, usedExcludingThisDay)) {
-        return { error: weeklyCapMessage(cap) }
-      }
-    }
-    // Per-DAY cap: how many OTHER workers are already off this day (RLS-safe
-    // RPC). `> 0` guard is defense-in-depth above the DB CHECK (max_off_per_day
-    // can no longer be stored as 0). This is a count-then-insert check, not an
-    // atomic constraint — under concurrent saves two employees could both pass
-    // the check and both land, slightly overfilling the cap. Accepted: these
-    // are small workplaces, the cap is a preventive nudge rather than a hard
-    // guarantee, and the scheduling engine's coverage-rescue logic absorbs any
-    // resulting shortfall. Upgrade path if it ever matters: an atomic RPC with
-    // an advisory lock.
-    const perDayCap = settingsRow?.max_off_per_day as number | null | undefined
-    if (perDayCap != null && perDayCap > 0) {
-      const { data: dayOffCount } = await supabase.rpc('off_count_for_day', {
-        p_period: periodId,
-        p_day: dayOfWeek,
-        p_exclude: employeeId,
-      })
-      if (perDayCapBlocks(perDayCap, (dayOffCount as number | null) ?? 0)) {
-        return { error: perDayCapMessage((dayOffCount as number | null) ?? 0, perDayCap) }
-      }
-    }
+  const isEmptySave = !isOff && preferredShiftIds.length === 0
+
+  // Weekly request-day cap + off-day caps (see cap-guards.ts). A clear is never capped.
+  if (!isEmptySave) {
+    const violation = await requestCapViolation(supabase, {
+      employee, periodId, dayOfWeek, isOff,
+    })
+    if (violation) return { error: violation }
   }
 
   // Empty selection (no shifts, not off) === "no request" — delete the row so
   // the day returns to "טרם נבחר" instead of persisting a junk empty row.
-  if (!isOff && preferredShiftIds.length === 0) {
+  if (isEmptySave) {
     const { error: delErr } = await supabase
       .from('requests')
       .delete()

@@ -3,6 +3,7 @@ import { getAuthUser } from '@/lib/auth/user'
 import { deadlineLabel, isRequestLocked } from '@/lib/deadline/compute'
 import { toISODateUTC } from '@/lib/dates/week'
 import { resolveCollectionWeek } from './collection-week'
+import { countRequestDays } from './cap-check'
 
 export interface ShiftTypeRow {
   id: string
@@ -50,6 +51,11 @@ export interface EmployeeRequestsContext {
   maxOffDaysPerWeek: number | null
   /** How many of the cap the employee has already used this period. */
   currentOffDayCount: number
+  /** EFFECTIVE weekly cap on request days (any request counts once): `null`
+   *  when the workplace has no cap OR this employee is exempt (unlimited). */
+  maxRequestDaysPerWeek: number | null
+  /** Days with a real request (off or shifts) the employee already has this period. */
+  currentRequestDayCount: number
 }
 
 /**
@@ -67,7 +73,7 @@ export async function getEmployeeRequestsContext(
 
   const { data: emp } = await supabase
     .from('employees')
-    .select('id, name, workplace_id')
+    .select('id, name, workplace_id, unlimited_requests')
     .eq('user_id', user.id)
     .limit(1)
     .maybeSingle()
@@ -84,7 +90,7 @@ export async function getEmployeeRequestsContext(
   // started/deadline-passed weeks). Shared with /me's deadline banner.
   const week = await resolveCollectionWeek(supabase, emp.workplace_id, now)
   if (!week) return null
-  const { weekStart, periodId, status, dow, time, tz, maxOffDaysPerWeek } = week
+  const { weekStart, periodId, status, dow, time, tz, maxOffDaysPerWeek, maxRequestDaysPerWeek } = week
 
   const [
     { data: shiftTypesRaw },
@@ -126,9 +132,10 @@ export async function getEmployeeRequestsContext(
     requestsByDay[r.day_of_week] = r as RequestRow
     if (r.is_off) currentOffDayCount += 1
   }
+  const unlimited = (emp.unlimited_requests as boolean | null) ?? false
 
   return {
-    employee: emp,
+    employee: { id: emp.id, name: emp.name, workplace_id: emp.workplace_id },
     weekStart,
     period: { id: periodId, status },
     // Real-time lock: honors the deadline the instant it passes, not only after
@@ -141,5 +148,7 @@ export async function getEmployeeRequestsContext(
     deadlineLabel: deadline,
     maxOffDaysPerWeek,
     currentOffDayCount,
+    maxRequestDaysPerWeek: unlimited ? null : maxRequestDaysPerWeek,
+    currentRequestDayCount: countRequestDays((requestsRaw ?? []) as RequestRow[]),
   }
 }

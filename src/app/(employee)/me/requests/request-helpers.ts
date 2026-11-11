@@ -3,18 +3,24 @@ import { isRequestLocked } from '@/lib/deadline/compute'
 
 export type ActionResult = { ok: true } | { error: string }
 
-/** Resolves the employee row (id + workplace) for the authenticated user. */
+/** Resolves the employee row (id + workplace + request-cap exemption) for the
+ *  authenticated user. */
 export async function resolveEmployee(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
-) {
+): Promise<{ id: string; workplace_id: string; unlimited_requests: boolean } | null> {
   const { data } = await supabase
     .from('employees')
-    .select('id, workplace_id')
+    .select('id, workplace_id, unlimited_requests')
     .eq('user_id', userId)
     .limit(1)
     .maybeSingle()
-  return data
+  if (!data) return null
+  return {
+    id: data.id as string,
+    workplace_id: data.workplace_id as string,
+    unlimited_requests: (data.unlimited_requests as boolean | null) ?? false,
+  }
 }
 
 /** True if the period exists AND belongs to the employee's workplace. Guards

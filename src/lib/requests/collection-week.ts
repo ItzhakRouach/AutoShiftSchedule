@@ -23,6 +23,8 @@ export interface CollectionWeek {
   time: string | null
   tz: string
   maxOffDaysPerWeek: number | null
+  /** Workplace cap on request DAYS per week (any request counts once), `null` = no limit. */
+  maxRequestDaysPerWeek: number | null
 }
 
 /** How many consecutive weeks the resolvers may roll forward (shared with the
@@ -63,7 +65,7 @@ export async function resolveCollectionWeek(
   const [{ data: settingsRow }, { data: wpRow }] = await Promise.all([
     supabase
       .from('workplace_settings')
-      .select('request_deadline_dow, request_deadline_time, max_off_days_per_week')
+      .select('request_deadline_dow, request_deadline_time, max_off_days_per_week, max_request_days_per_week')
       .eq('workplace_id', workplaceId)
       .maybeSingle(),
     supabase.from('workplaces').select('timezone').eq('id', workplaceId).maybeSingle(),
@@ -74,6 +76,8 @@ export async function resolveCollectionWeek(
   const tz = (wpRow?.timezone as string | null | undefined) ?? 'Asia/Jerusalem'
   const maxOffDaysPerWeek =
     (settingsRow?.max_off_days_per_week as number | null | undefined) ?? null
+  const maxRequestDaysPerWeek =
+    (settingsRow?.max_request_days_per_week as number | null | undefined) ?? null
   // Israel wall clock — on UTC servers the local date lags Israel by 2–3h
   // around midnight, which briefly resolved the WRONG week at the boundary.
   const todayISO = todayInIsraelISO(now)
@@ -121,5 +125,6 @@ export async function resolveCollectionWeek(
     time,
     tz,
     maxOffDaysPerWeek,
+    maxRequestDaysPerWeek,
   }
 }

@@ -51,16 +51,21 @@ export async function managerSaveDayRequest(input: {
   if (ownErr) return { error: ownErr }
 
   const admin = createAdminClient()
-  const { error } = await admin.from('requests').upsert(
-    {
-      period_id: periodId,
-      employee_id: employeeId,
-      day_of_week: dayOfWeek,
-      is_off: isOff,
-      preferred_shift_ids: shiftIds,
-    },
-    { onConflict: 'period_id,employee_id,day_of_week' },
-  )
+  // Empty selection === "no request": delete the row (mirrors the employee
+  // path) so no junk `is_off=false, []` row lingers to confuse day counts.
+  const { error } = !isOff && shiftIds.length === 0
+    ? await admin.from('requests').delete()
+        .eq('period_id', periodId).eq('employee_id', employeeId).eq('day_of_week', dayOfWeek)
+    : await admin.from('requests').upsert(
+        {
+          period_id: periodId,
+          employee_id: employeeId,
+          day_of_week: dayOfWeek,
+          is_off: isOff,
+          preferred_shift_ids: shiftIds,
+        },
+        { onConflict: 'period_id,employee_id,day_of_week' },
+      )
   if (error) return { error: 'שגיאה בשמירת הבקשה' }
 
   revalidatePath('/schedule')
