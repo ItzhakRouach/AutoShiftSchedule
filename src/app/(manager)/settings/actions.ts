@@ -38,6 +38,14 @@ const deadlineSchema = z.object({
     ])
     .transform((v) => (v === '' ? null : v))
     .nullable(),
+  // Empty input → null (no weekly request-day cap).
+  max_request_days_per_week: z
+    .union([
+      z.coerce.number().int().min(1, { message: 'ערך בין 1 ל-7' }).max(7),
+      z.literal(''),
+    ])
+    .transform((v) => (v === '' ? null : v))
+    .nullable(),
 })
 
 export async function updateRequestDeadline(
@@ -53,12 +61,17 @@ export async function updateRequestDeadline(
   const workplace = await getActiveWorkplace(supabase)
   if (!workplace) return { error: 'לא נמצא מקום עבודה.' }
 
+  // Absent (a /settings tab loaded before this field existed) ≠ cleared: only
+  // write the column when the form actually carried it, so a stale tab can't
+  // silently reset the cap to "no limit".
+  const rawRequestCap = formData.get('max_request_days_per_week') as string | null
   const raw = {
     request_deadline_dow: formData.get('request_deadline_dow'),
     // Normalise to HH:MM (the field may submit HH:MM:SS from a DB-seeded value).
     request_deadline_time: hhmm(formData.get('request_deadline_time') as string | null),
     max_off_per_day: (formData.get('max_off_per_day') as string | null) ?? '',
     max_off_days_per_week: (formData.get('max_off_days_per_week') as string | null) ?? '',
+    max_request_days_per_week: rawRequestCap ?? '',
   }
 
   const parsed = deadlineSchema.safeParse(raw)
@@ -70,8 +83,10 @@ export async function updateRequestDeadline(
     return { fieldErrors }
   }
 
-  const { request_deadline_dow, request_deadline_time, max_off_per_day, max_off_days_per_week } =
-    parsed.data
+  const {
+    request_deadline_dow, request_deadline_time, max_off_per_day, max_off_days_per_week,
+    max_request_days_per_week,
+  } = parsed.data
 
   const { error: upsertError } = await supabase
     .from('workplace_settings')
@@ -82,6 +97,7 @@ export async function updateRequestDeadline(
         request_deadline_time,
         max_off_per_day,
         max_off_days_per_week,
+        ...(rawRequestCap !== null ? { max_request_days_per_week } : {}),
       },
       { onConflict: 'workplace_id' },
     )
