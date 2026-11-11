@@ -18,15 +18,23 @@ Supabase Storage.
 
 ## Data model (tables)
 `organizations` · `workplaces` · `roles` · `employees` (user_id?, role_ids[], min_shifts_per_week,
-observes_shabbat, observes_holidays, must_accept, status) · `shift_types` (8h base + 12h fallback variants) ·
+observes_shabbat, observes_holidays, must_accept, unlimited_requests, status) · `shift_types` (8h base + 12h fallback variants) ·
 `shift_requirements` (workplace × day-of-week × shift × role → count) · `schedule_periods`
 (collecting/locked/published) · `requests` (per-day off/preferred shifts + vacation ranges) · `assignments`
 (employee, period, date, shift_type, role, source) · `holidays` (auto-filled, editable) · `invites`
 (code, expiry) · `workplace_settings` (request_deadline, publish_day, min_rest_hours, allow_12h_fallback,
-greenapi config) · `day_notes` (period × employee × day → label; marks the employee off-shift with a visible
+max_off_days_per_week, max_off_per_day, max_request_days_per_week, greenapi config) · `day_notes` (period × employee × day → label; marks the employee off-shift with a visible
 reason) · `slot_marks` (period × day × shift_type × role → label; the manager declares a cell intentionally
 empty — e.g. יום כיפור. The cell renders neutral with the label instead of the red "לא מאויש" and is waived
 from every coverage gap count. `label` may be ''; membership, not the text, is what marks the slot).
+
+**Request caps** (enforced in the employee `saveDayRequest` action, pure helpers in
+`src/lib/requests/cap-check.ts`): `max_request_days_per_week` (default 3, NULL = none) caps how many
+DAYS an employee may request per week — a day counts once whether it holds one shift, several, or an off
+mark; clearing a day is never capped. `employees.unlimited_requests` ("ללא הגבלת בקשות" on /team)
+exempts one employee. The off-day caps (`max_off_days_per_week`, `max_off_per_day`) apply on top.
+Manager edits from the requests tab bypass every cap, like they bypass the deadline.
+Absence ranges (`employee_vacations`) are a separate, manager-approved flow and are not counted.
 
 All tables: **RLS** scoped by org/workplace membership. Migrations are forward-only in `supabase/migrations/`.
 Defaults (roles, shift_types) are seeded on workplace creation, not via migration.
