@@ -76,7 +76,7 @@ test('12h pair offers only the day\'s assigned staff and applies', async ({ page
 
   expect(await openFormableDay(page)).toBe(true)
 
-  await page.locator('button', { hasText: /אחמ|מוקדן|מאבטח/ }).first().click()
+  await page.locator('button:not([data-testid="balance-row"])', { hasText: /אחמ|מוקדן|מאבטח/ }).first().click()
   await expect(page.getByText(/עובד בוקר/)).toBeVisible({ timeout: 8000 })
 
   // Candidates come from the day's existing morning / night assignments.
@@ -140,7 +140,7 @@ test('apply is gated until both morning and night are chosen', async ({ page }) 
   await seedStaffAndSchedule(page)
 
   expect(await openFormableDay(page)).toBe(true)
-  await page.locator('button', { hasText: /אחמ|מוקדן|מאבטח/ }).first().click()
+  await page.locator('button:not([data-testid="balance-row"])', { hasText: /אחמ|מוקדן|מאבטח/ }).first().click()
   await expect(page.getByText(/עובד בוקר/)).toBeVisible({ timeout: 8000 })
 
   const applyBtn = page.getByRole('button', { name: 'החל צמד 12 שעות' })

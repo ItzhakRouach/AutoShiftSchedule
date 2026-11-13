@@ -28,6 +28,9 @@ interface Props {
   /** Initial mobile layout. Employees default to 'day'; managers stay 'week'.
    *  Desktop always shows the week table regardless of this. */
   defaultLayout?: 'week' | 'day'
+  /** Controlled worker selection for the week table (manager balance panel). */
+  selectedId?: string | null
+  onSelect?: (id: string | null) => void
 }
 
 /**
@@ -37,7 +40,7 @@ interface Props {
  * The week table renders ONCE — CSS classes decide where it's visible — so the
  * DOM (and test ids) stay unique.
  */
-export function ScheduleGrids({ view, onSlot, onDayPair, assign, editMeta, selfId, defaultLayout = 'week' }: Props) {
+export function ScheduleGrids({ view, onSlot, onDayPair, assign, editMeta, selfId, defaultLayout = 'week', selectedId, onSelect }: Props) {
   const [layout, setLayout] = useState<'week' | 'day'>(defaultLayout)
   const [selDay, setSelDay] = useState(0)
 
@@ -45,7 +48,7 @@ export function ScheduleGrids({ view, onSlot, onDayPair, assign, editMeta, selfI
     <>
       {/* Week table: always on desktop; on mobile only when 'week' is picked. */}
       <div className={layout === 'week' ? 'sched-week-on' : 'sched-week-deskonly'}>
-        <WeekTable view={view} onSlot={onSlot} onDayPair={onDayPair} assign={assign} editMeta={editMeta} initialSelectedId={selfId} />
+        <WeekTable view={view} onSlot={onSlot} onDayPair={onDayPair} assign={assign} editMeta={editMeta} initialSelectedId={selfId} selectedId={selectedId} onSelect={onSelect} />
       </div>
 
       {/* Mobile-only: layout toggle + (in day mode) a day selector + DayGrid. */}

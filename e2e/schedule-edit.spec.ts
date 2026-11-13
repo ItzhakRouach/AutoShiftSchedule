@@ -112,7 +112,7 @@ test('manager manually edits a slot after auto-generating', async ({ page }) => 
 
   // Click a strictly-available candidate (זמין / ✓ ביקש) if one exists —
   // hard-blocked workers are collapsed and assigned-elsewhere ones are hidden.
-  const strictCandidate = page.locator('button', { hasText: /^.*(זמין|ביקש)/ }).first()
+  const strictCandidate = page.getByTestId('candidate-row').filter({ hasText: /^.*(זמין|ביקש)/ }).first()
   if (await strictCandidate.count()) {
     await strictCandidate.click()
   }
@@ -150,7 +150,7 @@ test('double-booking is server-rejected on tap-to-assign; drag moves the worker 
   // in-sheet candidate row is the only non-draggable one; target that.
   await morningDay0.click()
   await expect(page.getByText(SHEET_ANCHOR)).toBeVisible({ timeout: 8000 })
-  await page.locator('button:not([draggable])', { hasText: 'דנה כהן' }).first().click()
+  await page.getByTestId('candidate-row').filter({ hasText: 'דנה כהן' }).first().click()
   await expect(page.getByTestId('assign-toast').getByText('שובץ ✓')).toBeVisible({ timeout: 5000 })
   await expect(page.getByText(SHEET_ANCHOR)).toBeHidden({ timeout: 8000 })
   await expect(morningDay0).toContainText('דנה כהן')
@@ -230,7 +230,7 @@ test('undo after a sheet assign restores the empty slot', async ({ page }) => {
   // the edit onto the same undo stack used by the fast tap/drag paths).
   await morningDay0.click()
   await expect(page.getByText(SHEET_ANCHOR)).toBeVisible({ timeout: 8000 })
-  await page.locator('button:not([draggable])', { hasText: 'דנה כהן' }).first().click()
+  await page.getByTestId('candidate-row').filter({ hasText: 'דנה כהן' }).first().click()
   await expect(page.getByText(SHEET_ANCHOR)).toBeHidden({ timeout: 8000 })
   await expect(morningDay0).toContainText('דנה כהן')
 

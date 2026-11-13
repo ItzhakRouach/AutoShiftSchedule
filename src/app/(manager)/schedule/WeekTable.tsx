@@ -25,6 +25,10 @@ interface Props {
   assign?: CellAssign
   /** Pre-select an employee so their cells are highlighted on first render. */
   initialSelectedId?: string
+  /** Controlled selection (shared with the balance panel). When `onSelect` is
+   *  absent the table keeps its own selection state. */
+  selectedId?: string | null
+  onSelect?: (id: string | null) => void
   /** When false, empty cells render blank instead of "לא מאויש" (read-only views). */
   showUnfilled?: boolean
   /** Manager edit metadata — enables inline rest/over-max conflict flags + the
@@ -32,8 +36,10 @@ interface Props {
   editMeta?: EditMeta | null
 }
 
-export function WeekTable({ view, onSlot, onDayPair, assign, initialSelectedId, showUnfilled = true, editMeta = null }: Props) {
-  const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId ?? null)
+export function WeekTable({ view, onSlot, onDayPair, assign, initialSelectedId, selectedId: controlledId, onSelect, showUnfilled = true, editMeta = null }: Props) {
+  const [ownId, setOwnId] = useState<string | null>(initialSelectedId ?? null)
+  const selectedId = onSelect ? controlledId ?? null : ownId
+  const setSelectedId = onSelect ?? setOwnId
 
   // Heavy derived data — recompute only when inputs actually change.
   const weekGrid = useMemo(() => buildWeekGrid(view), [view])
@@ -50,7 +56,7 @@ export function WeekTable({ view, onSlot, onDayPair, assign, initialSelectedId, 
 
   const orderedRoleIds = view.roles.map((r) => r.id)
   const days = view.days
-  const toggleSelect = (id: string) => setSelectedId((cur) => (cur === id ? null : id))
+  const toggleSelect = (id: string) => setSelectedId(selectedId === id ? null : id)
   const editable = !!onSlot
   function buildSlot(day: number, shift: ShiftKey, roleId: string): SlotCtx | null {
     const shiftTypeId = view.shiftTypeIdByKey[shift]

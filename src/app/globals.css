@@ -158,6 +158,29 @@ textarea:focus-visible,
   .sched-week-deskonly { display: block; }
 }
 
+/* Manager work area: grid + live balance panel. Phones keep the distribution
+   drawer; desktops stack the panel under the grid; wide screens dock it beside. */
+.sched-balance { display: none; }
+@media (min-width: 1024px) {
+  .sched-balance { display: block; margin-top: 16px; }
+}
+@media (min-width: 1280px) {
+  .schedule-main:has(.sched-work) { max-width: min(1760px, 97vw); }
+  .sched-work {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 400px;
+    gap: 16px;
+    align-items: start;
+  }
+  .sched-balance {
+    margin-top: 0;
+    position: sticky;
+    top: 76px;
+    max-height: calc(100vh - 92px);
+    overflow-y: auto;
+  }
+}
+
 /* ── Sticky submit bar on mobile so "submit" is always reachable on the
    long worker-requests page (static within the flow on desktop). */
 @media (max-width: 1023px) {

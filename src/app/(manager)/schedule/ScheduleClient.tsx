@@ -10,7 +10,7 @@ import { useScheduleActions } from './useScheduleActions'
 import { EmptyStateCard } from './EmptyStateCard'
 import { FeasibilityBanner } from './FeasibilityBanner'
 import { CoverageIssues } from './CoverageIssues'
-import { ScheduleGrids } from './ScheduleGrids'
+import { ScheduleWorkArea } from './ScheduleWorkArea'
 import { RequestsOverview } from './RequestsOverview'
 import { SwapEditor, type SlotCtx } from './SwapEditor'
 import { TwelvePairEditor } from './TwelvePairEditor'
@@ -137,7 +137,7 @@ export function ScheduleClient({ view, editMeta, workerVacations, rolelessEmploy
               <UndoRedoBar history={assign.history} />
             </>
           )}
-          <ScheduleGrids
+          <ScheduleWorkArea
             view={view}
             onSlot={editMeta ? setSlot : undefined}
             onDayPair={editMeta ? setPairDay : undefined}

@@ -26,6 +26,7 @@ export function CandidateRow({ name, color, label, tone, disabled, onClick }: Pr
   const t = TONE[tone]
   return (
     <button
+      data-testid="candidate-row"
       disabled={disabled}
       onClick={onClick}
       style={{
