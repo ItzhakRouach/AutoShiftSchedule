@@ -11,6 +11,8 @@ interface Props {
   view: ScheduleView
   /** Coverage % from the last generate run (null before a run). */
   pct: number | null
+  /** Week state shown as a chip beside the title; omitted on the read-only view. */
+  state?: 'empty' | 'draft' | 'published'
   /** Opens the worker-distribution drawer. Omitted on the read-only view. */
   onOpenDistribution?: () => void
 }
@@ -18,13 +20,26 @@ interface Props {
 /** Page title + at-a-glance week health: a LIVE unfilled-shifts counter (always
  *  accurate, recomputed from the current grid) alongside the generate-time
  *  coverage %. Split out to keep ScheduleClient ≤200 lines. */
-export function ScheduleHeader({ view, pct, onOpenDistribution }: Props) {
+const STATE_CHIP = {
+  empty: { text: 'טרם שובץ', color: 'var(--text-2)', bg: 'var(--surface-sunk)' },
+  draft: { text: 'טיוטה · לא פורסם', color: 'var(--text)', bg: 'var(--warning-soft)' },
+  published: { text: 'פורסם לעובדים', color: 'var(--success)', bg: 'var(--success-soft)' },
+} as const
+
+export function ScheduleHeader({ view, pct, state, onOpenDistribution }: Props) {
   const gaps = useMemo(() => countUncoveredCells(view), [view])
   return (
     <>
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, gap: 10 }}>
       <div>
-        <h1 style={{ margin: 0, fontSize: 'var(--text-h1)', fontWeight: 800 }}>סידור עבודה</h1>
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+          <h1 style={{ margin: 0, fontSize: 'var(--text-h1)', fontWeight: 800 }}>סידור עבודה</h1>
+          {state && (
+            <span data-testid="week-state" style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: STATE_CHIP[state].color, background: STATE_CHIP[state].bg, padding: '4px 12px', borderRadius: 'var(--r-pill)' }}>
+              {STATE_CHIP[state].text}
+            </span>
+          )}
+        </div>
         {/* Always name the week being edited — after the auto-roll past a
             published week, this is what tells the manager WHICH week this is. */}
         <div data-testid="editing-week-label" style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-2)', marginTop: 3 }}>

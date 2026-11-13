@@ -37,7 +37,7 @@ test('the coverage popup offers an AI explanation and renders it', async ({ page
 
   await page.goto('/schedule')
   await expect(page.getByRole('heading', { name: 'סידור עבודה' })).toBeVisible({ timeout: 10000 })
-  await page.getByRole('button', { name: 'צור סידור אוטומטי' }).click()
+  await page.getByRole('button', { name: 'שיבוץ אוטומטי' }).click()
 
   // 2 employees cannot staff 63 required slots, so the issues popup must open.
   const explain = page.getByTestId('ai-explain-btn')

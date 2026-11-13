@@ -26,7 +26,7 @@ export interface RunOptions {
    *  are regenerated around them. When true, ALL rows are wiped first. */
   replaceManual?: boolean
   /** When true, the engine also runs the 12h auto-coverage pass (the secondary
-   *  "השלם 12ש׳ אוטומטית" action). Default false — the primary generate button
+   *  "השלמה עם משמרות 12 שעות" action). Default false — the primary generate button
    *  fills only regular 8h shifts (see EngineInput.skipTwelve). */
   withTwelveHour?: boolean
 }

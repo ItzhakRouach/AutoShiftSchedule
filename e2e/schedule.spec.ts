@@ -61,7 +61,7 @@ test('manager generates an auto schedule and sees coverage + assignments', async
   await expect(page.getByRole('heading', { name: 'סידור עבודה' })).toBeVisible({ timeout: 10000 })
 
   // Generate the schedule.
-  await page.getByRole('button', { name: 'צור סידור אוטומטי' }).click()
+  await page.getByRole('button', { name: 'שיבוץ אוטומטי' }).click()
 
   // Coverage value should render.
   const coverage = page.getByTestId('coverage')
@@ -69,10 +69,13 @@ test('manager generates an auto schedule and sees coverage + assignments', async
   await expect(coverage).toHaveText(/\d+%/)
   await dismissCoverageIssues(page)
 
-  // Task 5: generation is 8h-only by default — if gaps remain, the secondary
-  // "השלם 12ש׳ אוטומטית" button offers to complete coverage with 12h shifts.
+  // Generation is 8h-only by default — if gaps remain, the "עוד" sheet offers
+  // "השלמה עם משמרות 12 שעות" to complete coverage with 12h shifts.
   // Small e2e seeds may or may not leave gaps, so this is conditional.
+  await page.getByTestId('more-actions').click()
+  await expect(page.getByTestId('more-actions-sheet')).toBeVisible()
   const completeTwelve = page.getByTestId('complete-twelve')
+  if (!(await completeTwelve.count())) await page.keyboard.press('Escape')
   if (await completeTwelve.count()) {
     await completeTwelve.click()
     await expect(coverage).toHaveText(/\d+%/, { timeout: 30000 })

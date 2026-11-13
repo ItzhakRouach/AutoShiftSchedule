@@ -1,18 +1,14 @@
 import Link from 'next/link'
 import { Card } from '@/components/ui/Card'
 import { LtrText } from '@/components/ui/LtrText'
+import { DAY_SHORT, dayTitle } from '@/lib/domain/days'
 import type { MyShift, MyWeek } from '@/lib/schedule/my-shifts'
-
-const DAY_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
-const DAY_SHORT = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳']
 
 /** "2026-11-15" → "15.11" */
 function dm(iso: string): string {
   const [, m, d] = iso.split('-').map(Number)
   return `${d}.${m}`
 }
-
-const dayTitle = (i: number) => (i === 6 ? 'שבת' : `יום ${DAY_NAMES[i]}`)
 
 /** The hero card: the one thing an employee opens the app to find out. */
 export function NextShiftCard({ shift, when }: { shift: MyShift; when: string }) {

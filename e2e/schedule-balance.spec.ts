@@ -28,7 +28,7 @@ test('balance panel lists every worker, matches the totals bar, and shares selec
   await addEmployee(page, 'מאיה בר')
 
   await page.goto('/schedule')
-  await page.getByRole('button', { name: 'צור סידור אוטומטי' }).click()
+  await page.getByRole('button', { name: 'שיבוץ אוטומטי' }).click()
   await expect(page.getByTestId('coverage')).toBeVisible({ timeout: 30000 })
   const dismiss = page.getByRole('button', { name: 'הבנתי' })
   if (await dismiss.waitFor({ state: 'visible', timeout: 5000 }).then(() => true, () => false)) await dismiss.click()

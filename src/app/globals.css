@@ -181,6 +181,32 @@ body:has(.bottom-nav) { --bottom-nav-h: 61px; padding-bottom: calc(61px + env(sa
   }
 }
 
+/* ── Schedule action bar: publish / auto-assign / more, pinned to the bottom
+   of the viewport (above the phone tab bar) so they are always in reach. */
+.sched-actionbar {
+  position: sticky;
+  bottom: calc(10px + env(safe-area-inset-bottom) + var(--bottom-nav-h, 0px));
+  z-index: 30;
+  display: flex;
+  gap: 8px;
+  max-width: 640px;
+  margin: 18px auto 0;
+  padding: 10px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-lift);
+}
+
+/* ── Sheet: bottom sheet on phones, centered dialog on desktop. */
+.sheet-wrap { display: flex; flex-direction: column; justify-content: flex-end; }
+.sheet-panel { border-top-left-radius: 26px; border-top-right-radius: 26px; max-height: 86vh; }
+@media (min-width: 1024px) {
+  .sheet-wrap { justify-content: center; align-items: center; }
+  .sheet-panel { width: min(580px, 92vw); border-radius: var(--r-lg); max-height: 90vh; padding-top: 18px !important; }
+  .sheet-handle { display: none; }
+}
+
 /* ── Sticky submit bar on mobile so "submit" is always reachable on the
    long worker-requests page (static within the flow on desktop). */
 @media (max-width: 1023px) {

@@ -57,11 +57,11 @@ test('after publish, the editor rolls to the next week and requests stay editabl
   await page.goto('/schedule')
   await expect(page.getByRole('heading', { name: 'סידור עבודה' })).toBeVisible({ timeout: 10000 })
   const weekLabelBefore = await page.getByTestId('editing-week-label').textContent()
-  await page.getByRole('button', { name: 'צור סידור אוטומטי' }).click()
+  await page.getByRole('button', { name: 'שיבוץ אוטומטי' }).click()
   await expect(page.getByTestId('coverage')).toBeVisible({ timeout: 30000 })
   await dismissCoverageIssues(page)
 
-  await page.getByRole('button', { name: 'פרסם סידור' }).click()
+  await page.getByRole('button', { name: 'פרסום הסידור' }).click()
   const confirmPublish = page.getByRole('button', { name: /לחצו שוב לפרסום/ })
   await confirmPublish.click({ timeout: 3000 }).catch(() => {}) // absent when coverage is full
   await expect(page.getByRole('button', { name: /פורסם/ })).toBeVisible({ timeout: 15000 })

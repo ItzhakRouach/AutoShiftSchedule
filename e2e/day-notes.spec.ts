@@ -45,14 +45,14 @@ test('manager assigns a רענון day note to an employee', async ({ page }) =>
   await addEmployee(page, 'דנה כהן')
 
   await page.goto('/schedule')
-  await page.getByRole('button', { name: 'צור סידור אוטומטי' }).click()
+  await page.getByRole('button', { name: 'שיבוץ אוטומטי' }).click()
   await expect(page.getByTestId('coverage')).toBeVisible({ timeout: 30000 })
   await dismissCoverageIssues(page)
 
-  // Open the day-note editor (trigger button's label now spells out that it
-  // also covers pre-generation temp-worker saving), assign יצחק a רענון on
-  // day 2 (שלישי). The Sheet title itself is still "רענון / הערת יום".
-  await page.getByRole('button', { name: 'רענון / שמירת עובד ליום (לפני יצירה)' }).click()
+  // Open the day-note editor from the "עוד" sheet and assign יצחק a רענון on
+  // day 2 (שלישי). The editor's own title is still "רענון / הערת יום".
+  await page.getByTestId('more-actions').click()
+  await page.getByRole('button', { name: 'שמירת עובד ליום (רענון)' }).click()
   await page.getByTestId('note-day-2').click()
   await page.getByRole('combobox').selectOption({ label: 'יצחק רואש' })
   await page.getByRole('button', { name: 'רענון', exact: true }).click()

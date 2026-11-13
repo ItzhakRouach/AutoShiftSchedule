@@ -162,7 +162,7 @@ export function cellCapacity(assignedCount: number, requiredCount: number): Cell
  * i.e. the "לא מאויש" gaps the manager sees. Mirrors WeekTable's per-cell
  * math exactly: `assignedCount = cellEntries.length + coveredCount` (a 12h
  * shift's covered cell counts toward its target without needing a base
- * occupant). Drives the secondary "השלם 12ש׳ אוטומטית" button's visibility.
+ * occupant). Drives the secondary "השלמה עם משמרות 12 שעות" button's visibility.
  *
  * Cells the manager marked as intentionally empty (see `buildSlotMarkMap`) are
  * skipped — they are a deliberate decision, not a gap to chase. The waiver

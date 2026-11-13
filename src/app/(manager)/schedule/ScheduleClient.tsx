@@ -12,18 +12,20 @@ import { FeasibilityBanner } from './FeasibilityBanner'
 import { CoverageIssues } from './CoverageIssues'
 import { ScheduleWorkArea } from './ScheduleWorkArea'
 import { RequestsOverview } from './RequestsOverview'
-import { SwapEditor, type SlotCtx } from './SwapEditor'
-import { TwelvePairEditor } from './TwelvePairEditor'
-import { DayNoteEditor } from './DayNoteEditor'
 import { DayNotesSummary } from './DayNotesSummary'
 import { Generating } from './parts'
 import { RegenerateConfirm } from './RegenerateConfirm'
 import { DistributionDrawer } from './DistributionDrawer'
 import { PublishControls } from './PublishControls'
 import { WorkerPalette } from './WorkerPalette'
-import { AssignToast } from './AssignToast'
 import { useCellAssign } from './useCellAssign'
-import { GenerateControls } from './GenerateControls'
+import type { SlotCtx } from './SwapEditor'
+import { ScheduleEditors } from './ScheduleEditors'
+import { ScheduleActionBar } from './ScheduleActionBar'
+import { MoreActionsSheet } from './MoreActionsSheet'
+import { ScheduleLegend } from './ScheduleLegend'
+import { AiImprove } from './AiImprove'
+import { countUncoveredCells } from '@/lib/schedule/week-table-data'
 import { ScheduleHeader } from './ScheduleHeader'
 import { copyLastWeekSchedule } from './copy-actions'
 import { UndoRedoBar } from './UndoRedoBar'
@@ -50,12 +52,13 @@ export function ScheduleClient({ view, editMeta, workerVacations, rolelessEmploy
   const [pairDay, setPairDay] = useState<number | null>(null)
   const [showDayNotes, setShowDayNotes] = useState(false)
   const [showDist, setShowDist] = useState(false)
+  const [showMore, setShowMore] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('schedule')
   const [copying, startCopy] = useTransition()
   // Fast drag / tap-to-assign (edit mode only).
   const assign = useCellAssign(view)
 
-  // Confirmation is a two-step inline flow owned by GenerateControls' button.
+  // Confirmation is a two-step inline flow owned by MoreActionsSheet's button.
   function handleCopyLastWeek() {
     startCopy(async () => {
       const res = await copyLastWeekSchedule(view.periodId)
@@ -73,6 +76,8 @@ export function ScheduleClient({ view, editMeta, workerVacations, rolelessEmploy
   if (running) return <Generating />
 
   const pct = coverage ? coverage.percent : null
+  const gaps = countUncoveredCells(view)
+  const canPublish = hasResult || published
 
   return (
     <div>
@@ -85,9 +90,14 @@ export function ScheduleClient({ view, editMeta, workerVacations, rolelessEmploy
         />
       )}
 
-      <div className="schedule-controls">
-      <ScheduleHeader view={view} pct={pct} onOpenDistribution={() => setShowDist(true)} />
+      <ScheduleHeader
+        view={view}
+        pct={pct}
+        state={published ? 'published' : hasResult ? 'draft' : 'empty'}
+        onOpenDistribution={() => setShowDist(true)}
+      />
 
+      <div className="schedule-controls">
       <RolelessNotice employees={rolelessEmployees} />
 
       <FeasibilityBanner feasibility={view.feasibility} />
@@ -98,19 +108,7 @@ export function ScheduleClient({ view, editMeta, workerVacations, rolelessEmploy
 
       {!hasResult && <EmptyStateCard view={view} />}
 
-      <GenerateControls
-        view={view}
-        editMeta={editMeta}
-        status={view.status}
-        hasResult={hasResult}
-        checking={checking}
-        running={running}
-        onOpenDayNotes={() => setShowDayNotes(true)}
-        onGenerateClick={handleGenerateClick}
-        onCompleteTwelveHour={completeTwelveHour}
-        onCopyLastWeek={handleCopyLastWeek}
-        copying={copying}
-      />
+      {hasResult && !published && <AiImprove periodId={view.periodId} />}
 
       <div style={{ height: 14 }} />
       <Segmented
@@ -129,7 +127,7 @@ export function ScheduleClient({ view, editMeta, workerVacations, rolelessEmploy
 
       {/* Managers can open the grid to build by hand even before the auto-run
           (empty cells are fillable via drag/tap/temp workers). */}
-      {viewMode === 'schedule' && (hasResult || published || !!editMeta) && (
+      {viewMode === 'schedule' && (canPublish || !!editMeta) && (
         <>
           {editMeta && (
             <>
@@ -137,6 +135,7 @@ export function ScheduleClient({ view, editMeta, workerVacations, rolelessEmploy
               <UndoRedoBar history={assign.history} />
             </>
           )}
+          <ScheduleLegend />
           <ScheduleWorkArea
             view={view}
             onSlot={editMeta ? setSlot : undefined}
@@ -146,44 +145,53 @@ export function ScheduleClient({ view, editMeta, workerVacations, rolelessEmploy
           />
           <DayNotesSummary view={view} />
 
-      <DistributionDrawer open={showDist} onClose={() => setShowDist(false)} view={view} editMeta={editMeta} />
+          <DistributionDrawer open={showDist} onClose={() => setShowDist(false)} view={view} editMeta={editMeta} />
           {/* `published` alone (no assignments) still needs the controls: a
               cron-published empty week is otherwise impossible to unpublish. */}
-          {(hasResult || published) && (
-            <PublishControls
-              view={view}
-              suggestions={suggestions}
-              published={published}
-              publishing={publishing}
-              onPublish={publish}
-              onUnpublished={() => a.setPublished(false)}
-              onDeleted={resetAfterDelete}
-            />
+          {canPublish && (
+            <PublishControls view={view} suggestions={suggestions} published={published} onUnpublished={() => a.setPublished(false)} />
           )}
         </>
       )}
 
+      <ScheduleActionBar
+        gaps={gaps}
+        canPublish={canPublish}
+        published={published}
+        publishing={publishing}
+        checking={checking}
+        onPublish={publish}
+        onGenerate={handleGenerateClick}
+        onMore={() => setShowMore(true)}
+      />
+      <MoreActionsSheet
+        open={showMore}
+        onClose={() => setShowMore(false)}
+        periodId={view.periodId}
+        editable={!!editMeta}
+        published={published}
+        hasSchedule={canPublish}
+        canCompleteTwelve={hasResult && !published && gaps > 0}
+        running={running}
+        copying={copying}
+        onOpenDayNotes={() => setShowDayNotes(true)}
+        onCopyLastWeek={handleCopyLastWeek}
+        onCompleteTwelveHour={completeTwelveHour}
+        onDeleted={resetAfterDelete}
+      />
+
       {editMeta && (
-        <>
-          <SwapEditor
-            key={slot ? `${slot.day}-${slot.shiftTypeId}-${slot.roleId}` : 'closed'}
-            slot={slot}
-            onClose={() => setSlot(null)}
-            view={view}
-            meta={editMeta}
-            onDone={(undo) => {
-              if (!undo) return
-              // Push sheet edits onto the shared undo stack (undo-only — the sheet
-              // doesn't carry enough context to cleanly redo). Removals get 'הוסר ✓'.
-              const removed = undo.kind === 'unassign' || undo.kind === 'temp-remove'
-              assign.history.push({ undo, redo: null, label: removed ? 'הסרה' : 'שיבוץ' })
-              assign.setToast({ text: removed ? 'הוסר ✓' : 'שובץ ✓', kind: 'ok' })
-            }}
-          />
-          <TwelvePairEditor day={pairDay} onClose={() => setPairDay(null)} view={view} meta={editMeta} />
-          <DayNoteEditor open={showDayNotes} onClose={() => setShowDayNotes(false)} view={view} />
-          <AssignToast toast={assign.toast} onDismiss={assign.dismissToast} />
-        </>
+        <ScheduleEditors
+          view={view}
+          meta={editMeta}
+          assign={assign}
+          slot={slot}
+          onCloseSlot={() => setSlot(null)}
+          pairDay={pairDay}
+          onClosePair={() => setPairDay(null)}
+          showDayNotes={showDayNotes}
+          onCloseDayNotes={() => setShowDayNotes(false)}
+        />
       )}
     </div>
   )

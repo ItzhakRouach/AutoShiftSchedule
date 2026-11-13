@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Sheet } from '@/components/ui/Sheet'
-import { Avatar } from '@/components/ui/Avatar'
-import { Btn } from '@/components/ui/Btn'
 import { InlineAlert } from '@/components/ui/InlineAlert'
 import { SHIFT_META, type ShiftId } from '@/lib/domain/constants'
+import { dayTitle } from '@/lib/domain/days'
+import type { GroupedCandidate } from '@/lib/schedule/candidate-groups'
 import { slotAtCapacity } from '@/lib/schedule/validate-edit-core'
 import { buildWeekGrid, buildSlotMarkMap } from '@/lib/schedule/week-table-data'
 import { coveredByTwelve } from '@/lib/schedule/week-table-twelve'
@@ -20,6 +20,8 @@ import { CandidateList } from './CandidateList'
 import { TempNamePrompt } from './TempNamePrompt'
 import { SlotMarkPrompt } from './SlotMarkPrompt'
 import { TwelveHourAssign } from './TwelveHourAssign'
+import { AssignHeader } from './AssignHeader'
+import { BackToList, MoreOptions, OverrideConfirm, type AssignMode } from './AssignSteps'
 
 export interface SlotCtx {
   day: number
@@ -49,6 +51,7 @@ type Msg = { text: string; kind: 'success' | 'warning' | 'error' } | null
 export function SwapEditor({ slot, onClose, view, meta, onDone }: Props) {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<Msg>(null)
+  const [confirm, setConfirm] = useState<GroupedCandidate | null>(null)
   const closeTimer = useRef<number | null>(null)
 
   // Guard against a pending auto-close timer from a previous open outliving
@@ -62,7 +65,7 @@ export function SwapEditor({ slot, onClose, view, meta, onDone }: Props) {
 
   // Marking only reads on a cell with nothing in it — no occupant, no 12h
   // coverage. Reuses the day-view row builder so "empty" means exactly what the
-  // table and the day cards mean by it. Memoized because the sheet re-renders
+  // table and the day cards mean by it. Memoized because the window re-renders
   // on every keystroke in SlotMarkPrompt, and this rebuilds the whole week grid.
   const markRow = useMemo(
     () =>
@@ -74,13 +77,13 @@ export function SwapEditor({ slot, onClose, view, meta, onDone }: Props) {
         : null,
     [view, slot],
   )
+  // A cell that is already marked opens straight on its mark, ready to edit or remove.
+  const [mode, setMode] = useState<AssignMode>(() => (markRow?.markLabel !== undefined ? 'mark' : 'list'))
 
   if (!slot) return null
   const empById = new Map(view.employees.map((e) => [e.id, e]))
-
-  function handleClose() {
-    onClose()
-  }
+  const shift = view.shiftMeta?.[slot.shiftKey] ?? SHIFT_META[slot.shiftKey]
+  const where = `${dayTitle(slot.day)} ${view.days[slot.day]?.date ?? ''} · ${shift.name}`
 
   // Capacity: a role box may not exceed its required headcount. Disable adding
   // base-shift candidates once full (removing/swapping stays available).
@@ -102,11 +105,7 @@ export function SwapEditor({ slot, onClose, view, meta, onDone }: Props) {
         }
         // Always confirm success so an assignment never reads as "nothing
         // happened". A 12h warning stays up for the manager to read; a plain
-        // success shows "שובץ ✓" briefly, then auto-closes. onDone fires the
-        // shared בטל toast immediately (synchronously with the sheet's own
-        // message) — deferring it used to risk the toast being silently
-        // dropped if the sheet closed/remounted before the timer fired, and
-        // let it race a later fast tap/drag toast during the wait.
+        // success closes the window on its own.
         if (res.warning) {
           setMsg({ text: res.warning, kind: 'warning' })
         } else {
@@ -116,70 +115,63 @@ export function SwapEditor({ slot, onClose, view, meta, onDone }: Props) {
         onDone?.(res.undo)
       } finally {
         setBusy(false)
+        setConfirm(null)
       }
     })()
   }
 
   const canMark = !!markRow && markRow.entries.length === 0 && markRow.covered === 0
-
-  function pick(employeeId: string) {
-    run(() => assignSlot(view.periodId, slot!.day, slot!.shiftTypeId, slot!.roleId, employeeId))
-  }
+  const pick = (employeeId: string) =>
+    run(() => assignSlot(view.periodId, slot.day, slot.shiftTypeId, slot.roleId, employeeId))
 
   return (
-    <Sheet open onClose={handleClose} title={`${SHIFT_META[slot.shiftKey].name} · ${slot.roleName}`}>
+    <Sheet open onClose={onClose} title={where} testId="assign-dialog">
       {msg && <InlineAlert kind={msg.kind}>{msg.text}</InlineAlert>}
 
-      {slot.assignedIds.length > 0 && (
-        <div style={{ marginBottom: 12 }}>
-          {slot.assignedIds.map((id) => (
-            <div key={id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                <Avatar name={empById.get(id)?.name ?? '?'} color={empById.get(id)?.color ?? '#888'} size={26} />
-                <span style={{ fontSize: 14, fontWeight: 600 }}>{empById.get(id)?.name}</span>
-              </span>
-              <Btn variant="danger" size="sm" disabled={busy} onClick={() => run(() => unassignSlot(view.periodId, id, slot.day))}>
-                הסר
-              </Btn>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {atCapacity && <InlineAlert kind="info">המשמרת מאוישת במלואה לתפקיד זה. הסירו עובד כדי להחליף.</InlineAlert>}
-
-      <CandidateList
-        view={view}
-        meta={meta}
-        slot={slot}
-        busy={busy}
-        atCapacity={atCapacity}
-        onPick={pick}
-      />
-
-      <TwelveHourAssign slot={slot} view={view} meta={meta} busy={busy} run={run} />
-
-      <TempNamePrompt
-        busy={busy}
-        onSubmit={(name) => run(() => assignTempName(view.periodId, slot.day, slot.shiftTypeId, slot.roleId, name))}
-      />
-
-      {canMark && (
-        <SlotMarkPrompt
-          // Remount when the stored caption changes underneath us (another tab
-          // or device) so the input never submits a stale value back.
-          key={markRow?.markLabel ?? '\u2205'}
-          busy={busy}
-          currentLabel={markRow?.markLabel}
-          onSubmit={(label) => run(
-            () => setSlotMark(view.periodId, slot.day, slot.shiftTypeId, slot.roleId, label),
-            'סומן ✓',
+      {confirm ? (
+        <OverrideConfirm candidate={confirm} where={where} busy={busy} onCancel={() => setConfirm(null)} onConfirm={() => pick(confirm.id)} />
+      ) : mode === 'list' ? (
+        <>
+          <AssignHeader
+            roleName={slot.roleName}
+            time={shift.time}
+            required={requiredCount}
+            assigned={slot.assignedIds.flatMap((id) => empById.get(id) ?? [])}
+            busy={busy}
+            onRemove={(id) => run(() => unassignSlot(view.periodId, id, slot.day), 'הוסר ✓')}
+          />
+          {atCapacity && <InlineAlert kind="info">המשמרת מאוישת במלואה לתפקיד זה. הסירו עובד כדי להחליף.</InlineAlert>}
+          <CandidateList view={view} meta={meta} slot={slot} busy={busy} atCapacity={atCapacity} onPick={pick} onPickOverride={setConfirm} />
+          <MoreOptions canMark={canMark} onMode={setMode} />
+        </>
+      ) : (
+        <>
+          <BackToList onBack={() => setMode('list')} />
+          {mode === 'twelve' && <TwelveHourAssign slot={slot} view={view} meta={meta} busy={busy} run={run} />}
+          {mode === 'temp' && (
+            <TempNamePrompt
+              busy={busy}
+              onSubmit={(name) => run(() => assignTempName(view.periodId, slot.day, slot.shiftTypeId, slot.roleId, name))}
+            />
           )}
-          onClear={() => run(
-            () => clearSlotMark(view.periodId, slot.day, slot.shiftTypeId, slot.roleId),
-            'הסימון הוסר ✓',
+          {mode === 'mark' && canMark && (
+            <SlotMarkPrompt
+              // Remount when the stored caption changes underneath us (another tab
+              // or device) so the input never submits a stale value back.
+              key={markRow?.markLabel ?? '\u2205'}
+              busy={busy}
+              currentLabel={markRow?.markLabel}
+              onSubmit={(label) => run(
+                () => setSlotMark(view.periodId, slot.day, slot.shiftTypeId, slot.roleId, label),
+                'סומן ✓',
+              )}
+              onClear={() => run(
+                () => clearSlotMark(view.periodId, slot.day, slot.shiftTypeId, slot.roleId),
+                'הסימון הוסר ✓',
+              )}
+            />
           )}
-        />
+        </>
       )}
     </Sheet>
   )

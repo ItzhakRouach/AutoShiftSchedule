@@ -69,11 +69,11 @@ test('dashboard shows new KPIs after schedule is published', async ({ page }) =>
   // Generate + publish schedule
   await page.goto('/schedule')
   await expect(page.getByRole('heading', { name: 'סידור עבודה' })).toBeVisible({ timeout: 10000 })
-  await page.getByRole('button', { name: 'צור סידור אוטומטי' }).click()
+  await page.getByRole('button', { name: 'שיבוץ אוטומטי' }).click()
   const coverage = page.getByTestId('coverage')
   await expect(coverage).toBeVisible({ timeout: 30000 })
   await dismissCoverageIssues(page)
-  await page.getByRole('button', { name: 'פרסם סידור' }).click()
+  await page.getByRole('button', { name: 'פרסום הסידור' }).click()
   // Incomplete coverage arms an inline two-step confirm — click again to publish.
   const confirmPublish = page.getByRole('button', { name: /לחצו שוב לפרסום/ })
   await confirmPublish.click({ timeout: 3000 }).catch(() => {}) // absent when coverage is full

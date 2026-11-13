@@ -1,5 +1,6 @@
 'use client'
 
+import { dayTitle } from '@/lib/domain/days'
 import { Card } from '@/components/ui/Card'
 import { Icon } from '@/components/ui/Icon'
 import { LtrText } from '@/components/ui/LtrText'
@@ -57,14 +58,20 @@ export function TwelveHourList({
   const roleById = new Map(roles.map((r) => [r.id, r.name]))
   return (
     <Card style={{ marginTop: 14 }}>
-      <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 8 }}>הצעות למשמרות 12 שעות</div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {suggestions.map((s, i) => (
-          <div key={i} style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.4 }}>
-            יום {s.day + 1} · <LtrText>{SHIFT_META[s.variant]?.name ?? s.variant}</LtrText> · {roleById.get(s.roleId) ?? ''}
-          </div>
-        ))}
-      </div>
+      {/* Collapsed by default: a long week can produce dozens of suggestions. */}
+      <details>
+        <summary style={{ fontSize: 14, fontWeight: 800, cursor: 'pointer' }}>
+          הצעות למשמרות 12 שעות ({suggestions.length})
+        </summary>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+          {suggestions.map((s, i) => (
+            <div key={i} style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.4 }}>
+              {dayTitle(s.day)} · <LtrText>{SHIFT_META[s.variant]?.time ?? s.variant}</LtrText>
+              {roleById.get(s.roleId) ? ` · ${roleById.get(s.roleId)}` : ''}
+            </div>
+          ))}
+        </div>
+      </details>
     </Card>
   )
 }

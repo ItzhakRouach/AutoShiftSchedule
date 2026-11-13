@@ -55,10 +55,10 @@ test('employee sees a "new schedule" banner on publish, cleared by viewing the s
   // Manager generates + publishes.
   await manager.page.goto('/schedule')
   await expect(manager.page.getByRole('heading', { name: 'סידור עבודה' })).toBeVisible({ timeout: 10000 })
-  await manager.page.getByRole('button', { name: 'צור סידור אוטומטי' }).click()
+  await manager.page.getByRole('button', { name: 'שיבוץ אוטומטי' }).click()
   await expect(manager.page.getByTestId('coverage')).toBeVisible({ timeout: 30000 })
   await dismissCoverageIssues(manager.page)
-  await manager.page.getByRole('button', { name: 'פרסם סידור' }).click()
+  await manager.page.getByRole('button', { name: 'פרסום הסידור' }).click()
   await manager.page.getByRole('button', { name: /לחצו שוב לפרסום/ }).click({ timeout: 3000 }).catch(() => {})
   await expect(manager.page.getByRole('button', { name: /פורסם/ })).toBeVisible({ timeout: 15000 })
 

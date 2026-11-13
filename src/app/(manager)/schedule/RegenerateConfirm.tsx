@@ -10,7 +10,7 @@ interface Props {
 }
 
 /** Hebrew confirmation modal shown when manual/12h edits exist and the user
- *  clicks "צור סידור אוטומטי". Lets the manager keep or discard manual rows. */
+ *  clicks "שיבוץ אוטומטי". Lets the manager keep or discard manual rows. */
 export function RegenerateConfirm({ onKeep, onReplace, onCancel, busy }: Props) {
   return (
     <div

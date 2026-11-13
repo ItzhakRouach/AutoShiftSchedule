@@ -32,6 +32,7 @@ test('manager marks an empty slot with free text, then clears the mark', async (
   // Mark the first empty cell — first with NO caption (Enter on an empty
   // field), which must still leave a visible trace in the edit view.
   await table.getByText('לא מאויש').first().click()
+  await page.getByTestId('assign-more-mark').click()
   const input = page.getByLabel('טקסט לסימון המשבצת')
   await expect(input).toBeVisible({ timeout: 8000 })
   await input.press('Enter')

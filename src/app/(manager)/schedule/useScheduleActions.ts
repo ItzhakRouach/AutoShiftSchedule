@@ -45,7 +45,7 @@ export function useScheduleActions(view: ScheduleView) {
     })
   }
 
-  /** Secondary "השלם 12ש׳ אוטומטית" action: re-run WITH the 12h pass, keeping
+  /** Secondary "השלמה עם משמרות 12 שעות" action: re-run WITH the 12h pass, keeping
    *  manual edits (the deterministic seed regenerates the identical 8h layer). */
   function completeTwelveHour() {
     triggerGenerate(false, true)

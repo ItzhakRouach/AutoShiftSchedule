@@ -41,7 +41,7 @@ test('worker distribution drawer opens, expands a worker, and closes', async ({ 
   await addEmployee(page, 'מאיה בר')
 
   await page.goto('/schedule')
-  await page.getByRole('button', { name: 'צור סידור אוטומטי' }).click()
+  await page.getByRole('button', { name: 'שיבוץ אוטומטי' }).click()
   await expect(page.getByTestId('coverage')).toBeVisible({ timeout: 30000 })
   await dismissCoverageIssues(page)
 

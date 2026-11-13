@@ -107,7 +107,7 @@ test('manager sets a vacation, a מילואים and a מחלה range for workers
   // The מילואים kind chip appears alongside the approved-status chip (scoped
   // to the sheet panel — the row itself ALSO shows a מילואים week-marker badge
   // behind the sheet, so an unscoped locator would match both).
-  const yossiSheet = page.getByRole('heading', { name: /היעדרות — יוסי לוי/ }).locator('..')
+  const yossiSheet = page.getByRole('dialog', { name: /היעדרות — יוסי לוי/ })
   await expect(yossiSheet.locator('span').filter({ hasText: 'מילואים' })).toBeVisible()
 
   // ── 3. Remove the מילואים entry — the "הסר" undo path ──────────────────────
@@ -132,7 +132,7 @@ test('manager sets a vacation, a מילואים and a מחלה range for workers
   await expect(page.getByText(mayaVac.text)).toBeVisible({ timeout: 10000 })
   // The מחלה kind chip appears alongside the approved-status chip (scoped to
   // the sheet panel — see the מילואים note above for why this must be scoped).
-  const mayaSheet = page.getByRole('heading', { name: /היעדרות — מאיה בר/ }).locator('..')
+  const mayaSheet = page.getByRole('dialog', { name: /היעדרות — מאיה בר/ })
   await expect(mayaSheet.locator('span').filter({ hasText: 'מחלה' })).toBeVisible()
 
   // Close before opening the next worker's sheet.
@@ -161,7 +161,7 @@ test('manager sets a vacation, a מילואים and a מחלה range for workers
   await page.getByLabel('מתאריך').fill(tuesday)
   await page.getByLabel('עד תאריך').fill(tuesday)
   await page.getByRole('button', { name: 'הוסף היעדרות' }).click()
-  const ronSheet = ronHeading.locator('..')
+  const ronSheet = page.getByRole('dialog').filter({ has: ronHeading })
   await expect(ronSheet.locator('span').filter({ hasText: 'מילואים' })).toBeVisible({ timeout: 10000 })
 
   await page.locator('body').click({ position: { x: 5, y: 5 } })

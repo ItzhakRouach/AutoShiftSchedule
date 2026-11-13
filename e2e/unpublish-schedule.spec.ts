@@ -55,7 +55,7 @@ test('manager can publish, unpublish, and see the publish button return', async 
   // Generate.
   await page.goto('/schedule')
   await expect(page.getByRole('heading', { name: 'סידור עבודה' })).toBeVisible({ timeout: 10000 })
-  await page.getByRole('button', { name: 'צור סידור אוטומטי' }).click()
+  await page.getByRole('button', { name: 'שיבוץ אוטומטי' }).click()
   await expect(page.getByTestId('coverage')).toBeVisible({ timeout: 30000 })
   await dismissCoverageIssues(page)
 
@@ -64,7 +64,7 @@ test('manager can publish, unpublish, and see the publish button return', async 
   // action awaits a slow PNG-render + Supabase Storage upload, then triggers
   // router.refresh which holds the transition open). The unpublish flow does
   // not depend on that transition settling, so we don't wait for it here.
-  await page.getByRole('button', { name: 'פרסם סידור' }).click()
+  await page.getByRole('button', { name: 'פרסום הסידור' }).click()
   // Incomplete coverage arms an inline two-step confirm — click again to publish.
   const confirmPublish = page.getByRole('button', { name: /לחצו שוב לפרסום/ })
   await confirmPublish.click({ timeout: 3000 }).catch(() => {}) // absent when coverage is full
