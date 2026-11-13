@@ -46,10 +46,14 @@ export async function createInviteCode(managerPage: Page, previousCode?: string)
   await expect(managerPage).toHaveURL(/\/team/, { timeout: 10000 })
   const codeEl = managerPage.locator('div[style*="monospace"]')
   const freshBtn = managerPage.getByRole('button', { name: 'צור קוד הזמנה' })
+  const replaceBtn = managerPage.getByRole('button', { name: 'צור קוד חדש' })
+  // Wait for the streamed panel before branching — an immediate count() can
+  // run while the route's loading fallback is still on screen and read 0.
+  await expect(freshBtn.or(replaceBtn)).toBeVisible({ timeout: 15000 })
   if ((await freshBtn.count()) > 0) {
     await freshBtn.click()
   } else {
-    await managerPage.getByRole('button', { name: 'צור קוד חדש' }).click()
+    await replaceBtn.click()
   }
   await expect(codeEl).toBeVisible({ timeout: 10000 })
   if (previousCode) await expect(codeEl).not.toHaveText(previousCode, { timeout: 10000 })
