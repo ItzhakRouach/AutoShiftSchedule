@@ -79,12 +79,40 @@ describe('buildEmpBalance — requests', () => {
   const req = (employeeId: string, dayOfWeek: number, ids: string[], isOff = false): ViewRequest =>
     ({ employeeId, dayOfWeek, isOff, preferredShiftIds: ids })
 
-  it('asked counts days with a shift request; off-days and empty rows do not count', () => {
+  it('asked counts shift-request days and day-off requests; empty rows do not count', () => {
     const view = makeView({
       requests: [req('e1', 0, ['st1']), req('e1', 1, ['st1', 'st2']), req('e1', 2, [], true), req('e1', 3, [])],
     })
+    expect(rowOf(view, 'e1').asked).toBe(3)
+  })
+
+  it('a day-off request is honored when the worker has no shift that day', () => {
+    const view = makeView({
+      requests: [req('e1', 2, [], true), req('e1', 3, [], true), req('e1', 4, [], true)],
+      grid: { 3: { morning: { 'r-achm': ['e1'] } } }, // works on a requested day off
+      twelve: [{ day: 4, variant: 'm12_night', roleId: 'r-guard', employeeId: 'e1' }], // 12h on another
+    })
+    const row = rowOf(view, 'e1')
+    expect(row.asked).toBe(3)
+    expect(row.got).toBe(1) // only day 2 was actually left free
+  })
+
+  it('day off + acceptable shifts: working one of those shifts still honors the request', () => {
+    const view = makeView({
+      requests: [req('e1', 0, ['st1'], true), req('e1', 1, ['st1'], true)],
+      grid: {
+        0: { morning: { 'r-achm': ['e1'] } }, // the shift they said they would accept
+        1: { night: { 'r-guard': ['e1'] } }, // a different shift on a requested day off
+      },
+    })
     expect(rowOf(view, 'e1').asked).toBe(2)
-    expect(rowOf(view, 'e1').got).toBe(0)
+    expect(rowOf(view, 'e1').got).toBe(1)
+  })
+
+  it('with nothing scheduled yet, day-off requests read as honored and shift requests as not', () => {
+    const view = makeView({ requests: [req('e1', 0, ['st1']), req('e1', 2, [], true)] })
+    expect(rowOf(view, 'e1').asked).toBe(2)
+    expect(rowOf(view, 'e1').got).toBe(1)
   })
 
   it('got counts a day once when the assigned shift is one of those requested', () => {

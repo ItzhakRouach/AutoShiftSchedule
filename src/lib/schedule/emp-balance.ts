@@ -1,7 +1,7 @@
 /**
  * Per-employee week balance for the manager's side panel: shift-type counts,
- * how many shifts were worked in each role, and how many of the worker's shift
- * requests the current schedule honors. Pure, no IO, client-safe — it is
+ * how many shifts were worked in each role, and how many of the worker's
+ * requests (specific shifts and days off) the current schedule honors. Pure, no IO, client-safe — it is
  * recomputed from the view after every edit.
  *
  * Shift-type counts come straight from `buildEmpDistribution`, so the panel can
@@ -23,9 +23,10 @@ export interface EmpBalanceRow {
   hours: number
   /** roleId → shifts worked in that role. Roles with zero shifts are absent. */
   roleCounts: Record<string, number>
-  /** Days on which the worker asked for at least one specific shift. */
+  /** Days on which the worker asked for something: a specific shift, or the day off. */
   asked: number
-  /** Of those days, how many they were given one of the shifts they asked for. */
+  /** Of those days, how many were honored — given one of the shifts they asked
+   *  for, or left without any shift on a requested day off. */
   got: number
 }
 
@@ -34,17 +35,27 @@ export type BalanceSort = 'total' | 'nights' | 'requests'
 export function buildEmpBalance(view: ScheduleView): EmpBalanceRow[] {
   const roleCounts = new Map<string, Record<string, number>>()
   const gotDays = new Map<string, Set<number>>()
+  /** emp → day → shift_type_ids worked that day (a 12h lists the windows it fills). */
+  const worked = new Map<string, Map<number, Set<string>>>()
   for (const e of view.employees) {
     roleCounts.set(e.id, {})
     gotDays.set(e.id, new Set())
+    worked.set(e.id, new Map())
   }
   const bumpRole = (empId: string, roleId: string) => {
     const rc = roleCounts.get(empId)
     if (rc) rc[roleId] = (rc[roleId] ?? 0) + 1
   }
-  const markIfRequested = (empId: string, day: number, shiftKey: string) => {
-    const shiftTypeId = view.shiftTypeIdByKey[shiftKey]
-    if (shiftTypeId && view.requestedSet.has(`${empId}:${day}:${shiftTypeId}`)) gotDays.get(empId)?.add(day)
+  // Records the shift as worked and, when it is one the worker asked for, the day as honored.
+  const recordShift = (empId: string, day: number, shiftKey?: string) => {
+    const days = worked.get(empId)
+    if (!days) return
+    const ids = days.get(day) ?? new Set<string>()
+    days.set(day, ids)
+    const shiftTypeId = shiftKey ? view.shiftTypeIdByKey[shiftKey] : undefined
+    if (!shiftTypeId) return
+    ids.add(shiftTypeId)
+    if (view.requestedSet.has(`${empId}:${day}:${shiftTypeId}`)) gotDays.get(empId)?.add(day)
   }
 
   for (let day = 0; day < 7; day++) {
@@ -52,7 +63,7 @@ export function buildEmpBalance(view: ScheduleView): EmpBalanceRow[] {
       for (const [roleId, empIds] of Object.entries(view.grid[day]?.[shift] ?? {})) {
         for (const id of empIds) {
           bumpRole(id, roleId)
-          markIfRequested(id, day, shift)
+          recordShift(id, day, shift)
         }
       }
     }
@@ -67,13 +78,19 @@ export function buildEmpBalance(view: ScheduleView): EmpBalanceRow[] {
     seen.add(key)
     bumpRole(t.employeeId, t.roleId)
     // A 12h covers the base windows it fills; asking for any of them was honored.
-    for (const f of t.fills ?? []) markIfRequested(t.employeeId, t.day, f.shift)
+    recordShift(t.employeeId, t.day)
+    for (const f of t.fills ?? []) recordShift(t.employeeId, t.day, f.shift)
   }
 
+  // A day-off request is honored when the worker ends up with no shift that
+  // day — or, when they also named shifts they would accept on it, with one of those.
   const asked = new Map<string, number>()
   for (const r of view.requests) {
-    if (r.isOff || r.preferredShiftIds.length === 0) continue
+    if (!r.isOff && r.preferredShiftIds.length === 0) continue
     asked.set(r.employeeId, (asked.get(r.employeeId) ?? 0) + 1)
+    if (!r.isOff) continue
+    const ids = worked.get(r.employeeId)?.get(r.dayOfWeek)
+    if (!ids || r.preferredShiftIds.some((id) => ids.has(id))) gotDays.get(r.employeeId)?.add(r.dayOfWeek)
   }
 
   return buildEmpDistribution(view).rows.map((d) => ({
