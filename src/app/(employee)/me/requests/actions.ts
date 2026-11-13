@@ -1,5 +1,6 @@
 'use server'
 
+import { getAuthUser } from '@/lib/auth/user'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { saveDayRequestSchema } from '@/lib/validation/request'
@@ -14,7 +15,7 @@ export async function saveDayRequest(input: unknown): Promise<ActionResult> {
   const { periodId, employeeId, dayOfWeek, isOff, preferredShiftIds } = parsed.data
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) return { error: 'אין הרשאה' }
 
   const employee = await resolveEmployee(supabase, user.id)
@@ -75,7 +76,7 @@ export async function submitRequests(periodId: string): Promise<ActionResult> {
   if (!periodId) return { error: 'תקופה לא נמצאה' }
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) return { error: 'אין הרשאה' }
 
   const employee = await resolveEmployee(supabase, user.id)
@@ -106,7 +107,7 @@ export async function clearAllRequests(periodId: string): Promise<ActionResult> 
   if (!periodId) return { error: 'תקופה לא נמצאה' }
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) return { error: 'אין הרשאה' }
 
   const employee = await resolveEmployee(supabase, user.id)

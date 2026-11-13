@@ -31,17 +31,17 @@ export default function SwRegister() {
       window.location.reload()
     })
 
-    window.addEventListener('load', () => {
+    const register = () => {
       navigator.serviceWorker
         .register('/sw.js')
-        .then((registration) => {
-          registration.update()
-          console.log('[SW] Registered:', registration.scope)
-        })
         .catch((err) => {
           console.error('[SW] Registration failed:', err)
         })
-    })
+    }
+    // Hydration can finish after `load` has already fired — register right away
+    // then, or the listener would never run.
+    if (document.readyState === 'complete') register()
+    else window.addEventListener('load', register, { once: true })
   }, [])
 
   return null

@@ -1,5 +1,6 @@
 'use server'
 
+import { getAuthUser } from '@/lib/auth/user'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -26,7 +27,7 @@ export async function managerSaveDayRequest(input: {
   if (!periodId || !employeeId || dayOfWeek < 0 || dayOfWeek > 6) return { error: 'נתונים לא תקינים' }
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) return { error: 'אין הרשאה' }
 
   const workplace = await getActiveWorkplace(supabase)
@@ -79,7 +80,7 @@ export async function managerClearAllRequests(periodId: string): Promise<Result>
   if (!periodId) return { error: 'תקופה לא נמצאה' }
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) return { error: 'אין הרשאה' }
 
   const workplace = await getActiveWorkplace(supabase)

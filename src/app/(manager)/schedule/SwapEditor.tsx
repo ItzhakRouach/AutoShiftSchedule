@@ -1,7 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Sheet } from '@/components/ui/Sheet'
 import { Avatar } from '@/components/ui/Avatar'
 import { Btn } from '@/components/ui/Btn'
@@ -48,8 +47,6 @@ interface Props {
 type Msg = { text: string; kind: 'success' | 'warning' | 'error' } | null
 
 export function SwapEditor({ slot, onClose, view, meta, onDone }: Props) {
-  const router = useRouter()
-  const [, start] = useTransition()
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<Msg>(null)
   const closeTimer = useRef<number | null>(null)
@@ -103,7 +100,6 @@ export function SwapEditor({ slot, onClose, view, meta, onDone }: Props) {
           setMsg({ text: res.error ?? 'שגיאה', kind: 'error' })
           return
         }
-        start(() => router.refresh())
         // Always confirm success so an assignment never reads as "nothing
         // happened". A 12h warning stays up for the manager to read; a plain
         // success shows "שובץ ✓" briefly, then auto-closes. onDone fires the

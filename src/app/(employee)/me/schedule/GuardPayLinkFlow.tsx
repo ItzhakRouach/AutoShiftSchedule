@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
 import { findGuardPayAccount, linkGuardPay } from './guardpay-actions'
 
 type Stage =
@@ -16,7 +15,6 @@ type Stage =
  * client — linkGuardPay re-runs the lookup server-side.
  */
 export function GuardPayLinkFlow({ onClose }: { onClose: () => void }) {
-  const router = useRouter()
   const [stage, setStage] = useState<Stage>({ kind: 'searching' })
   const [email, setEmail] = useState('')
   const [busy, run] = useTransition()
@@ -50,7 +48,6 @@ export function GuardPayLinkFlow({ onClose }: { onClose: () => void }) {
         setStage({ kind: 'manual', error: r.error })
         return
       }
-      router.refresh()
       onClose()
     })
   }

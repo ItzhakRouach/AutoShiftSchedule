@@ -1,5 +1,6 @@
 'use server'
 
+import { getAuthUser } from '@/lib/auth/user'
 import { createClient } from '@/lib/supabase/server'
 
 export interface SubscriptionJSON {
@@ -12,7 +13,7 @@ export interface SubscriptionJSON {
 export async function saveSubscription(sub: SubscriptionJSON): Promise<{ ok: boolean; error?: string }> {
   if (!sub?.endpoint || !sub.p256dh || !sub.auth) return { ok: false, error: 'נתונים לא תקינים' }
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) return { ok: false, error: 'אין הרשאה' }
 
   const { error } = await supabase
@@ -25,7 +26,7 @@ export async function saveSubscription(sub: SubscriptionJSON): Promise<{ ok: boo
 /** Remove the caller's subscription for a given endpoint (on disable). */
 export async function removeSubscription(endpoint: string): Promise<{ ok: boolean }> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) return { ok: false }
   await supabase.from('push_subscriptions').delete().eq('endpoint', endpoint).eq('user_id', user.id)
   return { ok: true }

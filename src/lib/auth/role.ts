@@ -1,6 +1,6 @@
 import { cache } from 'react'
-import type { SupabaseClient, User } from '@supabase/supabase-js'
-import { getAuthUser } from './user'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { getAuthUser, type AuthUser as User } from './user'
 
 export type UserRole = 'manager' | 'employee' | 'none'
 

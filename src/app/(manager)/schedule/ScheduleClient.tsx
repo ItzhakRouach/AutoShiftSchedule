@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
 import { Segmented } from '@/components/ui/Segmented'
 import { InlineAlert } from '@/components/ui/InlineAlert'
 import type { ScheduleView } from '@/lib/schedule/view-data'
@@ -52,7 +51,6 @@ export function ScheduleClient({ view, editMeta, workerVacations, rolelessEmploy
   const [showDayNotes, setShowDayNotes] = useState(false)
   const [showDist, setShowDist] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('schedule')
-  const router = useRouter()
   const [copying, startCopy] = useTransition()
   // Fast drag / tap-to-assign (edit mode only).
   const assign = useCellAssign(view)
@@ -63,7 +61,6 @@ export function ScheduleClient({ view, editMeta, workerVacations, rolelessEmploy
       const res = await copyLastWeekSchedule(view.periodId)
       if (!res.ok) { assign.setToast({ text: res.error ?? 'שגיאה', kind: 'err' }); return }
       assign.setToast({ text: 'הועתק מהשבוע הקודם ✓', kind: 'ok' })
-      router.refresh()
     })
   }
 

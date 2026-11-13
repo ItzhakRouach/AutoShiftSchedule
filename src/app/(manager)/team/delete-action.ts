@@ -1,5 +1,6 @@
 'use server'
 
+import { getAuthUser } from '@/lib/auth/user'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
@@ -9,7 +10,7 @@ import type { EmployeeActionState } from './actions'
 
 export async function deleteEmployee(id: string): Promise<EmployeeActionState> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) redirect('/login')
 
   // Verify ownership: fetch employee only if it belongs to the manager's workplace.

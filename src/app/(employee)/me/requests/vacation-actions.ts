@@ -1,5 +1,6 @@
 'use server'
 
+import { getAuthUser } from '@/lib/auth/user'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { addVacationSchema } from '@/lib/validation/request'
@@ -14,7 +15,7 @@ export async function addVacation(input: unknown): Promise<ActionResult> {
   const { employeeId, dateFrom, dateTo, kind } = parsed.data
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) return { error: 'אין הרשאה' }
 
   const employee = await resolveEmployee(supabase, user.id)
@@ -56,7 +57,7 @@ export async function removeVacation(id: string): Promise<ActionResult> {
   if (!id) return { error: 'מזהה חופשה חסר' }
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) return { error: 'אין הרשאה' }
   const employee = await resolveEmployee(supabase, user.id)
   if (!employee) return { error: 'אין הרשאה' }

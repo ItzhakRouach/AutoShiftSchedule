@@ -1,5 +1,6 @@
 'use server'
 
+import { getAuthUser } from '@/lib/auth/user'
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
@@ -83,7 +84,7 @@ export async function requestImprovement(periodId: string): Promise<AiImproveRes
   }
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) redirect('/login')
   const workplace = await getActiveWorkplace(supabase)
   if (!workplace) return { ok: false, error: GENERIC_ERROR }
@@ -121,7 +122,7 @@ export async function applyImproved(periodId: string, swaps: unknown): Promise<A
   if (!pid.success || !sw.success) return { ok: false, error: GENERIC_ERROR }
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) redirect('/login')
   const workplace = await getActiveWorkplace(supabase)
   if (!workplace) return { ok: false, error: GENERIC_ERROR }

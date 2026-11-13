@@ -1,5 +1,6 @@
 'use server'
 
+import { getAuthUser } from '@/lib/auth/user'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { resolveEmployee } from './requests/request-helpers'
@@ -11,7 +12,7 @@ import { resolveEmployee } from './requests/request-helpers'
  */
 export async function markScheduleSeen(): Promise<void> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) return
   const employee = await resolveEmployee(supabase, user.id)
   if (!employee) return

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
 import { unpublishSchedule } from './lifecycle-actions'
 
 interface Props {
@@ -18,7 +17,6 @@ interface Props {
  * image. Mirrors ClearAllButton's interaction + styling 1:1.
  */
 export function UnpublishButton({ periodId, onDone }: Props) {
-  const router = useRouter()
   const [confirming, setConfirming] = useState(false)
   const [busy, run] = useTransition()
   const [msg, setMsg] = useState<string | null>(null)
@@ -37,7 +35,6 @@ export function UnpublishButton({ periodId, onDone }: Props) {
       const r = await unpublishSchedule(periodId)
       if (!r.ok) { setMsg(r.error ?? 'שגיאה'); return }
       onDone?.()
-      router.refresh()
     })
   }
 

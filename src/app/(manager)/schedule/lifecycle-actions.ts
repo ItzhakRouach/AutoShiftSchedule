@@ -1,5 +1,6 @@
 'use server'
 
+import { getAuthUser } from '@/lib/auth/user'
 import { after } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
@@ -14,7 +15,7 @@ import { GENERIC_ERROR, MANUAL_SOURCES, type RunResult } from './run-actions-sha
 
 export async function publishSchedule(periodId: string): Promise<RunResult> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) redirect('/login')
 
   const workplace = await getActiveWorkplace(supabase)
@@ -79,7 +80,7 @@ export async function hasManualAssignments(periodId: string): Promise<boolean> {
  */
 export async function clearSchedule(periodId: string): Promise<RunResult> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) redirect('/login')
 
   const workplace = await getActiveWorkplace(supabase)
@@ -138,7 +139,7 @@ export async function clearSchedule(periodId: string): Promise<RunResult> {
 
 export async function unpublishSchedule(periodId: string): Promise<RunResult> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) redirect('/login')
 
   const workplace = await getActiveWorkplace(supabase)

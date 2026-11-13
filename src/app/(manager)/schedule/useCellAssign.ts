@@ -1,7 +1,6 @@
 'use client'
 
-import { useState, useTransition, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useCallback } from 'react'
 import type { ShiftId } from '@/lib/domain/constants'
 import type { ScheduleView } from '@/lib/schedule/view-data'
 import { reverseSwap } from '@/lib/schedule/undo-core'
@@ -28,8 +27,6 @@ export type PendingSlot =
  * Ctrl+Z / Ctrl+Y instead of a one-shot toast undo.
  */
 export function useCellAssign(view: ScheduleView) {
-  const router = useRouter()
-  const [, start] = useTransition()
   const [heldId, setHeldId] = useState<string | null>(null)
   const [toast, setToast] = useState<AssignToastState | null>(null)
   const [pendingSlot, setPendingSlot] = useState<PendingSlot | null>(null)
@@ -53,13 +50,12 @@ export function useCellAssign(view: ScheduleView) {
             })
           }
           setToast({ text: 'שובץ ✓', kind: 'ok' })
-          start(() => router.refresh())
         } finally {
           setPendingSlot(null)
         }
       })()
     },
-    [view.periodId, router, pendingSlot, history],
+    [view.periodId, pendingSlot, history],
   )
 
   const hold = useCallback((id: string) => setHeldId((cur) => (cur === id ? null : id)), [])
@@ -78,13 +74,12 @@ export function useCellAssign(view: ScheduleView) {
           if (!res.ok) { setToast({ text: res.error ?? 'שגיאה', kind: 'err' }); return }
           if (res.undo) history.push({ undo: res.undo, redo: null, label: 'הסרה' })
           setToast({ text: 'הוסר ✓', kind: 'ok' })
-          start(() => router.refresh())
         } finally {
           setPendingSlot(null)
         }
       })()
     },
-    [view.periodId, router, pendingSlot, history],
+    [view.periodId, pendingSlot, history],
   )
 
   /** Remove an ad-hoc temp entry by its assignment id (undoable, not redoable). */
@@ -99,13 +94,12 @@ export function useCellAssign(view: ScheduleView) {
           if (!res.ok) { setToast({ text: res.error ?? 'שגיאה', kind: 'err' }); return }
           if (res.undo) history.push({ undo: res.undo, redo: null, label: 'הסרת עובד זמני' })
           setToast({ text: 'הוסר ✓', kind: 'ok' })
-          start(() => router.refresh())
         } finally {
           setPendingSlot(null)
         }
       })()
     },
-    [view.periodId, router, pendingSlot, history],
+    [view.periodId, pendingSlot, history],
   )
 
   /** Tap-on-cell with a held worker → assign. Returns true if it consumed the tap. */
@@ -144,13 +138,12 @@ export function useCellAssign(view: ScheduleView) {
             history.push({ undo: res.undo, redo: reverseSwap(res.undo), label: b ? 'החלפה' : 'העברה' })
           }
           setToast({ text: res.warning ?? (b ? 'הוחלפו ✓' : 'הועבר ✓'), kind: 'ok' })
-          start(() => router.refresh())
         } finally {
           setPendingSlot(null)
         }
       })()
     },
-    [view.periodId, router, pendingSlot, history],
+    [view.periodId, pendingSlot, history],
   )
 
   return { heldId, toast, pendingSlot, hold, clearHeld, assignTo, dropOn, swapWith, removeFrom, removeTemp, dismissToast, setToast, history }

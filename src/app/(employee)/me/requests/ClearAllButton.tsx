@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
 import { clearAllRequests } from './actions'
 
 interface Props {
@@ -16,7 +15,6 @@ interface Props {
  * Avoids window.confirm (clunky on mobile + breaks RTL on some browsers).
  */
 export function ClearAllButton({ periodId, hasAnyRequest }: Props) {
-  const router = useRouter()
   const [confirming, setConfirming] = useState(false)
   const [busy, run] = useTransition()
   const [msg, setMsg] = useState<string | null>(null)
@@ -36,7 +34,6 @@ export function ClearAllButton({ periodId, hasAnyRequest }: Props) {
     run(async () => {
       const r = await clearAllRequests(periodId)
       if ('error' in r) { setMsg(r.error); return }
-      router.refresh()
     })
   }
 

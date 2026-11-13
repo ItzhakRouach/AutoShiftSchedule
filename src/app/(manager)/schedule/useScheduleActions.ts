@@ -42,7 +42,6 @@ export function useScheduleActions(view: ScheduleView) {
       setUncovered(un)
       setNightImbalance(ni)
       setShowIssues(ov.length > 0 || un.length > 0 || ni.length > 0)
-      router.refresh()
     })
   }
 

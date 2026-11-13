@@ -1,5 +1,6 @@
 'use server'
 
+import { getAuthUser } from '@/lib/auth/user'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
@@ -12,7 +13,7 @@ const HEX = /^#[0-9a-fA-F]{6}$/
 
 async function ctx() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) redirect('/login')
   const workplace = await getActiveWorkplace(supabase)
   return { supabase, workplace }

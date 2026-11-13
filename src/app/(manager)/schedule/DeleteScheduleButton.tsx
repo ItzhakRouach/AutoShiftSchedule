@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
 import { Btn } from '@/components/ui/Btn'
 import { clearSchedule } from './lifecycle-actions'
 
@@ -10,7 +9,6 @@ import { clearSchedule } from './lifecycle-actions'
  * generate a fresh schedule. Two-step confirm to avoid accidental loss.
  */
 export function DeleteScheduleButton({ periodId, onDone }: { periodId: string; onDone?: () => void }) {
-  const router = useRouter()
   const [confirm, setConfirm] = useState(false)
   const [busy, start] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -22,7 +20,6 @@ export function DeleteScheduleButton({ periodId, onDone }: { periodId: string; o
       if (!res.ok) { setError(res.error ?? 'שגיאה'); return }
       setConfirm(false)
       onDone?.()
-      router.refresh()
     })
   }
 

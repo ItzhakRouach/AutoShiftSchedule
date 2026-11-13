@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
 import { Sheet } from '@/components/ui/Sheet'
 import { Btn } from '@/components/ui/Btn'
 import { Segmented } from '@/components/ui/Segmented'
@@ -54,7 +53,6 @@ interface Props {
  *  VacationSection's employee-side UX, split into its own file to keep
  *  RequestsOverviewRow ≤200 lines. */
 export function WorkerVacationSheet({ employeeId, employeeName, vacations, onClose }: Props) {
-  const router = useRouter()
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [kind, setKind] = useState<VacationKind>('vacation')
@@ -80,7 +78,6 @@ export function WorkerVacationSheet({ employeeId, employeeName, vacations, onClo
         setDateFrom('')
         setDateTo('')
         setSaved(true)
-        router.refresh() // pulls the freshly-inserted row into workerVacations
       }
     })
   }
@@ -91,7 +88,6 @@ export function WorkerVacationSheet({ employeeId, employeeName, vacations, onClo
     startTransition(async () => {
       const result = await removeWorkerVacation(id)
       if ('error' in result) setError(result.error)
-      else router.refresh()
     })
   }
 

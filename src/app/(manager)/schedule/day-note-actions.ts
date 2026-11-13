@@ -1,5 +1,6 @@
 'use server'
 
+import { getAuthUser } from '@/lib/auth/user'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
@@ -26,7 +27,7 @@ export async function setDayNote(
   label: string,
 ): Promise<DayNoteResult> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) redirect('/login')
   const workplace = await getActiveWorkplace(supabase)
   if (!workplace) return { ok: false, error: 'לא נמצא מקום עבודה.' }
@@ -71,7 +72,7 @@ export async function removeDayNote(
   dayIndex: number,
 ): Promise<DayNoteResult> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) redirect('/login')
   const workplace = await getActiveWorkplace(supabase)
   if (!workplace) return { ok: false, error: 'לא נמצא מקום עבודה.' }

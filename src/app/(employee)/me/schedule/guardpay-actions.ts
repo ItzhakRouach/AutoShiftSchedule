@@ -1,5 +1,6 @@
 'use server'
 
+import { getAuthUser } from '@/lib/auth/user'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { findAccountSchema, syncWeekSchema } from '@/lib/validation/guardpay'
@@ -23,7 +24,7 @@ export async function findGuardPayAccount(input: unknown): Promise<FindResult> {
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'נתונים לא תקינים' }
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) return { error: 'אין הרשאה' }
   const employee = await resolveEmployee(supabase, user.id)
   if (!employee) return { error: 'אין הרשאה' }
@@ -41,7 +42,7 @@ export async function linkGuardPay(input: unknown): Promise<LinkResult> {
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'נתונים לא תקינים' }
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) return { error: 'אין הרשאה' }
   const employee = await resolveEmployee(supabase, user.id)
   if (!employee) return { error: 'אין הרשאה' }
@@ -71,7 +72,7 @@ export async function linkGuardPay(input: unknown): Promise<LinkResult> {
 
 export async function unlinkGuardPay(): Promise<LinkResult> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) return { error: 'אין הרשאה' }
   const employee = await resolveEmployee(supabase, user.id)
   if (!employee) return { error: 'אין הרשאה' }
@@ -92,7 +93,7 @@ export async function syncWeekToGuardPay(input: unknown): Promise<SyncResult> {
   const { periodId } = parsed.data
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) return { error: 'אין הרשאה' }
   const employee = await resolveEmployee(supabase, user.id)
   if (!employee) return { error: 'אין הרשאה' }

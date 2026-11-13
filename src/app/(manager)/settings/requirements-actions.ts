@@ -1,5 +1,6 @@
 'use server'
 
+import { getAuthUser } from '@/lib/auth/user'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
@@ -59,7 +60,7 @@ export async function updateRequirements(
   payload: RequirementsPayloadItem[],
 ): Promise<RequirementsActionState> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) redirect('/login')
 
   const workplace = await getActiveWorkplace(supabase)
@@ -83,7 +84,7 @@ const workingDaysSchema = z.array(z.number().int().min(0).max(6)).min(1, 'יש �
 /** Set the workplace's working days and re-apply the count template to only those days. */
 export async function setWorkingDays(days: number[]): Promise<RequirementsActionState> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) redirect('/login')
 
   const workplace = await getActiveWorkplace(supabase)

@@ -1,5 +1,6 @@
 'use server'
 
+import { getAuthUser } from '@/lib/auth/user'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
@@ -10,7 +11,7 @@ import { ACTIVE_WP_COOKIE } from './current'
 const COOKIE_OPTS = { path: '/', sameSite: 'lax' as const, maxAge: 60 * 60 * 24 * 365 }
 
 async function ownerOrgId(supabase: Awaited<ReturnType<typeof createClient>>): Promise<string | null> {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) return null
   const { data: org } = await supabase
     .from('organizations')

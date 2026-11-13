@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/Card'
 import { Btn } from '@/components/ui/Btn'
 import { Icon } from '@/components/ui/Icon'
@@ -69,7 +68,6 @@ function Row({ v, busy, onSet }: { v: WorkplaceVacation; busy: boolean; onSet: (
 /** Workplace vacation requests: a dismissible popup on entry (pending only) +
  *  a persistent, always-editable card (any status → approve/reject anytime). */
 export function PendingVacations({ items }: { items: WorkplaceVacation[] }) {
-  const router = useRouter()
   const [dismissed, setDismissed] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -92,7 +90,6 @@ export function PendingVacations({ items }: { items: WorkplaceVacation[] }) {
       const res = await (status === 'approved' ? approveVacation(id) : rejectVacation(id))
       setBusyId(null)
       if (res && 'error' in res) { setError(res.error); return }
-      router.refresh()
     })
   }
 

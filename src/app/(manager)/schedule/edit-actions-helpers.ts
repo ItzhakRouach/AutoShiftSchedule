@@ -1,3 +1,4 @@
+import { getAuthUser } from '@/lib/auth/user'
 import 'server-only'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveWorkplace } from '@/lib/workplace/current'
@@ -18,9 +19,7 @@ export const AT_CAPACITY = 'המשמרת מאוישת במלואה לתפקיד 
 /** Resolve the authed user's active workplace once, shared by the slot actions. */
 export async function authedWorkplace() {
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) return { redirectLogin: true as const, supabase, workplace: null }
   const workplace = await getActiveWorkplace(supabase)
   return { redirectLogin: false as const, supabase, workplace }

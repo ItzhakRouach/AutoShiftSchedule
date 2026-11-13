@@ -1,5 +1,6 @@
 'use server'
 
+import { getAuthUser } from '@/lib/auth/user'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveWorkplace } from '@/lib/workplace/current'
@@ -15,7 +16,7 @@ async function setVacationStatus(id: string, status: 'approved' | 'rejected'): P
   if (!id) return { error: 'מזהה חופשה חסר' }
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) return { error: 'אין הרשאה' }
 
   const workplace = await getActiveWorkplace(supabase)

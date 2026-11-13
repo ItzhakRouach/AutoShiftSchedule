@@ -12,7 +12,7 @@ weekly requests, views schedule). Engine honors requests + Israeli rules (8h/16h
 - **Supabase** (Postgres + Auth + RLS + Storage + Realtime) — `@supabase/ssr`
 - **Vitest** (unit) · **Playwright** (E2E) · **PWA** (native `app/manifest.ts` + `public/sw.js`)
 - Hosting: **Vercel** (Cron for deadline lock + scheduled publish). Images: `@vercel/og`. Holidays: `@hebcal/core`.
-- Next 16 note: middleware entry point is `src/proxy.ts` (exports `proxy` + `proxyConfig`).
+- Next 16 note: middleware entry point is `src/proxy.ts` (exports `proxy` + `config` — Next ignores any other name for the matcher).
 
 ## Commands
 ```bash

@@ -20,8 +20,9 @@ function makeSupabase(userId: string | null, orgRows: Rows, employeeRows: Rows) 
 
   return {
     auth: {
-      getUser: vi.fn(async () => ({
-        data: { user: userId ? { id: userId } : null },
+      getClaims: vi.fn(async () => ({
+        data: userId ? { claims: { sub: userId } } : null,
+        error: null,
       })),
     },
     from: fromMock,
@@ -65,18 +66,18 @@ describe('resolveUserRole', () => {
     expect(user?.id).toBe('u1')
   })
 
-  it('skips auth.getUser when a pre-resolved user is passed', async () => {
+  it('skips auth.getClaims when a pre-resolved user is passed', async () => {
     const supabase = makeSupabase('u1', [], [{ id: 'e1' }])
     const preUser = { id: 'u1' } as never
     const { role } = await resolveUserRole(supabase, preUser)
     expect(role).toBe('employee')
-    expect(supabase.auth.getUser).not.toHaveBeenCalled()
+    expect(supabase.auth.getClaims).not.toHaveBeenCalled()
   })
 
-  it('treats explicit null pre-user as unauthenticated without calling getUser', async () => {
+  it('treats explicit null pre-user as unauthenticated without calling getClaims', async () => {
     const supabase = makeSupabase('u1', [{ id: 'o1' }], [])
     const { role } = await resolveUserRole(supabase, null)
     expect(role).toBe('none')
-    expect(supabase.auth.getUser).not.toHaveBeenCalled()
+    expect(supabase.auth.getClaims).not.toHaveBeenCalled()
   })
 })

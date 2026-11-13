@@ -1,14 +1,23 @@
 // Minimal app-shell service worker for the מִשְׁמֶרֶת PWA.
 // Network-first for navigations AND Next.js RSC payloads (so a freshly published
-// schedule is never served stale), cache-first for same-origin static assets.
+// schedule is never served stale), cache-first for content-hashed build assets,
+// stale-while-revalidate for other static files. /api/* is never cached.
 // Only OK responses are cached.
-const CACHE_NAME = 'mishmeret-v3';
+const VERSION = 'v4';
+const SHELL_CACHE = `mishmeret-shell-${VERSION}`;
+const PAGES_CACHE = `mishmeret-pages-${VERSION}`;
+const RSC_CACHE = `mishmeret-rsc-${VERSION}`;
+const STATIC_CACHE = `mishmeret-static-${VERSION}`;
+const CACHES = [SHELL_CACHE, PAGES_CACHE, RSC_CACHE, STATIC_CACHE];
 const APP_SHELL = ['/'];
+// Offline copies of live data are a fallback only — keep them bounded.
+const MAX_PAGES = 20;
+const MAX_RSC = 60;
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
-      .open(CACHE_NAME)
+      .open(SHELL_CACHE)
       .then((cache) => cache.addAll(APP_SHELL))
       .then(() => self.skipWaiting())
   );
@@ -19,11 +28,22 @@ self.addEventListener('activate', (event) => {
     caches
       .keys()
       .then((keys) =>
-        Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+        Promise.all(keys.filter((k) => !CACHES.includes(k)).map((k) => caches.delete(k)))
       )
       .then(() => self.clients.claim())
   );
 });
+
+// Store a copy, then evict oldest entries beyond `max` (keys() is insertion-ordered).
+function putBounded(cacheName, request, response, max) {
+  return caches.open(cacheName).then((cache) =>
+    cache
+      .delete(request) // re-insert so a revisited URL counts as newest
+      .then(() => cache.put(request, response))
+      .then(() => cache.keys())
+      .then((keys) => Promise.all(keys.slice(0, Math.max(0, keys.length - max)).map((k) => cache.delete(k))))
+  );
+}
 
 self.addEventListener('fetch', (event) => {
   const { request } = event;
@@ -32,15 +52,19 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
+  // API routes (schedule image, cron, auth callback) carry live or private
+  // data and set their own cache headers — leave them to the network.
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/auth/')) return;
+
   // Navigation requests: network-first; cache only successful, non-redirected
-  // HTML so we never persist auth redirects. Fall back to the app shell offline.
+  // HTML (per URL) so we never persist auth redirects. Offline, serve the last
+  // copy of that same page, else the precached app shell.
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
         .then((response) => {
           if (response.ok && response.type === 'basic') {
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put('/', copy));
+            event.waitUntil(putBounded(PAGES_CACHE, request, response.clone(), MAX_PAGES));
           }
           return response;
         })
@@ -63,8 +87,7 @@ self.addEventListener('fetch', (event) => {
       fetch(request)
         .then((response) => {
           if (response.ok) {
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+            event.waitUntil(putBounded(RSC_CACHE, request, response.clone(), MAX_RSC));
           }
           return response;
         })
@@ -73,17 +96,37 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Same-origin static GET (content-hashed assets): cache-first, store only OK.
+  // Content-hashed build assets never change: cache-first, store only OK.
+  if (url.pathname.startsWith('/_next/static/')) {
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        if (cached) return cached;
+        return fetch(request).then((response) => {
+          if (response.ok) {
+            const copy = response.clone();
+            event.waitUntil(caches.open(STATIC_CACHE).then((cache) => cache.put(request, copy)));
+          }
+          return response;
+        });
+      })
+    );
+    return;
+  }
+
+  // Other static files (icons, manifest, public images) keep stable URLs across
+  // deploys: serve the cached copy at once and refresh it in the background.
   event.respondWith(
     caches.match(request).then((cached) => {
-      if (cached) return cached;
-      return fetch(request).then((response) => {
+      const refresh = fetch(request).then((response) => {
         if (response.ok) {
           const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+          event.waitUntil(caches.open(STATIC_CACHE).then((cache) => cache.put(request, copy)));
         }
         return response;
       });
+      if (!cached) return refresh;
+      event.waitUntil(refresh.catch(() => undefined));
+      return cached;
     })
   );
 });

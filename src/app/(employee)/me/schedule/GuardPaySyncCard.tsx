@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { syncWeekToGuardPay, unlinkGuardPay } from './guardpay-actions'
 import { GuardPayLinkFlow } from './GuardPayLinkFlow'
@@ -20,7 +19,6 @@ interface Props {
  *  so employees re-import updated weeks but can't hammer an unchanged one.
  *  Unlink keeps the repo's two-step inline confirm idiom. */
 export function GuardPaySyncCard({ periodId, linked, linkedName, synced, hasShifts }: Props) {
-  const router = useRouter()
   const [linkOpen, setLinkOpen] = useState(false)
   const [confirmUnlink, setConfirmUnlink] = useState(false)
   const [busy, run] = useTransition()
@@ -40,7 +38,6 @@ export function GuardPaySyncCard({ periodId, linked, linkedName, synced, hasShif
         setMsg(r.error)
         return
       }
-      router.refresh()
     })
   }
 
@@ -53,7 +50,6 @@ export function GuardPaySyncCard({ periodId, linked, linkedName, synced, hasShif
         setMsg(r.error)
         return
       }
-      router.refresh()
     })
   }
 

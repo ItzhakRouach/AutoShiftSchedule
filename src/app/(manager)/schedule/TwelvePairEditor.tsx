@@ -1,7 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 import { Sheet } from '@/components/ui/Sheet'
 import { PairCandidateList } from './PairCandidateList'
 import type { ShiftId } from '@/lib/domain/constants'
@@ -53,8 +52,6 @@ function rolesForDay(view: ScheduleView, day: number, meta: EditMeta): { id: str
 }
 
 export function TwelvePairEditor({ day, onClose, view, meta }: Props) {
-  const router = useRouter()
-  const [, start] = useTransition()
   const [roleId, setRoleId] = useState<string | null>(null)
   const [morning, setMorning] = useState<string | null>(null)
   const [night, setNight] = useState<string | null>(null)
@@ -95,7 +92,6 @@ export function TwelvePairEditor({ day, onClose, view, meta }: Props) {
         const res = await applyTwelvePair(view.periodId, day!, roleId, morning, night)
         if (!res.ok) { setMsg(res.error ?? 'שגיאה'); return }
         setMsg(res.warning ?? null)
-        start(() => router.refresh())
       } finally { setBusy(false) }
     })()
   }
@@ -109,7 +105,6 @@ export function TwelvePairEditor({ day, onClose, view, meta }: Props) {
         if (!res.ok) { setMsg(res.error ?? 'שגיאה'); return }
         setMsg(res.warning ?? null)
         setMorning(null); setNight(null)
-        start(() => router.refresh())
       } finally { setBusy(false) }
     })()
   }

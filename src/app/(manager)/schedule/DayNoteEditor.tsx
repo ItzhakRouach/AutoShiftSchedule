@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
 import { Sheet } from '@/components/ui/Sheet'
 import type { ScheduleView } from '@/lib/schedule/view-data'
 import { setDayNote, removeDayNote } from './day-note-actions'
@@ -14,7 +13,6 @@ const inputStyle: React.CSSProperties = {
 }
 
 export function DayNoteEditor({ open, onClose, view }: { open: boolean; onClose: () => void; view: ScheduleView }) {
-  const router = useRouter()
   const [day, setDay] = useState<number | null>(null)
   const [employeeId, setEmployeeId] = useState('')
   const [label, setLabel] = useState('')
@@ -42,14 +40,12 @@ export function DayNoteEditor({ open, onClose, view }: { open: boolean; onClose:
       const r = await setDayNote(view.periodId, employeeId, day, label.trim())
       if (!r.ok) { setMsg(r.error ?? 'שגיאה'); return }
       setLabel(''); setEmployeeId(''); setDay(null)
-      router.refresh()
     })
   }
 
   function remove(empId: string, d: number) {
     run(async () => {
       await removeDayNote(view.periodId, empId, d)
-      router.refresh()
     })
   }
 

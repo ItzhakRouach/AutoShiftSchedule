@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
 import type { UndoSnapshot } from '@/lib/schedule/undo-core'
 import { undoEdit } from './undo-actions'
 
@@ -33,7 +32,6 @@ export interface UndoStack {
 
 /** Multi-step undo/redo over manual schedule edits. */
 export function useUndoStack(periodId: string, onApplied: () => void): UndoStack {
-  const router = useRouter()
   const [undoStack, setUndoStack] = useState<HistoryEntry[]>([])
   const [redoStack, setRedoStack] = useState<HistoryEntry[]>([])
   const [busy, start] = useTransition()
@@ -51,10 +49,9 @@ export function useUndoStack(periodId: string, onApplied: () => void): UndoStack
         if (!res.ok) { setError(res.error ?? 'שגיאה בביטול'); return }
         onOk()
         onApplied()
-        router.refresh()
       })
     },
-    [periodId, router, onApplied],
+    [periodId, onApplied],
   )
 
   const undo = useCallback(() => {

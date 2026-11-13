@@ -1,5 +1,6 @@
 'use server'
 
+import { getAuthUser } from '@/lib/auth/user'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
@@ -26,9 +27,7 @@ export type InviteActionResult = { code: string } | { error: string }
 
 export async function createInvite(): Promise<InviteActionResult> {
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
 
   if (!user) redirect('/login')
 
@@ -116,7 +115,7 @@ export async function getInviteShareLinkForPhone(
   employeeId?: string,
 ): Promise<InviteShareLink> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) return { ok: false, error: 'אין הרשאה' }
   const workplace = await getActiveWorkplace(supabase)
   if (!workplace) return { ok: false, error: 'לא נמצא מקום עבודה' }
@@ -142,7 +141,7 @@ export async function getInviteShareLinkForPhone(
  */
 export async function getInviteShareLinkForEmployee(employeeId: string): Promise<InviteShareLink> {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser(supabase)
   if (!user) return { ok: false, error: 'אין הרשאה' }
   const workplace = await getActiveWorkplace(supabase)
   if (!workplace) return { ok: false, error: 'לא נמצא מקום עבודה' }
