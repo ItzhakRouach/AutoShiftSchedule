@@ -62,7 +62,7 @@ test('employee requests: full flow (mark day-off, preferred shift, vacation)', a
   await expect(empPage).toHaveURL(/\/me$/, { timeout: 15000 })
 
   // ── 4. Employee navigates to /me/requests ────────────────────────────────
-  await empPage.getByRole('link', { name: /הגשת בקשות/ }).click()
+  await empPage.getByRole('navigation', { name: 'ניווט' }).getByRole('link', { name: 'בקשות', exact: true }).click()
   await expect(empPage).toHaveURL(/\/me\/requests/, { timeout: 10000 })
   const heading = empPage.getByRole('heading', { name: 'הבקשות שלי' })
   await expect(heading).toBeVisible({ timeout: 10000 })
@@ -111,9 +111,16 @@ test('employee requests: full flow (mark day-off, preferred shift, vacation)', a
   // invisible entries (that is exactly how this test broke once).
   const vac = futureRange(20, 6)
   const vacationRangeText = vac.text
-  await empPage.getByLabel('מתאריך').fill(vac.fromISO)
-  await empPage.getByLabel('עד תאריך').fill(vac.toISO)
-  await empPage.getByRole('button', { name: 'הוסף חופשה' }).click()
+  // The page was just reloaded: a fill that lands before React hydrates is
+  // wiped when the controlled inputs mount, leaving the button disabled.
+  // Retry the fill until the form has actually registered both dates.
+  const addVacationBtn = empPage.getByRole('button', { name: 'הוסף חופשה' })
+  await expect(async () => {
+    await empPage.getByLabel('מתאריך').fill(vac.fromISO)
+    await empPage.getByLabel('עד תאריך').fill(vac.toISO)
+    await expect(addVacationBtn).toBeEnabled({ timeout: 1000 })
+  }).toPass({ timeout: 15000 })
+  await addVacationBtn.click()
   await expect(empPage.getByText(vacationRangeText)).toBeVisible({ timeout: 8000 })
 
   // Reload and assert vacation persists

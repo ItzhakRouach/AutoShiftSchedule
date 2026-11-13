@@ -65,6 +65,14 @@ test('employee sees a "new schedule" banner on publish, cleared by viewing the s
   // Employee reloads /me → banner appears.
   await emp.page.goto('/me')
   await expect(emp.page.getByText('סידור חדש פורסם')).toBeVisible({ timeout: 15000 })
+  // The published week shows as the employee's own seven-day list.
+  await expect(emp.page.getByTestId('my-week').first()).toBeVisible()
+  await expect(emp.page.getByTestId('my-week').first()).toContainText('משמרות')
+  if (process.env.ME_SHOT) {
+    await emp.page.setViewportSize({ width: 390, height: 844 })
+    await emp.page.screenshot({ path: process.env.ME_SHOT, fullPage: true })
+    await emp.page.setViewportSize({ width: 1280, height: 720 })
+  }
 
   // Viewing the schedule marks it seen → banner gone on next /me visit.
   await emp.page.goto('/me/schedule')

@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getAuthUser } from '@/lib/auth/user'
 import { signOut } from '@/app/(auth)/actions'
-import { Icon, type IconName } from '@/components/ui/Icon'
+import { Icon } from '@/components/ui/Icon'
 import { Card } from '@/components/ui/Card'
 import { DeleteAccountButton } from '@/components/account/DeleteAccountButton'
 import { getMeSummary, getMeStats } from '@/lib/stats/me-summary-data'
@@ -14,23 +14,10 @@ import { MeSummary } from './MeSummary'
 import { MeStats } from './MeStats'
 import { PushToggle } from './PushToggle'
 import { NewScheduleBanner } from './NewScheduleBanner'
-
-function NavCard({ href, icon, title, subtitle }: { href: string; icon: IconName; title: string; subtitle: string }) {
-  return (
-    <Link href={href} style={{ textDecoration: 'none', display: 'block', marginBottom: 12 }}>
-      <Card style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 18px', cursor: 'pointer' }} interactive>
-        <div style={{ width: 44, height: 44, borderRadius: 'var(--r-md)', background: 'var(--accent-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', flexShrink: 0 }}>
-          <Icon name={icon} size={22} stroke={2} />
-        </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{title}</div>
-          <div style={{ fontSize: 13, color: 'var(--text-2)', marginTop: 2 }}>{subtitle}</div>
-        </div>
-        <Icon name="chevronLeft" size={18} color="var(--text-3)" />
-      </Card>
-    </Link>
-  )
-}
+import { getMyWeeks } from '@/lib/schedule/my-shifts-data'
+import { pickNextShift, whenLabel } from '@/lib/schedule/my-shifts'
+import { MyWeekList, NextShiftCard } from './MyShifts'
+import { todayInIsraelISO } from '@/lib/dates/week'
 
 export default async function MePage() {
   const supabase = await createClient()
@@ -44,9 +31,10 @@ export default async function MePage() {
     .maybeSingle()
   if (!employee) redirect('/onboarding')
 
+  const now = new Date()
   const [{ data: workplace }, week, summaryData, statsData, { data: lastPublished }, { data: seen }] = await Promise.all([
-    supabase.from('workplaces').select('name').eq('id', employee.workplace_id).maybeSingle(),
-    resolveCollectionWeek(supabase, employee.workplace_id, new Date()),
+    supabase.from('workplaces').select('name, timezone').eq('id', employee.workplace_id).maybeSingle(),
+    resolveCollectionWeek(supabase, employee.workplace_id, now),
     getMeSummary(supabase, employee.id, employee.workplace_id),
     getMeStats(supabase, employee.id, employee.workplace_id),
     supabase
@@ -60,6 +48,11 @@ export default async function MePage() {
       .maybeSingle(),
     supabase.from('schedule_seen').select('seen_at').eq('employee_id', employee.id).maybeSingle(),
   ])
+
+  const zone = (workplace?.timezone as string | null | undefined) ?? 'Asia/Jerusalem'
+  const myWeeks = await getMyWeeks(supabase, employee.id, employee.workplace_id, zone, now)
+  const nextShift = pickNextShift(myWeeks, now.getTime())
+  const todayISO = todayInIsraelISO(now)
 
   // Show the "new schedule" banner when the latest publish is newer than the
   // employee's last look (or they've never looked).
@@ -86,6 +79,11 @@ export default async function MePage() {
 
       {hasNewSchedule && <NewScheduleBanner />}
 
+      {nextShift && <NextShiftCard shift={nextShift} when={whenLabel(nextShift, now.getTime(), zone)} />}
+      {myWeeks.map((w) => (
+        <MyWeekList key={w.weekStart} week={w} title={w.weekStart <= todayISO ? 'השבוע שלי' : 'השבוע הבא'} />
+      ))}
+
       {deadline && (
         <Link href="/me/requests" style={{ textDecoration: 'none', display: 'block', marginBottom: 12 }}>
           <Card interactive style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', background: 'var(--accent-soft)', border: '1px solid var(--accent)' }}>
@@ -104,9 +102,6 @@ export default async function MePage() {
       {summaryData && <MeSummary summary={summaryData.summary} roles={summaryData.roles} />}
 
       <MeStats data={statsData} />
-
-      <NavCard href="/me/schedule" icon="grid" title="הסידור השבועי" subtitle="צפייה בסידור העבודה המפורסם" />
-      <NavCard href="/me/requests" icon="calendar" title="הגשת בקשות" subtitle="בקשות לשבוע הקרוב" />
 
       {/* Sign out + delete account */}
       <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 14 }}>

@@ -85,7 +85,7 @@ test('manager creates invite, employee joins via /join/[code] and lands on /me',
 
   // ── 5. Employee can open the weekly schedule page. Nothing is published yet,
   // so the page shows the dedicated empty state instead of the schedule header.
-  await employeePage.getByRole('link', { name: /הסידור השבועי/ }).click()
+  await employeePage.getByRole('navigation', { name: 'ניווט' }).getByRole('link', { name: 'סידור', exact: true }).click()
   await expect(employeePage).toHaveURL(/\/me\/schedule/, { timeout: 10000 })
   await expect(employeePage.getByRole('heading', { name: 'עדיין לא פורסם סידור עבודה' })).toBeVisible({ timeout: 10000 })
 
