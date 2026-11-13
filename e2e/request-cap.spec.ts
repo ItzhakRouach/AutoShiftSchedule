@@ -7,6 +7,13 @@ async function saveRequestCap(managerPage: Page, value: string) {
   const field = managerPage.locator('#max-request-days-per-week')
   const form = managerPage.locator('form').filter({ has: field })
   await field.fill(value)
+  // The cap shares a form with the request deadline, whose fields default to
+  // Thursday 18:00 on a workplace that never set one. Saving that default from
+  // Thursday evening to Saturday puts the deadline in the past and rolls the
+  // employee's request week forward, hiding the days this test just marked.
+  // Pin a deadline that has not passed on any weekday instead.
+  await managerPage.locator('#deadline-dow').selectOption('6')
+  await managerPage.locator('#deadline-time').fill('23:59')
   await form.getByRole('button', { name: 'שמור', exact: true }).click()
   await expect(managerPage.getByText('ההגדרות נשמרו בהצלחה')).toBeVisible({ timeout: 10000 })
 }
