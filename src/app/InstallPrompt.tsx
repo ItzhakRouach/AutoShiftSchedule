@@ -71,7 +71,7 @@ export default function InstallPrompt() {
       role="dialog"
       aria-label="התקנת האפליקציה"
       style={{
-        position: 'fixed', insetInline: 12, bottom: 'calc(12px + env(safe-area-inset-bottom))',
+        position: 'fixed', insetInline: 12, bottom: 'calc(12px + env(safe-area-inset-bottom) + var(--bottom-nav-h, 0px))',
         zIndex: 60, maxWidth: 420, marginInline: 'auto',
         display: 'flex', alignItems: 'center', gap: 12,
         padding: '12px 14px', direction: 'rtl',

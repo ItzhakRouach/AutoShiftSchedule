@@ -53,7 +53,7 @@ body {
   .page-wrap.narrow { max-width: 760px; }
 }
 
-/* Top-nav dropdown: subtle fade + slide-in from the top. */
+/* Top-nav dropdown (workplace switcher): subtle fade + slide-in from the top. */
 @keyframes nav-dropdown-in {
   from { opacity: 0; transform: translateY(-8px) scale(0.98); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
@@ -62,9 +62,6 @@ body {
   animation: nav-dropdown-in 0.16s ease-out;
   transform-origin: top right;
 }
-
-/* Top-nav menu rows: gentle hover; logout turns red. */
-.nav-item:hover { background: var(--surface-2); }
 .nav-logout:hover { color: var(--danger) !important; background: var(--danger-soft) !important; }
 
 /* Spinner: a rotating ring used in buttons and route loading states. */
@@ -141,11 +138,14 @@ textarea:focus-visible,
 
 /* ── Responsive top-nav: inline tab bar on desktop, hamburger on mobile. */
 .nav-tabs-desktop { display: none; }
-.nav-desktop-only { display: none; }
+/* Phones/tablets navigate with the fixed bottom tab bar; the page reserves
+   room for it so the last content and sticky bars are never covered. */
+.bottom-nav { display: grid; }
+body:has(.bottom-nav) { --bottom-nav-h: 61px; padding-bottom: calc(61px + env(safe-area-inset-bottom)); }
 @media (min-width: 1024px) {
-  .nav-hamburger { display: none !important; }
   .nav-tabs-desktop { display: flex; gap: 4px; }
-  .nav-desktop-only { display: flex; }
+  .bottom-nav { display: none; }
+  body:has(.bottom-nav) { --bottom-nav-h: 0px; padding-bottom: 0; }
 }
 .nav-tab:hover { background: var(--surface-2); }
 
@@ -186,7 +186,7 @@ textarea:focus-visible,
 @media (max-width: 1023px) {
   .submit-bar-sticky {
     position: sticky;
-    bottom: 12px;
+    bottom: calc(12px + env(safe-area-inset-bottom) + var(--bottom-nav-h, 0px));
     z-index: 20;
   }
   .submit-bar-sticky > div { box-shadow: var(--shadow-lift); }

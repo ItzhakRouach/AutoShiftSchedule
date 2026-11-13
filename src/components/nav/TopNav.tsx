@@ -2,13 +2,12 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState } from 'react'
 import { Icon } from '@/components/ui/Icon'
 import { signOut } from '@/app/(auth)/actions'
 import { WorkplaceSwitcher } from './WorkplaceSwitcher'
 import { ThemeToggle } from './ThemeToggle'
-import { NavDropdown } from './NavDropdown'
-import { HamburgerIcon, TabIcon, isTabActive, type Tab } from './nav-shared'
+import { BottomNav } from './BottomNav'
+import { TabIcon, isTabActive, type Tab } from './nav-shared'
 
 const MANAGER_TABS: Tab[] = [
   { href: '/dashboard', label: 'דשבורד', icon: 'chart' },
@@ -25,11 +24,8 @@ const EMPLOYEE_TABS: Tab[] = [
 
 function TopBar({ tabs, centerSlot }: { tabs: Tab[]; centerSlot?: React.ReactNode }) {
   const pathname = usePathname()
-  // The menu closes via each item's onClick + the backdrop, so no route-change
-  // effect is needed (and we avoid a setState-in-render/effect anti-pattern).
-  const [open, setOpen] = useState(false)
-
   return (
+    <>
     <header
       style={{
         flexShrink: 0,
@@ -50,30 +46,7 @@ function TopBar({ tabs, centerSlot }: { tabs: Tab[]; centerSlot?: React.ReactNod
           paddingTop: 'calc(10px + env(safe-area-inset-top))',
         }}
       >
-        <button
-          type="button"
-          className="nav-hamburger"
-          onClick={() => setOpen((o) => !o)}
-          aria-expanded={open}
-          aria-label="תפריט"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 40,
-            height: 40,
-            flexShrink: 0,
-            borderRadius: 'var(--r-md)',
-            border: '1px solid var(--border)',
-            background: open ? 'var(--accent-soft)' : 'var(--surface)',
-            color: open ? 'var(--accent)' : 'var(--text)',
-            cursor: 'pointer',
-          }}
-        >
-          <HamburgerIcon open={open} />
-        </button>
-
-        {/* Desktop: persistent inline tab bar (hidden on mobile via CSS). */}
+        {/* Desktop: persistent inline tab bar (phones use BottomNav instead). */}
         <nav className="nav-tabs-desktop" aria-label="ניווט">
           {tabs.map((tab) => {
             const active = isTabActive(pathname, tab.href)
@@ -111,8 +84,7 @@ function TopBar({ tabs, centerSlot }: { tabs: Tab[]; centerSlot?: React.ReactNod
           )}
         </div>
         <ThemeToggle />
-        {/* Desktop-only sign-out (the dropdown holds it on mobile). */}
-        <form action={signOut} className="nav-desktop-only" style={{ margin: 0 }}>
+        <form action={signOut} style={{ margin: 0, marginInlineStart: 8 }}>
           <button
             type="submit"
             aria-label="התנתקות"
@@ -129,8 +101,9 @@ function TopBar({ tabs, centerSlot }: { tabs: Tab[]; centerSlot?: React.ReactNod
         </form>
       </div>
 
-      {open && <NavDropdown tabs={tabs} pathname={pathname} onClose={() => setOpen(false)} />}
     </header>
+    <BottomNav tabs={tabs} pathname={pathname} />
+    </>
   )
 }
 
