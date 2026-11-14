@@ -37,6 +37,7 @@ export function CoverageIssues({
   nightImbalance = [],
   view,
   onClose,
+  onProposeTwelve,
 }: {
   open: boolean
   overridden: OverriddenOff[]
@@ -44,6 +45,8 @@ export function CoverageIssues({
   nightImbalance?: NightImbalance[]
   view: ScheduleView
   onClose: () => void
+  /** Opens the 12h proposal; omitted where 12h can't be applied (read-only, published). */
+  onProposeTwelve?: () => void
 }) {
   if (!open || (overridden.length === 0 && uncovered.length === 0 && nightImbalance.length === 0))
     return null
@@ -123,7 +126,15 @@ export function CoverageIssues({
               <li>לתאם ישירות עם {peoplePulled.join(', ')} — הם שובצו למרות שביקשו חופש.</li>
             )}
             {uncovered.length > 0 && (
-              <li>לפתוח &quot;עוד&quot; ולבחור &quot;השלמה עם משמרות 12 שעות&quot; כדי לנסות לכסות את החוסרים במשמרות 12 שעות, או לשבץ 12 שעות ידנית.</li>
+              <li>
+                לכסות את החוסרים בזוגות של 12 שעות (07:00–19:00 ו־19:00–07:00) — ההצעה מוצגת לפני שמשהו נשמר.
+                {onProposeTwelve && (
+                  <button type="button" data-testid="issues-propose-twelve" onClick={onProposeTwelve}
+                    style={{ display: 'block', marginTop: 6, padding: '8px 14px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--accent)', color: 'var(--accent-ink)', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font)' }}>
+                    הצגת הצעה למשמרות 12 שעות
+                  </button>
+                )}
+              </li>
             )}
             {nightImbalance.length > 0 && (
               <li>

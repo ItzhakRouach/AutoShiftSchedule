@@ -78,7 +78,12 @@ test('manager generates an auto schedule and sees coverage + assignments', async
   const completeTwelve = page.getByTestId('complete-twelve')
   if (!(await completeTwelve.count())) await page.keyboard.press('Escape')
   if (await completeTwelve.count()) {
+    // Opens the 12h proposal; nothing is saved until it is approved.
     await completeTwelve.click()
+    const apply = page.getByTestId('proposal-apply')
+    await expect(apply).toBeVisible({ timeout: 30000 })
+    if (await apply.isEnabled()) await apply.click()
+    else await page.keyboard.press('Escape')
     await expect(coverage).toHaveText(/\d+%/, { timeout: 30000 })
     // The completion run may itself surface fresh uncovered/overridden data,
     // reopening the popup — dismiss it again before continuing.

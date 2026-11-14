@@ -75,4 +75,21 @@ describe('12h pairing', () => {
     expect(res.warnings.some((w) => w.day === 0 && w.shift === 'noon')).toBe(true)
     expect(res.feasibility.status).not.toBe('ok')
   })
+
+  it('nobody on the night: a same-day morning worker moves over to 19:00–07:00', () => {
+    // Both work the morning in different roles; the noon and night are empty.
+    // a stays 07:00–19:00 and b moves to the night, covering 4 cells instead of 2.
+    const roles = [SHIFT_MGR, GUARD]
+    const a = emp('a', { roleIds: roles })
+    const b = emp('b', { roleIds: roles })
+    const req = mergeReqs(...(['morning', 'noon', 'night'] as ShiftKey[]).flatMap((s) => roles.map((r) => reqFor([0], s, r, 1))))
+    const res = generateSchedule(input({
+      employees: [a, b], requirements: req, settings: on(),
+      requests: buildRequests([a, b], (_id, d) => (d === 0 ? { preferred: ['morning'] } : {})),
+    }))
+    expect(variants(res, 'm12_day')).toHaveLength(1)
+    expect(variants(res, 'm12_night')).toHaveLength(1)
+    expect(res.coverage.filledSlots).toBe(3)
+    expect(onSiteEvening(res, 0)).toBe(1)
+  })
 })

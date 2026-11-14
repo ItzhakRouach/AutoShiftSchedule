@@ -71,9 +71,9 @@ export function MoreActionsSheet({
         {canCompleteTwelve && (
           <div>
             <Btn variant="soft" size="md" style={{ width: '100%' }} disabled={running} onClick={then(onCompleteTwelveHour)} data-testid="complete-twelve">
-              השלמה עם משמרות 12 שעות
+              הצעה למשמרות 12 שעות
             </Btn>
-            <p style={hint}>ממלא משבצות שנשארו ריקות בעזרת משמרות של 12 שעות. שיבוצים ידניים נשמרים.</p>
+            <p style={hint}>מראה איך לסגור משבצות ריקות בזוגות של 07:00–19:00 ו־19:00–07:00. שום דבר לא נשמר עד שתאשר/י.</p>
           </div>
         )}
 

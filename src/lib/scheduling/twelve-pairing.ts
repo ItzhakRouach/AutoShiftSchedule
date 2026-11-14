@@ -10,13 +10,16 @@
 // For every day shift without a partner this step:
 //   1. UPGRADES an 8h night worker of that role to 19:00–07:00 (same night
 //      cell, same role, no extra shift — four more hours), choosing whoever
-//      carries the fewest 12h shifts so the load spreads; or, failing that,
-//   2. UNDOES the day shift back to the 8h it absorbed, so the noon cell is
+//      carries the fewest 12h shifts so the load spreads; or
+//   2. MOVES a same-day morning/noon worker of that role over to 19:00–07:00
+//      in an open night cell (the owner's own fix); or, failing both,
+//   3. UNDOES the day shift back to the 8h it absorbed, so the noon cell is
 //      reported open instead of falsely covered.
 import type { Assignment, DayMeta, Employee, EngineInput, TwelveHourAssignment } from './types'
 import type { FillState } from './dayfill'
 import { canTwelve } from './twelve-rules'
-import { reqOf } from './twelve-plan'
+import { reqOf, removeBase } from './twelve-plan'
+import { nightCount } from './fairness'
 
 /** `${employeeId}:${day}` → the 8h shift a 12h absorbed when it was created
  *  (null when the 12h was placed on a free worker). */
@@ -83,6 +86,41 @@ function pickUpgrade(
   return candidates[0] ?? null
 }
 
+/**
+ * Nobody of that role is on the night: move a same-day morning/noon worker who
+ * holds `role` over to 19:00–07:00 in an OPEN night cell. They leave one 8h
+ * cell (−1) to keep the day shift's noon (+1) and fill the night (+1). Fewest
+ * nights first. Returns false if no such worker can legally start at 19:00.
+ */
+function moveOverToNight(
+  input: EngineInput, st: FillState, out: TwelveHourAssignment[], meta: DayMeta, role: string,
+  exclude: string, absorbed: AbsorbedMap,
+): boolean {
+  const day = meta.index
+  const openNightRole = (e: Employee) =>
+    Object.keys(input.requirements[day]?.night ?? {}).find(
+      (r) => e.roleIds.includes(r) && st.grid[day].night[r].length < (input.requirements[day]?.night?.[r] ?? 0),
+    )
+  const candidates = input.employees
+    .filter((e) => e.id !== exclude && e.roleIds.includes(role))
+    .map((e) => ({ e, cur: st.committed[e.id].find((a) => a.day === day && !a.is12h && a.shift !== 'night'), nightRole: openNightRole(e) }))
+    .filter((c): c is { e: Employee; cur: Assignment; nightRole: string } => !!c.cur && !!c.nightRole)
+    .filter(({ e, cur }) => canTwelve({
+      emp: e, meta, variant: 'm12_night', request: reqOf(input, e.id, day),
+      current: st.committed[e.id].filter((a) => a !== cur), settings: input.settings,
+      priorTail: input.priorWeekTail?.[e.id], nextHead: input.nextWeekHead?.[e.id],
+    }))
+    .sort((a, b) => nightCount(st.committed[a.e.id]) - nightCount(st.committed[b.e.id]) || a.e.id.localeCompare(b.e.id))
+  const pick = candidates[0]
+  if (!pick) return false
+  removeBase(st, pick.cur)
+  st.grid[day].night[pick.nightRole].push(pick.e.id)
+  st.committed[pick.e.id].push({ employeeId: pick.e.id, day, shift: 'night', roleId: pick.nightRole, is12h: true, variant: 'm12_night' })
+  out.push({ employeeId: pick.e.id, day, variant: 'm12_night', rolesByShift: { night: pick.nightRole } })
+  absorbed.set(absorbKey(pick.e.id, day), pick.cur)
+  return true
+}
+
 /** Turn an unrelieved 07:00–19:00 back into the 8h shift it came from. */
 function undoDayShift(st: FillState, out: TwelveHourAssignment[], rec: TwelveHourAssignment, absorbed: AbsorbedMap): void {
   const { employeeId: id, day } = rec
@@ -116,7 +154,9 @@ export function completePairs(
     if (!need) return
     const up = pickUpgrade(input, st, out, meta, need.role)
     if (!up) {
-      undoDayShift(st, out, need.rec, absorbed)
+      if (!moveOverToNight(input, st, out, meta, need.role, need.rec.employeeId, absorbed)) {
+        undoDayShift(st, out, need.rec, absorbed)
+      }
       continue
     }
     up.night.is12h = true

@@ -13,3 +13,4 @@ export const DistributionDrawer = dynamic(() => import('./DistributionDrawer').t
 export const MoreActionsSheet = dynamic(() => import('./MoreActionsSheet').then((m) => m.MoreActionsSheet), { ssr: false })
 export const CoverageIssues = dynamic(() => import('./CoverageIssues').then((m) => m.CoverageIssues), { ssr: false })
 export const RegenerateConfirm = dynamic(() => import('./RegenerateConfirm').then((m) => m.RegenerateConfirm), { ssr: false })
+export const TwelveProposalSheet = dynamic(() => import('./TwelveProposalSheet').then((m) => m.TwelveProposalSheet), { ssr: false })
