@@ -54,7 +54,7 @@ export function DayEntryChip({ entry, emp, isSelf, busy, onClick, onRemoveTemp }
       {entry.requested && (
         <span title="ביקש משמרת זו" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 14, height: 14, borderRadius: '50%', background: 'var(--success-soft)', color: 'var(--success)', fontSize: 9, fontWeight: 800, flexShrink: 0 }}>✓</span>
       )}
-      <span style={{ fontSize: 13, fontWeight: isSelf ? 800 : 600, color: isSelf ? 'var(--accent)' : 'var(--text)' }}>
+      <span style={{ fontSize: 13.5, fontWeight: 800, color: isSelf ? 'var(--accent)' : 'var(--text)' }}>
         {emp?.name ?? 'לא ידוע'}{isSelf ? ' (אני)' : ''}
       </span>
       {meta && (

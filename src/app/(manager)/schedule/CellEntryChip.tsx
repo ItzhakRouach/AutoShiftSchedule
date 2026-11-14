@@ -46,10 +46,13 @@ export function CellEntryChip({ entry: en, emp, dimmed, srcSlot, onDragEmployee,
       } : undefined}
       style={{
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        color: emp?.color ?? 'var(--text)', fontWeight: 700,
+        // Bold, and the worker's colour pulled toward the text colour so a
+        // light colour (yellow, orange) still reads on the tinted shift cells —
+        // in both themes, since --text flips with the theme.
+        color: emp?.color ? `color-mix(in srgb, ${emp.color} 72%, var(--text))` : 'var(--text)', fontWeight: 800,
         // Wrap instead of nowrap: with the fixed-width table the cell can't
         // grow, so long names + the 12h label fold to a second line.
-        flexWrap: 'wrap', whiteSpace: 'normal', fontSize: 13, lineHeight: 1.4,
+        flexWrap: 'wrap', whiteSpace: 'normal', fontSize: 13.5, lineHeight: 1.4,
         cursor: onDragEmployee ? 'grab' : undefined,
         opacity: dimmed ? 0.35 : 1,
         transition: 'opacity 0.15s',
