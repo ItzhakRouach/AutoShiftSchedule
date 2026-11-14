@@ -34,7 +34,7 @@ export function PairCandidateList({
             <Avatar name={c.name} color={colorById(c.id)} size={26} />
             <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{c.name}</span>
           </span>
-          <span style={{ fontSize: 12, fontWeight: 700, color: c.disabled ? '#EB6A4E' : 'var(--accent)' }}>{c.label}</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: c.disabled ? 'var(--danger-2)' : 'var(--accent)' }}>{c.label}</span>
         </button>
       ))}
     </div>

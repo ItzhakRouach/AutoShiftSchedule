@@ -59,7 +59,7 @@ export function ClearAllButton({ periodId, hasAnyRequest }: Props) {
           fontFamily: 'var(--font)',
           cursor: busy ? 'default' : 'pointer',
           border: `1px solid ${confirming ? 'var(--danger)' : 'var(--border-strong)'}`,
-          background: confirming ? 'rgba(220,70,70,0.08)' : 'var(--surface)',
+          background: confirming ? 'var(--danger-soft)' : 'var(--surface)',
           color: confirming ? 'var(--danger)' : 'var(--text-2)',
           transition: 'background 0.15s, color 0.15s',
         }}
@@ -67,7 +67,7 @@ export function ClearAllButton({ periodId, hasAnyRequest }: Props) {
         {label}
       </button>
       {msg && (
-        <div role="status" style={{ marginTop: 8, padding: '8px 12px', borderRadius: 10, background: 'rgba(220,70,70,0.1)', color: 'var(--danger)', fontSize: 13 }}>
+        <div role="status" style={{ marginTop: 8, padding: '8px 12px', borderRadius: 10, background: 'var(--danger-soft)', color: 'var(--danger)', fontSize: 13 }}>
           {msg}
         </div>
       )}

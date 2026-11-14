@@ -59,7 +59,7 @@ export function DayEntryChip({ entry, emp, isSelf, busy, onClick, onRemoveTemp }
       </span>
       {meta && (
         <span title="משמרת 12 שעות" style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--text-2)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 7, padding: '1px 6px', flexShrink: 0 }}>
-          12ש׳ <LtrText>{meta.time}</LtrText>
+          12 שעות · <LtrText>{meta.time}</LtrText>
         </span>
       )}
     </span>
@@ -85,7 +85,7 @@ export function DayCoveredMarker() {
         fontWeight: 700,
       }}
     >
-      12ש׳
+      מכוסה · 12 שעות
     </span>
   )
 }

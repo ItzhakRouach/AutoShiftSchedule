@@ -54,7 +54,7 @@ export function PasswordField({ id, label, name, autoComplete, error, blockPaste
             boxSizing: 'border-box',
             background: 'var(--surface-2)',
             color: 'var(--text)',
-            border: `1px solid ${error ? '#D4373A' : focused ? 'var(--accent)' : 'var(--border-strong)'}`,
+            border: `1px solid ${error ? 'var(--danger)' : focused ? 'var(--accent)' : 'var(--border-strong)'}`,
             borderRadius: 'var(--r-sm)',
             padding: '10px 12px',
             paddingInlineEnd: 42,
@@ -94,7 +94,7 @@ export function PasswordField({ id, label, name, autoComplete, error, blockPaste
         </button>
       </div>
       {error && (
-        <span role="alert" style={{ fontSize: 12, color: '#D4373A' }}>
+        <span role="alert" style={{ fontSize: 12, color: 'var(--danger)' }}>
           {error}
         </span>
       )}

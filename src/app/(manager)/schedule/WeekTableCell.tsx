@@ -127,7 +127,7 @@ function WeekTableCellImpl(props: WeekTableCellProps) {
     return (
       <td style={cellStyle} onClick={clickHandler} aria-busy={isBusy || undefined} aria-label={cellLabel} {...dropProps}>
         {covered ? (
-          <span title="מאויש ע״י משמרת 12 שעות" style={{ color: 'var(--text-3)', fontWeight: 700, fontSize: 11 }}>12ש׳</span>
+          <span title="מאויש ע״י משמרת 12 שעות" style={{ display: 'inline-block', color: 'var(--text-2)', fontWeight: 700, fontSize: 11, lineHeight: 1.3, border: '1.5px dashed var(--warning)', background: 'var(--warning-soft)', borderRadius: 'var(--r-sm)', padding: '2px 6px' }}>מכוסה · 12 שעות</span>
         ) : marked ? (
           // A caption-less mark still needs a trace in the EDIT view (showUnfilled),
           // else an accidental empty submit whitens a cell with nothing to find.

@@ -31,7 +31,7 @@ function Field({
         style={{
           background: 'var(--surface-2)',
           color: 'var(--text)',
-          border: `1px solid ${error ? '#D4373A' : 'var(--border-strong)'}`,
+          border: `1px solid ${error ? 'var(--danger)' : 'var(--border-strong)'}`,
           borderRadius: 'var(--r-sm)',
           padding: '10px 12px',
           fontSize: 14,
@@ -47,11 +47,11 @@ function Field({
         }}
         onBlur={e => {
           e.currentTarget.style.boxShadow = 'none'
-          e.currentTarget.style.borderColor = error ? '#D4373A' : 'var(--border-strong)'
+          e.currentTarget.style.borderColor = error ? 'var(--danger)' : 'var(--border-strong)'
         }}
       />
       {error && (
-        <span role="alert" style={{ fontSize: 12, color: '#D4373A' }}>
+        <span role="alert" style={{ fontSize: 12, color: 'var(--danger)' }}>
           {error}
         </span>
       )}
@@ -98,12 +98,12 @@ export default function OnboardingPage() {
             role="alert"
             style={{
               background: 'rgba(212,55,58,0.1)',
-              border: '1px solid #D4373A',
+              border: '1px solid var(--danger)',
               borderRadius: 'var(--r-sm)',
               padding: '10px 14px',
               marginBottom: 20,
               fontSize: 13,
-              color: '#D4373A',
+              color: 'var(--danger)',
               textAlign: 'right',
             }}
           >

@@ -18,7 +18,7 @@ export function FeasibilityBanner({ feasibility }: Props) {
 
   if (feasibility.status === 'ok') {
     bg = 'rgba(19,169,142,0.12)'
-    color = '#13A98E'
+    color = 'var(--success)'
     icon = 'checkCircle'
     text = 'יש מספיק עובדים למשמרות הרגילות'
   } else if (feasibility.status === 'needs12h') {
@@ -27,8 +27,8 @@ export function FeasibilityBanner({ feasibility }: Props) {
     icon = 'shield'
     text = `חסרים ${feasibility.shortBy} שיבוצים — ייתכן שיידרשו משמרות 12 שעות`
   } else {
-    bg = 'rgba(235,106,78,0.12)'
-    color = '#EB6A4E'
+    bg = 'color-mix(in srgb, var(--danger-2) 12%, transparent)'
+    color = 'var(--danger-2)'
     icon = 'info'
     text = `חסרים ${feasibility.shortBy} שיבוצים — לא ניתן לאייש את כל המשמרות`
   }

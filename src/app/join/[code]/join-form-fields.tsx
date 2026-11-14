@@ -28,7 +28,7 @@ export const inputStyle: React.CSSProperties = {
 
 export const errorStyle: React.CSSProperties = {
   fontSize: 12.5,
-  color: '#D8423B',
+  color: 'var(--danger)',
   marginTop: 4,
 }
 
@@ -39,8 +39,8 @@ export function FormError({ error }: { error?: string }) {
       style={{
         padding: '10px 14px',
         borderRadius: 'var(--r-md)',
-        background: 'rgba(220,70,70,0.1)',
-        color: '#D8423B',
+        background: 'var(--danger-soft)',
+        color: 'var(--danger)',
         fontSize: 14,
       }}
     >

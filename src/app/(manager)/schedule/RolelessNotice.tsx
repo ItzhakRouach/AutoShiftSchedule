@@ -33,10 +33,10 @@ export function RolelessNotice({ employees }: RolelessNoticeProps) {
       }}
     >
       <span style={{ flexShrink: 0, marginTop: 1 }}>
-        <Icon name="alert" size={17} color="#D8423B" stroke={2.2} />
+        <Icon name="alert" size={17} color="var(--danger)" stroke={2.2} />
       </span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13.5, fontWeight: 800, color: '#D8423B' }}>
+        <div style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--danger)' }}>
           {many ? `${employees.length} עובדים ללא תפקיד — לא ישובצו בסידור` : 'עובד ללא תפקיד — לא ישובץ בסידור'}
         </div>
         <div style={{ fontSize: 12.5, color: 'var(--text-2)', marginTop: 2, wordBreak: 'break-word' }}>

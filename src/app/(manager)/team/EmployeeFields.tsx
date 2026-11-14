@@ -40,7 +40,7 @@ const labelStyle: React.CSSProperties = {
 
 const fieldErrorStyle: React.CSSProperties = {
   fontSize: 12.5,
-  color: '#D8423B',
+  color: 'var(--danger)',
   marginTop: 4,
 }
 

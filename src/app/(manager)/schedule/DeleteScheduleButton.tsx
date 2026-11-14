@@ -35,7 +35,7 @@ export function DeleteScheduleButton({ periodId, onDone }: { periodId: string; o
   }
 
   return (
-    <div style={{ marginTop: 10, padding: 14, borderRadius: 'var(--r-md)', border: '1.5px solid rgba(220,70,70,0.4)', background: 'rgba(220,70,70,0.06)' }}>
+    <div style={{ marginTop: 10, padding: 14, borderRadius: 'var(--r-md)', border: '1.5px solid var(--danger)', background: 'var(--danger-soft)' }}>
       <p style={{ margin: '0 0 12px', fontSize: 14, color: 'var(--text)', textAlign: 'center' }}>
         למחוק את כל השיבוצים? אפשר ליצור סידור חדש לאחר מכן.
       </p>
@@ -45,7 +45,7 @@ export function DeleteScheduleButton({ periodId, onDone }: { periodId: string; o
           {busy ? 'מוחק…' : 'מחק'}
         </Btn>
       </div>
-      {error && <p style={{ fontSize: 12.5, color: '#D8423B', marginTop: 8, textAlign: 'center' }}>{error}</p>}
+      {error && <p style={{ fontSize: 12.5, color: 'var(--danger)', marginTop: 8, textAlign: 'center' }}>{error}</p>}
     </div>
   )
 }

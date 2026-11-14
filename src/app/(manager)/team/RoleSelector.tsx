@@ -15,7 +15,7 @@ interface RoleSelectorProps {
 
 const fieldErrorStyle: React.CSSProperties = {
   fontSize: 12.5,
-  color: '#D8423B',
+  color: 'var(--danger)',
   marginTop: 4,
 }
 
@@ -69,7 +69,7 @@ export function RoleSelector({ roles, selectedRoleIds, seniorRoleIds, onToggle, 
                 <span style={{ flex: 1, fontSize: 15.5, fontWeight: 700, color: 'var(--text)' }}>
                   {role.name}
                   {autoCovered && (
-                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginInlineStart: 8 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-3)', marginInlineStart: 8 }}>
                       נכלל אוטומטית
                     </span>
                   )}
@@ -99,7 +99,7 @@ export function RoleSelector({ roles, selectedRoleIds, seniorRoleIds, onToggle, 
         })}
       </div>
       {hasSenior && (
-        <p style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 6 }}>
+        <p style={{ fontSize: 12.5, color: 'var(--text-3)', marginTop: 6 }}>
           תפקיד בכיר מכסה גם תפקידים נמוכים יותר.
         </p>
       )}

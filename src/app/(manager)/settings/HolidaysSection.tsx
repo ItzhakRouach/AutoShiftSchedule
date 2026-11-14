@@ -86,10 +86,10 @@ export function HolidaysSection({ holidays, currentYear }: Props) {
           {loadPending ? 'טוען…' : `טען חגי ישראל לשנה ${year}`}
         </Btn>
         {loadState.ok && (
-          <span style={{ color: '#13A98E', fontSize: 13 }}>החגים נטענו</span>
+          <span style={{ color: 'var(--success)', fontSize: 13 }}>החגים נטענו</span>
         )}
         {loadState.error && (
-          <span style={{ color: '#D8423B', fontSize: 13 }}>{loadState.error}</span>
+          <span style={{ color: 'var(--danger)', fontSize: 13 }}>{loadState.error}</span>
         )}
       </div>
 
@@ -128,7 +128,7 @@ export function HolidaysSection({ holidays, currentYear }: Props) {
         </ul>
       )}
       {removeState.error && (
-        <p style={{ color: '#D8423B', fontSize: 13, margin: '0 0 12px' }}>{removeState.error}</p>
+        <p style={{ color: 'var(--danger)', fontSize: 13, margin: '0 0 12px' }}>{removeState.error}</p>
       )}
 
       {/* Add custom holiday */}
@@ -178,10 +178,10 @@ export function HolidaysSection({ holidays, currentYear }: Props) {
             </Btn>
           </div>
           {addState.error && (
-            <span style={{ color: '#D8423B', fontSize: 13 }}>{addState.error}</span>
+            <span style={{ color: 'var(--danger)', fontSize: 13 }}>{addState.error}</span>
           )}
           {addState.ok && (
-            <span style={{ color: '#13A98E', fontSize: 13 }}>החג נוסף</span>
+            <span style={{ color: 'var(--success)', fontSize: 13 }}>החג נוסף</span>
           )}
         </form>
       </details>

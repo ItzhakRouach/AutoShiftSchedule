@@ -33,8 +33,8 @@ function defaultsForType(type: EmploymentType): { min: number; max: number | nul
 const errBoxStyle: React.CSSProperties = {
   padding: '10px 14px',
   borderRadius: 'var(--r-md)',
-  background: 'rgba(220,70,70,0.1)',
-  color: '#D8423B',
+  background: 'var(--danger-soft)',
+  color: 'var(--danger)',
   fontSize: 14,
 }
 
@@ -160,7 +160,7 @@ export function EmployeeEditor({ roles, shiftTypes, employee, onSuccess }: Emplo
               מחיקת עובד
             </Btn>
           ) : (
-            <div style={{ padding: '14px', borderRadius: 'var(--r-md)', border: '1.5px solid rgba(220,70,70,0.4)', background: 'rgba(220,70,70,0.06)' }}>
+            <div style={{ padding: '14px', borderRadius: 'var(--r-md)', border: '1.5px solid var(--danger)', background: 'var(--danger-soft)' }}>
               <p style={{ margin: '0 0 12px', fontSize: 14, color: 'var(--text)', textAlign: 'center' }}>
                 האם למחוק את העובד לצמיתות?
               </p>
@@ -168,7 +168,7 @@ export function EmployeeEditor({ roles, shiftTypes, employee, onSuccess }: Emplo
                 <Btn type="button" variant="ghost" size="sm" style={{ flex: 1 }} onClick={() => setConfirmDelete(false)}>ביטול</Btn>
                 <Btn type="button" variant="danger" size="sm" style={{ flex: 1 }} onClick={handleDelete}>מחק</Btn>
               </div>
-              {deleteError && <p style={{ fontSize: 12.5, color: '#D8423B', marginTop: 4, textAlign: 'center' }}>{deleteError}</p>}
+              {deleteError && <p style={{ fontSize: 12.5, color: 'var(--danger)', marginTop: 4, textAlign: 'center' }}>{deleteError}</p>}
             </div>
           )}
         </div>

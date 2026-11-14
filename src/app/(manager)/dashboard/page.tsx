@@ -19,6 +19,8 @@ import { CoverageCard } from './CoverageCard'
 import { DashPanels } from './DashPanels'
 import { TrendsCard } from './TrendsCard'
 import { OnboardingSteps } from './OnboardingSteps'
+import { WeekInWorkCard } from './WeekInWorkCard'
+import { getWeekInWork } from '@/lib/stats/week-in-work-data'
 import type { Scope } from '@/lib/stats/types'
 
 // Always reflect the current PUBLISHED state — unpublish/delete must immediately
@@ -54,10 +56,11 @@ export default async function DashboardPage({
   // The data sources are independent — fetch them in parallel. All reads
   // are RLS-covered for the owning manager, so the authed client suffices (no
   // service-role bypass in a user-facing path).
-  const [stats, pendingVacations, roleHeadcounts, publishedWeeksRaw] = await Promise.all([
+  const [stats, pendingVacations, roleHeadcounts, weekInWork, publishedWeeksRaw] = await Promise.all([
     workplace ? fetchDashboardStats(supabase, workplace.id, scope, at ?? undefined) : null,
     workplace ? getWorkplaceVacations(supabase, workplace.id, todayISO) : [],
     workplace ? getRoleHeadcounts(supabase, workplace.id) : [],
+    workplace ? getWeekInWork(supabase, workplace.id) : null,
     workplace
       ? supabase
           .from('schedule_periods')
@@ -96,8 +99,13 @@ export default async function DashboardPage({
         </div>
       </div>
 
+      {/* The week being built: staffing progress, request collection, next step. */}
+      {weekInWork && weekInWork.rosterCount > 0 && <WeekInWorkCard week={weekInWork} />}
+
       {/* Pending vacation requests — popup on entry + card */}
       <PendingVacations items={pendingVacations} />
+
+      <h2 style={{ margin: '4px 0 10px', fontSize: 'var(--text-h2)', fontWeight: 800, color: 'var(--text)' }}>נתוני סידורים שפורסמו</h2>
 
       {/* Scope toggle + period picker */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>

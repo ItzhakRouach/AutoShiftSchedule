@@ -44,7 +44,7 @@ export const DEFAULT_REQUIREMENTS: Record<'morning' | 'noon' | 'night', Partial<
 
 export const SHIFT_META: Record<ShiftId, ShiftMeta> = {
   morning:   { id: 'morning', name: 'בוקר',   time: '07:00–15:00', start: 7,  hours: 8,  color: '#F2A93B', soft: 'rgba(242,169,59,0.13)', icon: 'sun',    isFallback: false },
-  noon:      { id: 'noon',    name: 'צהריים', time: '15:00–23:00', start: 15, hours: 8,  color: '#EB6A4E', soft: 'rgba(235,106,78,0.13)', icon: 'sunset', isFallback: false },
+  noon:      { id: 'noon',    name: 'צהריים', time: '15:00–23:00', start: 15, hours: 8,  color: '#0E9384', soft: 'rgba(14,147,132,0.13)', icon: 'sunset', isFallback: false },
   night:     { id: 'night',   name: 'לילה',   time: '23:00–07:00', start: 23, hours: 8,  color: '#5B61D6', soft: 'rgba(91,97,214,0.15)', icon: 'moon',   isFallback: false },
   m12_day:   { id: 'm12_day',   name: 'יום 12ש׳',   time: '07:00–19:00', start: 7,  hours: 12, color: '#F2A93B', soft: 'rgba(242,169,59,0.13)', icon: 'sun',  isFallback: true },
   m12_night: { id: 'm12_night', name: 'לילה 12ש׳',  time: '19:00–07:00', start: 19, hours: 12, color: '#5B61D6', soft: 'rgba(91,97,214,0.15)', icon: 'moon', isFallback: true },

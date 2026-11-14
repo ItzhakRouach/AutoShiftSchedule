@@ -54,7 +54,7 @@ export function DeadlineForm({
           ))}
         </select>
         {state.fieldErrors?.request_deadline_dow && (
-          <span style={{ color: '#D8423B', fontSize: 13 }}>
+          <span style={{ color: 'var(--danger)', fontSize: 13 }}>
             {state.fieldErrors.request_deadline_dow}
           </span>
         )}
@@ -83,7 +83,7 @@ export function DeadlineForm({
           תקופות ננעלות אוטומטית בלילה לאחר מועד זה
         </span>
         {state.fieldErrors?.request_deadline_time && (
-          <span style={{ color: '#D8423B', fontSize: 13 }}>
+          <span style={{ color: 'var(--danger)', fontSize: 13 }}>
             {state.fieldErrors.request_deadline_time}
           </span>
         )}
@@ -123,10 +123,10 @@ export function DeadlineForm({
       />
 
       {state.error && (
-        <p style={{ color: '#D8423B', fontSize: 14, margin: 0 }}>{state.error}</p>
+        <p style={{ color: 'var(--danger)', fontSize: 14, margin: 0 }}>{state.error}</p>
       )}
       {state.ok && (
-        <p style={{ color: '#13A98E', fontSize: 14, margin: 0 }}>ההגדרות נשמרו בהצלחה</p>
+        <p style={{ color: 'var(--success)', fontSize: 14, margin: 0 }}>ההגדרות נשמרו בהצלחה</p>
       )}
 
       <Btn variant="primary" size="lg" type="submit" disabled={pending}>

@@ -28,7 +28,7 @@ export function ResetPasswordForm() {
           <PasswordField id="passwordConfirm" label="אימות סיסמה חדשה" name="passwordConfirm" autoComplete="new-password" blockPaste error={state.fieldErrors?.passwordConfirm} />
 
           {state.error && (
-            <p role="alert" style={{ margin: 0, fontSize: 13, color: '#D4373A', background: 'rgba(212,55,58,0.08)', border: '1px solid rgba(212,55,58,0.2)', borderRadius: 'var(--r-sm)', padding: '8px 12px' }}>
+            <p role="alert" style={{ margin: 0, fontSize: 13, color: 'var(--danger)', background: 'rgba(212,55,58,0.08)', border: '1px solid rgba(212,55,58,0.2)', borderRadius: 'var(--r-sm)', padding: '8px 12px' }}>
               {state.error}
             </p>
           )}

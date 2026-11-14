@@ -62,7 +62,7 @@ export function InvitePanel({ initialCode, workplaceName, baseUrl }: InvitePanel
       </h2>
 
       {error && (
-        <p style={{ color: '#D8423B', fontSize: 13, marginBottom: 12 }}>{error}</p>
+        <p style={{ color: 'var(--danger)', fontSize: 13, marginBottom: 12 }}>{error}</p>
       )}
 
       {code && joinUrl && waText ? (

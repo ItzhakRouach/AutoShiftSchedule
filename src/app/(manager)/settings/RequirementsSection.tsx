@@ -183,10 +183,10 @@ export function RequirementsSection({ shiftTypes, roles, requirements }: Props) 
           {isPending ? 'שומר…' : 'שמירה'}
         </Btn>
         {status === 'ok' && (
-          <span style={{ fontSize: 13, color: '#13A98E', fontWeight: 600 }}>נשמר בהצלחה</span>
+          <span style={{ fontSize: 13, color: 'var(--success)', fontWeight: 600 }}>נשמר בהצלחה</span>
         )}
         {status === 'error' && (
-          <span style={{ fontSize: 13, color: '#D8423B' }}>{errorMsg}</span>
+          <span style={{ fontSize: 13, color: 'var(--danger)' }}>{errorMsg}</span>
         )}
       </div>
     </section>

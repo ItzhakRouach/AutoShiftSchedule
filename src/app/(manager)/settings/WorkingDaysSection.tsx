@@ -58,7 +58,7 @@ export function WorkingDaysSection({ initialDays }: { initialDays: number[] }) {
             else { setStatus('error'); setErrorMsg(r.error ?? 'שגיאה') }
           })}
         >{pending ? 'שומר…' : 'שמירה'}</Btn>
-        {status === 'ok' && <span style={{ fontSize: 13, color: '#13A98E', fontWeight: 600 }}>נשמר בהצלחה</span>}
+        {status === 'ok' && <span style={{ fontSize: 13, color: 'var(--success)', fontWeight: 600 }}>נשמר בהצלחה</span>}
         {status === 'error' && <span style={{ fontSize: 13, color: 'var(--danger)' }}>{errorMsg}</span>}
       </div>
     </section>

@@ -53,7 +53,7 @@ export function DayNoteEditor({ open, onClose, view }: { open: boolean; onClose:
 
   return (
     <Sheet open onClose={onClose} title="רענון / הערת יום">
-      {msg && <div style={{ padding: '9px 12px', borderRadius: 12, background: 'rgba(220,70,70,0.1)', color: 'var(--danger)', fontSize: 13, marginBottom: 12 }}>{msg}</div>}
+      {msg && <div style={{ padding: '9px 12px', borderRadius: 12, background: 'var(--danger-soft)', color: 'var(--danger)', fontSize: 13, marginBottom: 12 }}>{msg}</div>}
 
       <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-2)', margin: '4px 0 8px' }}>יום</div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
@@ -89,7 +89,7 @@ export function DayNoteEditor({ open, onClose, view }: { open: boolean; onClose:
       {showNightBeforeNotice && (
         <div data-testid="night-before-notice" role="status" style={{
           padding: '9px 12px', borderRadius: 12, marginBottom: 14, fontSize: 13, lineHeight: 1.5,
-          background: 'rgba(245,158,11,0.12)', color: '#9A6500', border: '1px solid rgba(245,158,11,0.35)',
+          background: 'var(--warning-soft)', color: '#9A6500', border: '1px solid var(--warning)',
         }}>
           ⚠️ <b>{nightBeforeName}</b> עבד אתמול במשמרת לילה — ודאו שההערה מכוונת (לרוב מסמנים רענון אחרי לילה).
         </div>

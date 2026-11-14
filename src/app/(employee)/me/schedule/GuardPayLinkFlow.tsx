@@ -102,7 +102,7 @@ export function GuardPayLinkFlow({ onClose }: { onClose: () => void }) {
         כתובת ה-relay מהגדרות Apple ID.
       </p>
       {stage.error && (
-        <div role="status" style={{ marginBottom: 8, padding: '7px 10px', borderRadius: 10, background: 'rgba(220,70,70,0.1)', color: 'var(--danger)' }}>
+        <div role="status" style={{ marginBottom: 8, padding: '7px 10px', borderRadius: 10, background: 'var(--danger-soft)', color: 'var(--danger)' }}>
           {stage.error}
         </div>
       )}

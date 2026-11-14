@@ -69,7 +69,7 @@ export default function SignUpPage() {
               style={{
                 margin: 0,
                 fontSize: 13,
-                color: '#D4373A',
+                color: 'var(--danger)',
                 background: 'rgba(212,55,58,0.08)',
                 border: '1px solid rgba(212,55,58,0.2)',
                 borderRadius: 'var(--r-sm)',

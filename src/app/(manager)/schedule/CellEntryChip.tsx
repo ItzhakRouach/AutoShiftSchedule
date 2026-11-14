@@ -65,13 +65,12 @@ export function CellEntryChip({ entry: en, emp, dimmed, srcSlot, onDragEmployee,
       {en.requested && <Badge />}
       {emp?.name ?? '?'}
       {en.is12h && (() => {
+        // Show the hours themselves — "07:00–19:00" needs no legend, unlike a
+        // bare "12ש׳" tag.
         const meta = en.variant ? SHIFT_META[en.variant as ShiftId] : undefined
-        const name = meta?.name ?? '12ש׳'
-        const time = meta?.time
         return (
-          <span title={time ? `${name} ${time}` : name} style={{ display: 'inline-flex', alignItems: 'baseline', gap: 3, marginInlineStart: 3 }}>
-            <span style={{ color: 'var(--accent)', fontWeight: 800, fontSize: 11 }}>{name}</span>
-            {time && <LtrText style={{ color: 'var(--text-3)', fontWeight: 600, fontSize: 9.5 }}>{time}</LtrText>}
+          <span title="משמרת 12 שעות" style={{ marginInlineStart: 4, color: 'var(--text)', fontWeight: 700, fontSize: 11 }}>
+            {meta?.time ? <LtrText>{meta.time}</LtrText> : '12 שעות'}
           </span>
         )
       })()}

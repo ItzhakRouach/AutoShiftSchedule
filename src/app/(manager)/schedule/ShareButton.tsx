@@ -114,7 +114,7 @@ export function ShareButton({ periodId, weekLabel, shareUrl }: Props) {
         <div
           style={{
             fontSize: 13,
-            color: hint.startsWith('שגיאה') || hint.startsWith('שגיאה') ? '#EB6A4E' : 'var(--text-2)',
+            color: hint.startsWith('שגיאה') || hint.startsWith('שגיאה') ? 'var(--danger-2)' : 'var(--text-2)',
             fontWeight: 600,
             padding: '8px 12px',
             borderRadius: 'var(--r-md)',

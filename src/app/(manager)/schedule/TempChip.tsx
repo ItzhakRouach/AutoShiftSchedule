@@ -31,7 +31,7 @@ export function TempChip({ name, assignmentId, onRemove, variant = 'plain' }: Pr
         <button
           aria-label={`הסר ${name}`}
           onClick={(ev) => { ev.stopPropagation(); onRemove(assignmentId) }}
-          style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#EB6A4E', fontWeight: 800, fontSize: pill ? 14 : 13, lineHeight: 1, padding: 0 }}
+          style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--danger-2)', fontWeight: 800, fontSize: pill ? 14 : 13, lineHeight: 1, padding: 0 }}
         >
           ×
         </button>

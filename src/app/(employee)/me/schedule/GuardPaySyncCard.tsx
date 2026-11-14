@@ -124,7 +124,7 @@ export function GuardPaySyncCard({ periodId, linked, linkedName, synced, hasShif
         </button>
       </div>
       {msg && (
-        <div role="status" style={{ marginTop: 8, padding: '8px 12px', borderRadius: 10, background: 'rgba(220,70,70,0.1)', color: 'var(--danger)', fontSize: 13 }}>
+        <div role="status" style={{ marginTop: 8, padding: '8px 12px', borderRadius: 10, background: 'var(--danger-soft)', color: 'var(--danger)', fontSize: 13 }}>
           {msg}
         </div>
       )}

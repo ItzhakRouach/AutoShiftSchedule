@@ -19,8 +19,8 @@ export function CapBanner({ label, current, cap, testId }: CapBannerProps) {
       data-testid={testId}
       style={{
         marginBottom: 12, padding: '9px 14px', borderRadius: 'var(--r-md)',
-        background: reached ? 'rgba(245,158,11,0.12)' : 'var(--surface-2)',
-        border: `1px solid ${reached ? 'rgba(245,158,11,0.35)' : 'var(--border)'}`,
+        background: reached ? 'var(--warning-soft)' : 'var(--surface-2)',
+        border: `1px solid ${reached ? 'var(--warning)' : 'var(--border)'}`,
         fontSize: 13, color: 'var(--text)', fontWeight: 600,
       }}
     >

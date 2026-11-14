@@ -34,7 +34,7 @@ export function PublishSettings({ initialDow, initialTime }: Props) {
           ))}
         </select>
         {state.fieldErrors?.publish_dow && (
-          <span style={{ color: '#D8423B', fontSize: 13 }}>{state.fieldErrors.publish_dow}</span>
+          <span style={{ color: 'var(--danger)', fontSize: 13 }}>{state.fieldErrors.publish_dow}</span>
         )}
       </div>
 
@@ -51,7 +51,7 @@ export function PublishSettings({ initialDow, initialTime }: Props) {
           }}
         />
         {state.fieldErrors?.publish_time && (
-          <span style={{ color: '#D8423B', fontSize: 13 }}>{state.fieldErrors.publish_time}</span>
+          <span style={{ color: 'var(--danger)', fontSize: 13 }}>{state.fieldErrors.publish_time}</span>
         )}
       </div>
 
@@ -60,8 +60,8 @@ export function PublishSettings({ initialDow, initialTime }: Props) {
         תמונת הסידור לקבוצת הווטסאפ בלחיצה אחת ממסך השיבוץ.
       </p>
 
-      {state.error && <p style={{ color: '#D8423B', fontSize: 14, margin: 0 }}>{state.error}</p>}
-      {state.ok && <p style={{ color: '#13A98E', fontSize: 14, margin: 0 }}>הגדרות הפרסום נשמרו</p>}
+      {state.error && <p style={{ color: 'var(--danger)', fontSize: 14, margin: 0 }}>{state.error}</p>}
+      {state.ok && <p style={{ color: 'var(--success)', fontSize: 14, margin: 0 }}>הגדרות הפרסום נשמרו</p>}
 
       <Btn variant="primary" size="lg" type="submit" disabled={pending}>
         {pending ? 'שומר…' : 'שמור הגדרות פרסום'}

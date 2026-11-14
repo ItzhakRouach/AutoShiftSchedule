@@ -31,13 +31,13 @@ export function ForgotPasswordForm({ linkFailed }: { linkFailed: boolean }) {
         </p>
 
         {linkFailed && !state.ok && (
-          <p role="alert" style={{ margin: '0 0 16px', fontSize: 13, color: '#D4373A', background: 'rgba(212,55,58,0.08)', border: '1px solid rgba(212,55,58,0.2)', borderRadius: 'var(--r-sm)', padding: '10px 12px', lineHeight: 1.5 }}>
+          <p role="alert" style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--danger)', background: 'rgba(212,55,58,0.08)', border: '1px solid rgba(212,55,58,0.2)', borderRadius: 'var(--r-sm)', padding: '10px 12px', lineHeight: 1.5 }}>
           הקישור לאיפוס פג תוקף או שנפתח בדפדפן אחר מזה שביקש אותו. בקשו קישור חדש.
           </p>
         )}
 
         {state.ok ? (
-          <div style={{ fontSize: 14, color: '#13A98E', background: 'rgba(19,169,142,0.1)', border: '1px solid rgba(19,169,142,0.25)', borderRadius: 'var(--r-sm)', padding: '12px 14px', lineHeight: 1.5 }}>
+          <div style={{ fontSize: 14, color: 'var(--success)', background: 'rgba(19,169,142,0.1)', border: '1px solid rgba(19,169,142,0.25)', borderRadius: 'var(--r-sm)', padding: '12px 14px', lineHeight: 1.5 }}>
             אם קיים חשבון עם אימייל זה, נשלח אליו קישור לאיפוס הסיסמה. בדקו את תיבת הדואר.
           </div>
         ) : (

@@ -48,8 +48,8 @@ export function RequestsHeader({ weekLabel, filled, total, isReadOnly, deadlineL
             gap: 10,
             padding: '11px 14px',
             borderRadius: 'var(--r-md)',
-            background: 'rgba(220,70,70,0.1)',
-            border: '1px solid rgba(220,70,70,0.25)',
+            background: 'var(--danger-soft)',
+            border: '1px solid var(--danger)',
             marginBottom: 16,
           }}
         >
@@ -59,7 +59,7 @@ export function RequestsHeader({ weekLabel, filled, total, isReadOnly, deadlineL
             height={20}
             viewBox="0 0 24 24"
             fill="none"
-            stroke="#D8423B"
+            stroke="var(--danger)"
             strokeWidth={1.75}
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -67,7 +67,7 @@ export function RequestsHeader({ weekLabel, filled, total, isReadOnly, deadlineL
             <path d="M12 4 21 19.5H3L12 4Z" />
             <path d="M12 10v4.2M12 17.2v.1" />
           </svg>
-          <div style={{ fontSize: 13, color: '#D8423B', fontWeight: 600 }}>
+          <div style={{ fontSize: 13, color: 'var(--danger)', fontWeight: 600 }}>
             חלון הגשת הבקשות נסגר — הסידור נעול
           </div>
         </div>

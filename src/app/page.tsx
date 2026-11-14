@@ -76,7 +76,7 @@ export default function Home() {
         <RoleCard
           href="/login?as=employee"
           icon="user"
-          iconBg="#13A98E"
+          iconBg="var(--success)"
           title="כניסת עובד"
           subtitle="הזנת בקשות וצפייה בסידור"
         />

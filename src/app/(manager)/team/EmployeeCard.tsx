@@ -23,7 +23,7 @@ const pendingBadgeStyle: React.CSSProperties = {
 // and from cell-click suggestions — it needs the manager's action, not just a heads-up.
 const noRoleBadgeStyle: React.CSSProperties = {
   display: 'inline-flex', alignItems: 'center', gap: 4,
-  fontSize: 11.5, fontWeight: 700, color: '#D8423B', background: 'rgba(216,66,59,0.12)',
+  fontSize: 11.5, fontWeight: 700, color: 'var(--danger)', background: 'rgba(216,66,59,0.12)',
   padding: '2px 9px', borderRadius: 'var(--r-pill)', cursor: 'help',
 }
 
@@ -54,7 +54,7 @@ export function EmployeeCard({ employee: emp, roles, onOpen }: EmployeeCardProps
               title="לעובד לא הוגדר תפקיד — הוא לא ישובץ בסידור האוטומטי ולא יוצע בלחיצה על תא. הגדירו לו תפקיד."
               style={noRoleBadgeStyle}
             >
-              <Icon name="alert" size={12} color="#D8423B" stroke={2.2} /> ללא תפקיד
+              <Icon name="alert" size={12} color="var(--danger)" stroke={2.2} /> ללא תפקיד
             </span>
           ) : (
             empRoles.map((r) => <RoleChip key={r.id} roleName={r.name} color={r.color} size="sm" />)
