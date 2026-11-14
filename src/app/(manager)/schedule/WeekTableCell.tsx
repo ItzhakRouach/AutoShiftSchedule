@@ -23,6 +23,8 @@ export interface WeekTableCellProps {
   entries: CellEntry[]
   empById: Map<string, { name: string; color: string }>
   isFilled: boolean
+  /** Light wash of the row's shift colour — the cell's resting background. */
+  tint?: string
   /** True when this cell's coverage comes from a 12h shift in an adjacent slot. */
   covered: boolean
   selectedId: string | null
@@ -68,7 +70,7 @@ export interface WeekTableCellProps {
  * of the parent (built once in WeekTable via `useMemo`).
  */
 function WeekTableCellImpl(props: WeekTableCellProps) {
-  const { entries, empById, isFilled, covered, selectedId, onClick, showUnfilled } = props
+  const { entries, empById, isFilled, covered, selectedId, onClick, showUnfilled, tint = 'var(--surface)' } = props
   const { marked, markLabel } = props
   const { isPending, isBusy, onDropEmployee, onDragEmployee, onRemoveTemp, onRemoveEmployee } = props
   const { capacityLabel, capacityStatus, cellLabel, topDivider, heldBlocked } = props
@@ -81,12 +83,12 @@ function WeekTableCellImpl(props: WeekTableCellProps) {
   const bg = marked
     ? 'var(--surface)'
     : empty && showUnfilled
-      ? 'color-mix(in srgb, var(--danger) 6%, transparent)'
+      ? `color-mix(in srgb, var(--danger) 9%, ${tint})`
       : capacityStatus === 'under'
         ? 'var(--warning-soft)'
         : capacityStatus === 'over'
           ? 'var(--danger-soft)'
-          : 'var(--surface)'
+          : tint
   const dimCell = hasSelected && !cellHasSelected
   const highlightCell = cellHasSelected || isPending
 

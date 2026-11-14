@@ -52,10 +52,12 @@ export function WeekTableBody(props: Props) {
           const rm = role ? roleMetaFromRow(role) : null
           const showGroupDivider = ri === 0 && !isFirstShift
           const groupDividerStyle: React.CSSProperties = showGroupDivider ? { borderTop: '3px solid var(--text)' } : {}
-          const shiftTint = `color-mix(in srgb, ${m.soft} 55%, var(--surface))`
-          const rowBg = ri % 2 === 0 ? shiftTint : 'var(--bg)'
+          // Every cell of a shift carries a light wash of that shift's colour, so
+          // the three bands read at a glance across the whole week, not only in
+          // the label column.
+          const shiftTint = `color-mix(in srgb, ${m.color} 11%, var(--surface))`
           return (
-            <tr key={`${shift}-${roleId}`} style={{ background: rowBg, ...groupDividerStyle }}>
+            <tr key={`${shift}-${roleId}`} style={{ background: shiftTint, ...groupDividerStyle }}>
               {ri === 0 && (
                 <td rowSpan={roles.length} style={{ ...S.sticky, right: 0, padding: '12px 8px', textAlign: 'center', fontSize: 13, color: m.color, background: `color-mix(in srgb, ${m.color} 16%, var(--surface))`, verticalAlign: 'middle', width: SHIFT_W, minWidth: SHIFT_W, maxWidth: SHIFT_W, borderTop: showGroupDivider ? '3px solid var(--text)' : undefined }}>
                   <div style={S.layer}>
@@ -93,6 +95,7 @@ export function WeekTableBody(props: Props) {
                     entries={cellEntries}
                     empById={empById}
                     isFilled={assignedCount >= requiredCount && requiredCount > 0}
+                    tint={shiftTint}
                     covered={covered}
                     selectedId={selectedId}
                     onClick={editable ? () => onCellClick(d.index, shift, roleId) : undefined}
