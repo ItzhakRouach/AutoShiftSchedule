@@ -57,7 +57,10 @@ test('manager assigns a רענון day note to an employee', async ({ page }) =>
   await page.getByRole('combobox').selectOption({ label: 'יצחק רואש' })
   await page.getByRole('button', { name: 'רענון', exact: true }).click()
   await page.getByTestId('save-day-note').click()
-  // Save clears the form fields on success.
+  // Save clears the form fields on success. The button alone is not proof — it
+  // is also disabled WHILE the save is in flight, and reloading then would
+  // abort it — so wait for the worker picker to reset too.
+  await expect(page.getByRole('combobox')).toHaveValue('', { timeout: 10000 })
   await expect(page.getByTestId('save-day-note')).toBeDisabled({ timeout: 10000 })
 
   // Reload — the note persists and shows in the summary panel under the table.
