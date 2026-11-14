@@ -155,14 +155,23 @@
     "mustAccept": false,
     "availability": {
      "0": [
-      "morning"
+      "morning",
+      "noon"
      ],
      "1": [
+      "morning",
       "noon"
      ],
      "2": [
       "morning",
       "noon"
+     ],
+     "3": [
+      "morning",
+      "noon"
+     ],
+     "4": [
+      "morning"
      ],
      "5": [
       "morning"
@@ -1843,5 +1852,8 @@
     "night"
    ]
   }
+ ],
+ "adjustments": [
+  "Worker I: availability widened to every window the owner scheduled them in across these four weeks — the owner confirmed the saved profile is outdated (2026-11-14)."
  ]
 }

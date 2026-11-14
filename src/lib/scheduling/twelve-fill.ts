@@ -19,7 +19,8 @@ import type {
 } from './types'
 import type { FillState } from './dayfill'
 import { TWELVE_HOUR_FILLS } from './fallback'
-import { orderedEmployees } from './dayfill'
+import { orderedEmployees, openSlotsForDay } from './dayfill'
+import { isAssignable } from './constraints'
 import { canTwelve } from './twelve-rules'
 import {
   type Plan,
@@ -71,6 +72,46 @@ function tryVariant(
   return false
 }
 
+/** Put a worker freed by displacement into an open cell of the day: an 8h if
+ *  they can take one, else a 12h that closes a gap. Returns false if neither. */
+function replaceHolder(
+  input: EngineInput, st: FillState, out: TwelveHourAssignment[], meta: DayMeta, h: Employee, absorbed: AbsorbedMap,
+): boolean {
+  for (const slot of openSlotsForDay(input, st, meta.index)) {
+    const ok = isAssignable({
+      emp: h, meta, shift: slot.shift, roleId: slot.roleId,
+      request: reqOf(input, h.id, meta.index), current: st.committed[h.id], settings: input.settings,
+      priorTail: input.priorWeekTail?.[h.id], nextHead: input.nextWeekHead?.[h.id],
+    })
+    if (!ok) continue
+    st.grid[meta.index][slot.shift][slot.roleId].push(h.id)
+    st.committed[h.id].push({ employeeId: h.id, day: meta.index, shift: slot.shift, roleId: slot.roleId, is12h: false })
+    return true
+  }
+  for (const v of PREFERRED) {
+    const plan = planCover(input, st, h, meta.index, v)
+    if (!plan || plan.absorb || !legal(input, st, h, meta, v, null)) continue
+    commitTwelve(st, out, h, meta.index, v, plan)
+    absorbed.set(absorbKey(h.id, meta.index), null)
+    return true
+  }
+  return false
+}
+
+/** Reverse commitTwelve for `e` on `day`, restoring the 8h it absorbed. */
+function uncommitTwelve(st: FillState, out: TwelveHourAssignment[], e: Employee, day: number, base: Assignment): void {
+  const mine = st.committed[e.id].filter((a) => a.day === day && a.is12h)
+  for (const a of mine) {
+    const cell = st.grid[day][a.shift][a.roleId]
+    cell.splice(cell.indexOf(e.id), 1)
+  }
+  st.committed[e.id] = st.committed[e.id].filter((a) => !mine.includes(a))
+  st.grid[day][base.shift][base.roleId].push(e.id)
+  st.committed[e.id].push(base)
+  const i = out.findIndex((t) => t.employeeId === e.id && t.day === day)
+  if (i >= 0) out.splice(i, 1)
+}
+
 /**
  * Displacement (monotonic): when a PREFERRED-pair variant for `e` could close an
  * open gap if it also took a window currently held by another employee `h` whose
@@ -108,17 +149,22 @@ function tryDisplace(
         if (!holderId) continue
         const held = st.committed[holderId].find((a) => a.day === day)!
         removeBase(st, held)
-        const holderFree = !st.committed[holderId].some((a) => a.day === day)
-        const reusable = holderFree && openPairs(input, st, day).some((p) => p.shift !== shift)
-        if (!legal(input, st, e, meta, variant, base) || !reusable) {
+        const restore = () => {
           st.grid[day][held.shift][held.roleId].push(holderId)
           st.committed[holderId].push(held)
-          continue
         }
+        if (!legal(input, st, e, meta, variant, base)) { restore(); continue }
         const plan: Plan = { rolesByShift: { [base.shift]: base.roleId, [shift]: role }, absorb: base }
         commitTwelve(st, out, e, day, variant, plan)
-        absorbed.set(absorbKey(e.id, day), base)
-        return true
+        // Only worth it if the displaced worker really fills another gap now —
+        // otherwise the day just trades one covered cell for another.
+        const holder = input.employees.find((h) => h.id === holderId)!
+        if (replaceHolder(input, st, out, meta, holder, absorbed)) {
+          absorbed.set(absorbKey(e.id, day), base)
+          return true
+        }
+        uncommitTwelve(st, out, e, day, base)
+        restore()
       }
     }
   }

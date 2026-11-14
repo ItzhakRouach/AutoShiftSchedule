@@ -22,6 +22,8 @@ export interface RealWeek {
   faithful: boolean
   input: EngineInput
   managerFinal: ScheduleRow[]
+  /** Corrections to the recorded input that the owner confirmed. */
+  adjustments?: string[]
   requests: { emp: string; day: number; isOff: boolean; preferred: string[] }[]
 }
 
@@ -150,4 +152,20 @@ export function scoreEngine(week: RealWeek): WeekScore {
 /** The owner's published schedule for the same week, on the same scale. */
 export function scoreManager(week: RealWeek): WeekScore {
   return scoreWeek(week, week.managerFinal, cellsFromRows(week.managerFinal))
+}
+
+/**
+ * Cells the owner could only fill by putting someone in a role they don't hold.
+ * The owner decided the engine must never do that, so these may stay open.
+ */
+export function ownerRoleBreaks(week: RealWeek): number {
+  const byId = new Map(week.input.employees.map((e) => [e.id, e]))
+  let n = 0
+  for (const r of week.managerFinal) {
+    const e = byId.get(r.emp)
+    if (!e) continue
+    const roles = r.fills ? r.fills.map((f) => f.role) : [r.role ?? '']
+    n += roles.filter((role) => !e.roleIds.includes(role)).length
+  }
+  return n
 }

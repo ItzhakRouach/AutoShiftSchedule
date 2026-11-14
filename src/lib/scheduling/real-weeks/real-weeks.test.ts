@@ -13,17 +13,15 @@ import w1115 from './2026-11-15.json'
 import w1108 from './2026-11-08.json'
 import w1101 from './2026-11-01.json'
 import w1025 from './2026-10-25.json'
-import { scoreEngine, scoreManager, type RealWeek } from './metrics'
+import { ownerRoleBreaks, scoreEngine, scoreManager, type RealWeek } from './metrics'
 
 const WEEKS = [w1115, w1108, w1101, w1025] as unknown as RealWeek[]
 
 /** `${week}:${criterion}` the current engine is known to miss. */
 const KNOWN_GAPS = new Set<string>([
-  // Baseline 2026-11-14 minus what phase 1 (12h pairing) closed: the engine no
-  // longer reports a noon cell covered with nobody on site after 19:00.
-  '2026-11-15:coverage', '2026-11-15:twelve', '2026-11-15:night-spread', '2026-11-15:night-max',
-  '2026-11-08:night-spread', '2026-11-08:night-max',
-  '2026-11-01:coverage',
+  // After phase 1 (12h pairing + safe displacement) and the owner-confirmed
+  // availability fix: every week fully covered; nights remain.
+  '2026-11-15:night-spread', '2026-11-15:night-max',
 ])
 
 const check = (week: string, criterion: string) => (KNOWN_GAPS.has(`${week}:${criterion}`) ? it.fails : it)
@@ -37,8 +35,10 @@ describe.each(WEEKS)('real week $week', (week) => {
     expect(manager.eveningShort).toBe(0)
   })
 
-  check(week.week, 'coverage')('covers every required cell, as the owner did', () => {
-    expect(engine.openCells).toBe(0)
+  // The owner filled a few cells with someone outside their role; the engine
+  // must never do that (owner decision 2026-11-14), so those may stay open.
+  check(week.week, 'coverage')('covers every cell the owner covered without breaking a role', () => {
+    expect(engine.openCells).toBeLessThanOrEqual(ownerRoleBreaks(week))
   })
 
   check(week.week, 'evening')('never leaves 19:00–23:00 short behind a "covered" noon cell', () => {
