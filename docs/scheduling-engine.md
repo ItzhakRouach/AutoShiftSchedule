@@ -34,13 +34,36 @@ Data model addition (Phase 4 migration): `employee_availability(employee_id, day
 7. One shift per employee per day.
 8. Never exceed `max_shifts_per_week`.
 
-## Fill order — hard days first when scarcity bites
-Every fill pass iterates days chronologically (the best starting point for the fairness passes). If that
-run leaves open required slots on **hard days** (Friday, Saturday, holiday, holiday-eve — `day-order.ts
-isHardDay`), the week is re-filled iterating hard days FIRST (`fill.ts runFillHardDaysAware`), spending
-scarce capacity (max-shifts, rest windows) on the smallest candidate pools before regular weekdays. The
-run with fewer hard-day gaps wins (tie → more total filled → keep chronological). Both `generateSchedule`
-and `checkFeasibility` use it, so feasibility still can never contradict the grid (FIX B).
+## Fill order — weekend first (owner rule, 2026-11-14)
+Friday, Saturday, holidays and holiday-eves (`day-order.ts isHardDay`) are filled FIRST, then Sunday→
+Thursday (`prioritizeDays`). `fill.ts runFillHardDaysAware` runs both that order and plain chronological
+and keeps weekend-first unless chronological covers more cells, leaves fewer hard-day gaps, or splits
+shifts and nights more evenly — in that order; ties keep weekend-first. `generateSchedule` and
+`checkFeasibility` share it, so feasibility can never contradict the grid (FIX B).
+
+## Owner rules (2026-11-14) — these supersede older wording below
+- **Requests.** A day with several marked shifts is ONE request ("any of these is fine"), met by any of
+  them (`request-gate.ts requestCount/satisfiedCount`). The request floor is
+  `max(min(2, days), ceil(days / 2))` over request DAYS.
+- **Wanted nights.** A night counts as wanted only when it is the ONLY shift marked that day
+  (`night-targets.ts wantsNight`). A night marked with other shifts is "acceptable" and goes into the split.
+- **Night split.** Everyone who can take a night this week (not away all week, availability allows a night
+  on some day, holds a night role, not a must-accept worker without night requests) shares nights evenly;
+  a 19:00–07:00 counts as a night. Night evening may spend a granted shift request when no free move exists
+  — never below the worker's floor and never a wanted night — and falls back to a **block swap** of 2–3
+  consecutive days when rest blocks every single swap (`block-swap.ts`). It runs again after the 12h pass.
+- **12h pairing.** A 07:00–19:00 (`m12_day`) only counts toward the noon cell when someone holding that role
+  takes over at 19:00 (`m12_night`). The 12h pass upgrades an 8h night worker of that role to 19:00–07:00
+  (fewest 12h shifts first) or, if nobody can, undoes the day shift so the noon cell is reported open
+  (`twelve-pairing.ts`). A displacement for a 12h is applied only if the displaced worker immediately
+  takes another open cell. 19:00–07:00 goes to whoever has the fewest nights.
+- **Closing gaps.** 12h pairs first; a requested day off is overridden only as a last resort, choosing
+  whoever has been overridden least this week, then fewest shifts (`close-gaps.ts`, `coverage-rescue.ts`).
+  Both orders are tried on copies; 12h-first is kept unless the other covers more.
+- **Never automatic:** filling a role a worker doesn't hold; breaking availability (it stays hard — keep
+  profiles current).
+- **Acceptance.** `src/lib/scheduling/real-weeks/` holds four real weeks (worker ids anonymised) scored
+  the way the owner judges a schedule; known gaps run as `it.fails` until closed.
 
 ## Soft objectives (canonical priority order — highest first)
 This is the EXACT order implemented in `scoring.ts compareCandidates` (and threaded into the
