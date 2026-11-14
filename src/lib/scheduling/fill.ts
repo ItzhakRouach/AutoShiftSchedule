@@ -5,7 +5,7 @@ import type { EngineInput } from './types'
 import { emptyGrid } from './grid'
 import { openSlotsForDay, type FillState } from './dayfill'
 import { isHardDay, prioritizeDays } from './day-order'
-import { runTwelveFill } from './twelve-fill'
+import { closeGaps } from './close-gaps'
 import { runDiversityPass, buildNightThresholds } from './diversity'
 import { buildNightFloors } from './night-targets'
 import { runNightUnloadPass } from './night-unload'
@@ -15,7 +15,6 @@ import { runSeniorRolePass } from './senior-role'
 import { runManagerBalancePass } from './manager-balance'
 import { runRoleBalancePass } from './role-balance'
 import { runNightThenOffPass } from './night-then-off'
-import { runCoverageRescue } from './coverage-rescue'
 import { satisfiedCount as recountSatisfied } from './request-gate'
 import { timed } from './timing'
 import {
@@ -142,25 +141,14 @@ export function runFill(
       }
     })
   }
-  // COVERAGE-RESCUE FIRST: fill remaining gaps with normal 8h shifts by reclaiming
-  // the lowest-priority soft-off workers (vacation/רענון untouched; a senior's
-  // off-request is honored over a junior's — see coverage-rescue). Doing this
-  // BEFORE the 12h pass means a gap is patched with one 8h person rather than a
-  // LONE m12_day (07–19) that would leave 19:00→night thin with no m12_night
-  // partner. Records the overrides so the manager can be alerted.
-  timed(st, 'coverage-rescue', () => {
-    st.overriddenOff = runCoverageRescue(input, st, days)
-  })
-  // LAST RESORT: 12h auto-coverage for any slot the 8h fill + rescue still can't
-  // staff (a genuine shortage). day/night pair preferred, 03-15/15-03 last.
-  timed(st, 'twelve-fill', () => {
-    st.twelve = skipTwelve ? [] : runTwelveFill(input, st, days)
-    if (!skipTwelve) {
-      // A 12h COVERS requested base windows (e.g. m12_night satisfies a noon or
-      // night request) — recount so stats.requestsSatisfied reflects it.
-      for (const e of input.employees) {
-        st.satisfied[e.id] = recountSatisfied(input, e.id, st.committed[e.id])
-      }
+  // Gaps the 8h fill could not staff: 12h day/night pairs first, a requested
+  // day off overridden only as a last resort (see close-gaps.ts).
+  timed(st, 'close-gaps', () => {
+    closeGaps(input, st, days, skipTwelve)
+    // A 12h COVERS requested base windows (e.g. m12_night satisfies a noon or
+    // night request) — recount so stats.requestsSatisfied reflects it.
+    for (const e of input.employees) {
+      st.satisfied[e.id] = recountSatisfied(input, e.id, st.committed[e.id])
     }
   })
   // MANAGER BALANCE (re-run): coverage-rescue and the 12h pass ADD shifts after

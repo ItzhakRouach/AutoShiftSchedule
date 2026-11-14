@@ -181,8 +181,7 @@ describe('dev-only pass timings (collectTimings)', () => {
         'night-evenness',
         'night-floor',
         'night-then-off',
-        'coverage-rescue',
-        'twelve-fill',
+        'close-gaps',
         'role-balance',
       ]),
     )

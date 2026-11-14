@@ -1,4 +1,4 @@
-// Coverage-rescue pass (last resort). After the normal 8h fill + 12h fallback,
+// Coverage-rescue pass (last resort). After the normal 8h fill AND the 12h pass,
 // some required slots can remain uncovered because too many workers REQUESTED
 // off that day. Worker off-requests are SOFT (offHard=false): when a day would
 // otherwise be impossible to staff, we reclaim the fewest, lowest-priority
@@ -32,6 +32,7 @@ export function runCoverageRescue(
   days: DayMeta[],
 ): OverriddenOff[] {
   const overrides: OverriddenOff[] = []
+  const overriddenCount = (id: string) => overrides.filter((o) => o.employeeId === id).length
 
   for (const d of days) {
     const meta = d
@@ -59,11 +60,13 @@ export function runCoverageRescue(
         // Override the lowest-priority, least-disruptive worker first:
         //  1) NON-senior before senior (a senior's off-request is honored unless
         //     no one else can cover — see header).
-        //  2) fewest shifts so far (balance the load).
-        //  3) deterministic lottery tie-break.
+        //  2) fewest overrides already this week (don't pull the same person twice).
+        //  3) fewest shifts so far (balance the load).
+        //  4) deterministic lottery tie-break.
         .sort(
           (a, b) =>
             (isSeniorForRole(a, slot.roleId) ? 1 : 0) - (isSeniorForRole(b, slot.roleId) ? 1 : 0) ||
+            overriddenCount(a.id) - overriddenCount(b.id) ||
             st.committed[a.id].length - st.committed[b.id].length ||
             st.lotteryRank[a.id] - st.lotteryRank[b.id],
         )
