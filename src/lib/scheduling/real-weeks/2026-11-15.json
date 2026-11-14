@@ -1,0 +1,2089 @@
+{
+ "week": "2026-11-15",
+ "faithful": true,
+ "input": {
+  "employees": [
+   {
+    "id": "A",
+    "roleIds": [
+     "אחמ״ש",
+     "מוקדן",
+     "מאבטח"
+    ],
+    "seniorRoleIds": [],
+    "employmentType": "full",
+    "minShifts": 5,
+    "maxShifts": 6,
+    "observesShabbat": false,
+    "observesHolidays": false,
+    "mustAccept": false,
+    "availability": null,
+    "priorDeficit": 3,
+    "priorExtras": 0
+   },
+   {
+    "id": "B",
+    "roleIds": [
+     "מוקדן",
+     "מאבטח"
+    ],
+    "seniorRoleIds": [],
+    "employmentType": "full",
+    "minShifts": 5,
+    "maxShifts": 6,
+    "observesShabbat": false,
+    "observesHolidays": false,
+    "mustAccept": false,
+    "availability": null,
+    "priorDeficit": 2,
+    "priorExtras": 0
+   },
+   {
+    "id": "C",
+    "roleIds": [
+     "מוקדן",
+     "מאבטח"
+    ],
+    "seniorRoleIds": [],
+    "employmentType": "full",
+    "minShifts": 5,
+    "maxShifts": 6,
+    "observesShabbat": false,
+    "observesHolidays": false,
+    "mustAccept": false,
+    "availability": null,
+    "priorDeficit": 0,
+    "priorExtras": 1
+   },
+   {
+    "id": "D",
+    "roleIds": [
+     "מוקדן",
+     "מאבטח"
+    ],
+    "seniorRoleIds": [],
+    "employmentType": "full",
+    "minShifts": 5,
+    "maxShifts": 6,
+    "observesShabbat": false,
+    "observesHolidays": false,
+    "mustAccept": false,
+    "availability": {
+     "1": [
+      "morning",
+      "noon",
+      "night"
+     ],
+     "2": [
+      "morning",
+      "night",
+      "noon"
+     ],
+     "3": [
+      "night",
+      "morning",
+      "noon"
+     ],
+     "4": [
+      "night",
+      "morning",
+      "noon"
+     ],
+     "5": [
+      "night",
+      "morning",
+      "noon"
+     ],
+     "6": [
+      "night",
+      "morning",
+      "noon"
+     ]
+    },
+    "priorDeficit": 0,
+    "priorExtras": 0
+   },
+   {
+    "id": "E",
+    "roleIds": [
+     "אחמ״ש",
+     "מוקדן",
+     "מאבטח"
+    ],
+    "seniorRoleIds": [],
+    "employmentType": "full",
+    "minShifts": 5,
+    "maxShifts": 6,
+    "observesShabbat": false,
+    "observesHolidays": false,
+    "mustAccept": false,
+    "availability": null,
+    "priorDeficit": 0,
+    "priorExtras": 0
+   },
+   {
+    "id": "F",
+    "roleIds": [
+     "אחמ״ש",
+     "מוקדן",
+     "מאבטח"
+    ],
+    "seniorRoleIds": [
+     "אחמ״ש"
+    ],
+    "employmentType": "full",
+    "minShifts": 5,
+    "maxShifts": 6,
+    "observesShabbat": true,
+    "observesHolidays": true,
+    "mustAccept": true,
+    "availability": null,
+    "priorDeficit": 5,
+    "priorExtras": 0
+   },
+   {
+    "id": "G",
+    "roleIds": [
+     "מוקדן",
+     "מאבטח"
+    ],
+    "seniorRoleIds": [],
+    "employmentType": "full",
+    "minShifts": 5,
+    "maxShifts": 6,
+    "observesShabbat": false,
+    "observesHolidays": false,
+    "mustAccept": false,
+    "availability": null,
+    "priorDeficit": 0,
+    "priorExtras": 1
+   },
+   {
+    "id": "H",
+    "roleIds": [
+     "אחמ״ש",
+     "מוקדן",
+     "מאבטח"
+    ],
+    "seniorRoleIds": [],
+    "employmentType": "full",
+    "minShifts": 3,
+    "maxShifts": 4,
+    "observesShabbat": true,
+    "observesHolidays": true,
+    "mustAccept": true,
+    "availability": null,
+    "priorDeficit": 0,
+    "priorExtras": 1
+   },
+   {
+    "id": "I",
+    "roleIds": [
+     "אחמ״ש",
+     "מוקדן",
+     "מאבטח"
+    ],
+    "seniorRoleIds": [],
+    "employmentType": "part",
+    "minShifts": 2,
+    "maxShifts": 4,
+    "observesShabbat": true,
+    "observesHolidays": true,
+    "mustAccept": false,
+    "availability": {
+     "0": [
+      "morning"
+     ],
+     "1": [
+      "noon"
+     ],
+     "2": [
+      "morning",
+      "noon"
+     ],
+     "5": [
+      "morning"
+     ]
+    },
+    "priorDeficit": 0,
+    "priorExtras": 2
+   },
+   {
+    "id": "J",
+    "roleIds": [
+     "אחמ״ש",
+     "מוקדן",
+     "מאבטח"
+    ],
+    "seniorRoleIds": [],
+    "employmentType": "full",
+    "minShifts": 5,
+    "maxShifts": 6,
+    "observesShabbat": false,
+    "observesHolidays": false,
+    "mustAccept": false,
+    "availability": null,
+    "priorDeficit": 0,
+    "priorExtras": 1
+   },
+   {
+    "id": "K",
+    "roleIds": [
+     "מוקדן",
+     "מאבטח"
+    ],
+    "seniorRoleIds": [],
+    "employmentType": "full",
+    "minShifts": 5,
+    "maxShifts": 6,
+    "observesShabbat": false,
+    "observesHolidays": false,
+    "mustAccept": false,
+    "availability": null,
+    "priorDeficit": 5,
+    "priorExtras": 0
+   },
+   {
+    "id": "L",
+    "roleIds": [
+     "אחמ״ש",
+     "מוקדן",
+     "מאבטח"
+    ],
+    "seniorRoleIds": [],
+    "employmentType": "full",
+    "minShifts": 5,
+    "maxShifts": 6,
+    "observesShabbat": false,
+    "observesHolidays": false,
+    "mustAccept": false,
+    "availability": null,
+    "priorDeficit": 0,
+    "priorExtras": 1
+   },
+   {
+    "id": "M",
+    "roleIds": [
+     "מוקדן",
+     "מאבטח"
+    ],
+    "seniorRoleIds": [],
+    "employmentType": "student",
+    "minShifts": 3,
+    "maxShifts": 6,
+    "observesShabbat": false,
+    "observesHolidays": false,
+    "mustAccept": false,
+    "availability": {
+     "0": [
+      "night",
+      "noon",
+      "morning"
+     ],
+     "1": [
+      "morning",
+      "noon",
+      "night"
+     ],
+     "2": [
+      "morning",
+      "noon",
+      "night"
+     ],
+     "3": [
+      "morning",
+      "noon",
+      "night"
+     ],
+     "4": [
+      "morning",
+      "noon",
+      "night"
+     ],
+     "5": [
+      "morning",
+      "noon",
+      "night"
+     ],
+     "6": [
+      "night",
+      "morning",
+      "noon"
+     ]
+    },
+    "priorDeficit": 0,
+    "priorExtras": 2
+   },
+   {
+    "id": "N",
+    "roleIds": [
+     "אחמ״ש",
+     "מוקדן",
+     "מאבטח"
+    ],
+    "seniorRoleIds": [],
+    "employmentType": "full",
+    "minShifts": 5,
+    "maxShifts": 6,
+    "observesShabbat": false,
+    "observesHolidays": false,
+    "mustAccept": false,
+    "availability": null,
+    "priorDeficit": 0,
+    "priorExtras": 1
+   },
+   {
+    "id": "O",
+    "roleIds": [
+     "מוקדן",
+     "מאבטח"
+    ],
+    "seniorRoleIds": [],
+    "employmentType": "full",
+    "minShifts": 5,
+    "maxShifts": 6,
+    "observesShabbat": false,
+    "observesHolidays": false,
+    "mustAccept": false,
+    "availability": null,
+    "priorDeficit": 5,
+    "priorExtras": 0
+   }
+  ],
+  "days": [
+   {
+    "index": 0,
+    "isHolidayEve": false,
+    "isHoliday": false
+   },
+   {
+    "index": 1,
+    "isHolidayEve": false,
+    "isHoliday": false
+   },
+   {
+    "index": 2,
+    "isHolidayEve": false,
+    "isHoliday": false
+   },
+   {
+    "index": 3,
+    "isHolidayEve": false,
+    "isHoliday": false
+   },
+   {
+    "index": 4,
+    "isHolidayEve": false,
+    "isHoliday": false
+   },
+   {
+    "index": 5,
+    "isHolidayEve": false,
+    "isHoliday": false
+   },
+   {
+    "index": 6,
+    "isHolidayEve": false,
+    "isHoliday": false
+   }
+  ],
+  "requests": {
+   "A": {
+    "0": {
+     "off": true,
+     "offHard": true,
+     "preferred": []
+    },
+    "1": {
+     "off": true,
+     "offHard": true,
+     "preferred": []
+    },
+    "2": {
+     "off": true,
+     "offHard": true,
+     "preferred": []
+    },
+    "3": {
+     "off": true,
+     "offHard": true,
+     "preferred": []
+    },
+    "4": {
+     "off": true,
+     "offHard": true,
+     "preferred": []
+    },
+    "5": {
+     "off": true,
+     "offHard": true,
+     "preferred": []
+    },
+    "6": {
+     "off": true,
+     "offHard": true,
+     "preferred": []
+    }
+   },
+   "B": {
+    "0": {
+     "off": true,
+     "offHard": false,
+     "preferred": []
+    },
+    "1": {
+     "off": false,
+     "offHard": false,
+     "preferred": [
+      "morning"
+     ]
+    },
+    "2": {
+     "off": false,
+     "offHard": false,
+     "preferred": [
+      "night"
+     ]
+    },
+    "3": {
+     "off": false,
+     "offHard": false,
+     "preferred": []
+    },
+    "4": {
+     "off": false,
+     "offHard": false,
+     "preferred": [
+      "morning",
+      "noon"
+     ]
+    },
+    "5": {
+     "off": true,
+     "offHard": false,
+     "preferred": []
+    },
+    "6": {
+     "off": true,
+     "offHard": false,
+     "preferred": []
+    }
+   },
+   "C": {
+    "0": {
+     "off": false,
+     "offHard": false,
+     "preferred": []
+    },
+    "1": {
+     "off": false,
+     "offHard": false,
+     "preferred": []
+    },
+    "2": {
+     "off": false,
+     "offHard": false,
+     "preferred": []
+    },
+    "3": {
+     "off": false,
+     "offHard": false,
+     "preferred": []
+    },
+    "4": {
+     "off": false,
+     "offHard": false,
+     "preferred": []
+    },
+    "5": {
+     "off": false,
+     "offHard": false,
+     "preferred": [
+      "noon"
+     ]
+    },
+    "6": {
+     "off": false,
+     "offHard": false,
+     "preferred": [
+      "noon"
+     ]
+    }
+   },
+   "D": {
+    "0": {
+     "off": false,
+     "offHard": false,
+     "preferred": []
+    },
+    "1": {
+     "off": false,
+     "offHard": false,
+     "preferred": [
+      "morning"
+     ]
+    },
+    "2": {
+     "off": false,
+     "offHard": false,
+     "preferred": [
+      "morning",
+      "noon"
+     ]
+    },
+    "3": {
+     "off": false,
+     "offHard": false,
+     "preferred": [
+      "morning",
+      "noon",
+      "night"
+     ]
+    },
+    "4": {
+     "off": false,
+     "offHard": false,
+     "preferred": [
+      "noon",
+      "morning",
+      "night"
+     ]
+    },
+    "5": {
+     "off": false,
+     "offHard": false,
+     "preferred": [
+      "noon",
+      "morning"
+     ]
+    },
+    "6": {
+     "off": false,
+     "offHard": false,
+     "preferred": [
+      "morning"
+     ]
+    }
+   },
+   "E": {
+    "0": {
+     "off": false,
+     "offHard": false,
+     "preferred": [
+      "night"
+     ]
+    },
+    "1": {
+     "off": false,
+     "offHard": false,
+     "preferred": [
+      "night"
+     ]
+    },
+    "2": {
+     "off": false,
+     "offHard": false,
+     "preferred": []
+    },
+    "3": {
+     "off": false,
+     "offHard": false,
+     "preferred": []
+    },
+    "4": {
+     "off": false,
+     "offHard": false,
+     "preferred": []
+    },
+    "5": {
+     "off": false,
+     "offHard": false,
+     "preferred": []
+    },
+    "6": {
+     "off": true,
+     "offHard": false,
+     "preferred": []
+    }
+   },
+   "F": {
+    "0": {
+     "off": true,
+     "offHard": true,
+     "preferred": []
+    },
+    "1": {
+     "off": false,
+     "offHard": false,
+     "preferred": [
+      "morning"
+     ]
+    },
+    "2": {
+     "off": false,
+     "offHard": false,
+     "preferred": [
+      "morning"
+     ]
+    },
+    "3": {
+     "off": false,
+     "offHard": false,
+     "preferred": [
+      "morning"
+     ]
+    },
+    "4": {
+     "off": true,
+     "offHard": true,
+     "preferred": []
+    },
+    "5": {
+     "off": true,
+     "offHard": true,
+     "preferred": []
+    },
+    "6": {
+     "off": false,
+     "offHard": false,
+     "preferred": [
+      "night"
+     ]
+    }
+   },
+   "G": {
+    "0": {
+     "off": false,
+     "offHard": false,
+     "preferred": [
+      "noon"
+     ]
+    },
+    "1": {
+     "off": false,
+     "offHard": false,
+     "preferred": []
+    },
+    "2": {
+     "off": false,
+     "offHard": false,
+     "preferred": []
+    },
+    "3": {
+     "off": false,
+     "offHard": false,
+     "preferred": []
+    },
+    "4": {
+     "off": false,
+     "offHard": false,
+     "preferred": []
+    },
+    "5": {
+     "off": false,
+     "offHard": false,
+     "preferred": []
+    },
+    "6": {
+     "off": false,
+     "offHard": false,
+     "preferred": []
+    }
+   },
+   "H": {
+    "0": {
+     "off": false,
+     "offHard": false,
+     "preferred": []
+    },
+    "1": {
+     "off": false,
+     "offHard": false,
+     "preferred": [
+      "noon"
+     ]
+    },
+    "2": {
+     "off": false,
+     "offHard": false,
+     "preferred": [
+      "noon"
+     ]
+    },
+    "3": {
+     "off": false,
+     "offHard": false,
+     "preferred": [
+      "morning"
+     ]
+    },
+    "4": {
+     "off": false,
+     "offHard": false,
+     "preferred": []
+    },
+    "5": {
+     "off": false,
+     "offHard": false,
+     "preferred": [
+      "morning"
+     ]
+    },
+    "6": {
+     "off": false,
+     "offHard": false,
+     "preferred": []
+    }
+   },
+   "I": {
+    "0": {
+     "off": false,
+     "offHard": false,
+     "preferred": [
+      "morning"
+     ]
+    },
+    "1": {
+     "off": false,
+     "offHard": false,
+     "preferred": [
+      "noon"
+     ]
+    },
+    "2": {
+     "off": true,
+     "offHard": false,
+     "preferred": []
+    },
+    "3": {
+     "off": false,
+     "offHard": false,
+     "preferred": [
+      "morning"
+     ]
+    },
+    "4": {
+     "off": false,
+     "offHard": false,
+     "preferred": [
+      "morning"
+     ]
+    },
+    "5": {
+     "off": true,
+     "offHard": false,
+     "preferred": []
+    },
+    "6": {
+     "off": false,
+     "offHard": false,
+     "preferred": []
+    }
+   },
+   "J": {
+    "0": {
+     "off": true,
+     "offHard": true,
+     "preferred": []
+    },
+    "1": {
+     "off": true,
+     "offHard": true,
+     "preferred": []
+    },
+    "2": {
+     "off": true,
+     "offHard": true,
+     "preferred": []
+    },
+    "3": {
+     "off": true,
+     "offHard": true,
+     "preferred": []
+    },
+    "4": {
+     "off": true,
+     "offHard": true,
+     "preferred": []
+    },
+    "5": {
+     "off": true,
+     "offHard": true,
+     "preferred": []
+    },
+    "6": {
+     "off": true,
+     "offHard": true,
+     "preferred": []
+    }
+   },
+   "K": {
+    "0": {
+     "off": false,
+     "offHard": false,
+     "preferred": [
+      "night"
+     ]
+    },
+    "1": {
+     "off": false,
+     "offHard": false,
+     "preferred": [
+      "noon"
+     ]
+    },
+    "2": {
+     "off": false,
+     "offHard": false,
+     "preferred": [
+      "noon"
+     ]
+    },
+    "3": {
+     "off": false,
+     "offHard": false,
+     "preferred": [
+      "morning"
+     ]
+    },
+    "4": {
+     "off": false,
+     "offHard": false,
+     "preferred": [
+      "morning"
+     ]
+    },
+    "5": {
+     "off": false,
+     "offHard": false,
+     "preferred": [
+      "night"
+     ]
+    },
+    "6": {
+     "off": true,
+     "offHard": false,
+     "preferred": []
+    }
+   },
+   "L": {
+    "0": {
+     "off": false,
+     "offHard": false,
+     "preferred": []
+    },
+    "1": {
+     "off": false,
+     "offHard": false,
+     "preferred": [
+      "noon",
+      "morning"
+     ]
+    },
+    "2": {
+     "off": true,
+     "offHard": false,
+     "preferred": []
+    },
+    "3": {
+     "off": true,
+     "offHard": false,
+     "preferred": [
+      "night"
+     ]
+    },
+    "4": {
+     "off": false,
+     "offHard": false,
+     "preferred": []
+    },
+    "5": {
+     "off": false,
+     "offHard": false,
+     "preferred": []
+    },
+    "6": {
+     "off": false,
+     "offHard": false,
+     "preferred": []
+    }
+   },
+   "M": {
+    "0": {
+     "off": true,
+     "offHard": true,
+     "preferred": []
+    },
+    "1": {
+     "off": true,
+     "offHard": true,
+     "preferred": []
+    },
+    "2": {
+     "off": true,
+     "offHard": true,
+     "preferred": []
+    },
+    "3": {
+     "off": true,
+     "offHard": true,
+     "preferred": []
+    },
+    "4": {
+     "off": true,
+     "offHard": true,
+     "preferred": []
+    },
+    "5": {
+     "off": true,
+     "offHard": true,
+     "preferred": []
+    },
+    "6": {
+     "off": true,
+     "offHard": true,
+     "preferred": []
+    }
+   },
+   "N": {
+    "0": {
+     "off": false,
+     "offHard": false,
+     "preferred": [
+      "morning",
+      "night"
+     ]
+    },
+    "1": {
+     "off": false,
+     "offHard": false,
+     "preferred": [
+      "noon",
+      "morning"
+     ]
+    },
+    "2": {
+     "off": true,
+     "offHard": false,
+     "preferred": []
+    },
+    "3": {
+     "off": false,
+     "offHard": false,
+     "preferred": [
+      "night"
+     ]
+    },
+    "4": {
+     "off": false,
+     "offHard": false,
+     "preferred": [
+      "noon"
+     ]
+    },
+    "5": {
+     "off": true,
+     "offHard": false,
+     "preferred": []
+    },
+    "6": {
+     "off": false,
+     "offHard": false,
+     "preferred": [
+      "night"
+     ]
+    }
+   },
+   "O": {
+    "0": {
+     "off": true,
+     "offHard": true,
+     "preferred": []
+    },
+    "1": {
+     "off": true,
+     "offHard": true,
+     "preferred": []
+    },
+    "2": {
+     "off": true,
+     "offHard": true,
+     "preferred": []
+    },
+    "3": {
+     "off": true,
+     "offHard": true,
+     "preferred": []
+    },
+    "4": {
+     "off": true,
+     "offHard": true,
+     "preferred": []
+    },
+    "5": {
+     "off": true,
+     "offHard": true,
+     "preferred": []
+    },
+    "6": {
+     "off": true,
+     "offHard": true,
+     "preferred": []
+    }
+   }
+  },
+  "requirements": {
+   "0": {
+    "morning": {
+     "אחמ״ש": 1,
+     "מוקדן": 1,
+     "מאבטח": 1
+    },
+    "noon": {
+     "אחמ״ש": 1,
+     "מוקדן": 1,
+     "מאבטח": 1
+    },
+    "night": {
+     "אחמ״ש": 1,
+     "מוקדן": 1,
+     "מאבטח": 1
+    }
+   },
+   "1": {
+    "morning": {
+     "אחמ״ש": 1,
+     "מוקדן": 1,
+     "מאבטח": 1
+    },
+    "noon": {
+     "אחמ״ש": 1,
+     "מוקדן": 1,
+     "מאבטח": 1
+    },
+    "night": {
+     "אחמ״ש": 1,
+     "מוקדן": 1,
+     "מאבטח": 1
+    }
+   },
+   "2": {
+    "morning": {
+     "אחמ״ש": 1,
+     "מוקדן": 1,
+     "מאבטח": 1
+    },
+    "noon": {
+     "אחמ״ש": 1,
+     "מוקדן": 1,
+     "מאבטח": 1
+    },
+    "night": {
+     "אחמ״ש": 1,
+     "מוקדן": 1,
+     "מאבטח": 1
+    }
+   },
+   "3": {
+    "morning": {
+     "אחמ״ש": 1,
+     "מוקדן": 1,
+     "מאבטח": 1
+    },
+    "noon": {
+     "אחמ״ש": 1,
+     "מוקדן": 1,
+     "מאבטח": 1
+    },
+    "night": {
+     "אחמ״ש": 1,
+     "מוקדן": 1,
+     "מאבטח": 1
+    }
+   },
+   "4": {
+    "morning": {
+     "אחמ״ש": 1,
+     "מוקדן": 1,
+     "מאבטח": 1
+    },
+    "noon": {
+     "אחמ״ש": 1,
+     "מוקדן": 1,
+     "מאבטח": 1
+    },
+    "night": {
+     "אחמ״ש": 1,
+     "מוקדן": 1,
+     "מאבטח": 1
+    }
+   },
+   "5": {
+    "morning": {
+     "אחמ״ש": 1,
+     "מוקדן": 1,
+     "מאבטח": 1
+    },
+    "noon": {
+     "אחמ״ש": 1,
+     "מוקדן": 1,
+     "מאבטח": 1
+    },
+    "night": {
+     "אחמ״ש": 1,
+     "מוקדן": 1,
+     "מאבטח": 1
+    }
+   },
+   "6": {
+    "morning": {
+     "אחמ״ש": 1,
+     "מוקדן": 1,
+     "מאבטח": 1
+    },
+    "noon": {
+     "אחמ״ש": 1,
+     "מוקדן": 1,
+     "מאבטח": 1
+    },
+    "night": {
+     "אחמ״ש": 1,
+     "מוקדן": 1,
+     "מאבטח": 1
+    }
+   }
+  },
+  "settings": {
+   "minRestHours": 8,
+   "idealRestHours": 16,
+   "allow12hFallback": true
+  },
+  "seed": 3296652347,
+  "managerRoleId": "אחמ״ש",
+  "priorWeekTail": {
+   "N": [
+    -25,
+    -129,
+    -65,
+    -41,
+    -149,
+    7
+   ],
+   "D": [
+    -129,
+    -41,
+    -105,
+    -77,
+    7,
+    -17
+   ],
+   "E": [
+    -89,
+    -153,
+    -17,
+    -73,
+    -57,
+    -1
+   ],
+   "H": [
+    -97,
+    -121,
+    -77
+   ],
+   "I": [
+    -121,
+    -105,
+    -57,
+    -81
+   ],
+   "J": [
+    -113,
+    -97
+   ],
+   "L": [
+    -97,
+    -33,
+    -49,
+    -65,
+    -5,
+    -137
+   ],
+   "C": [
+    -49,
+    7,
+    -145,
+    -129,
+    -89,
+    -17
+   ],
+   "G": [
+    -41,
+    -145,
+    -89,
+    -9,
+    -65,
+    -25
+   ],
+   "M": [
+    -53,
+    -5,
+    -137,
+    -113,
+    -33
+   ],
+   "O": [
+    -113,
+    -153
+   ],
+   "K": [
+    -105,
+    -121,
+    -137,
+    -29
+   ]
+  },
+  "nextWeekHead": {}
+ },
+ "managerFinal": [
+  {
+   "emp": "L",
+   "day": 0,
+   "kind": "m12_day",
+   "role": "אחמ״ש",
+   "fills": [
+    {
+     "shift": "morning",
+     "role": "אחמ״ש"
+    },
+    {
+     "shift": "noon",
+     "role": "אחמ״ש"
+    }
+   ]
+  },
+  {
+   "emp": "E",
+   "day": 0,
+   "kind": "m12_day",
+   "role": "מאבטח",
+   "fills": [
+    {
+     "shift": "morning",
+     "role": "מאבטח"
+    },
+    {
+     "shift": "noon",
+     "role": "מאבטח"
+    }
+   ]
+  },
+  {
+   "emp": "N",
+   "day": 0,
+   "kind": "m12_night",
+   "role": "אחמ״ש",
+   "fills": [
+    {
+     "shift": "night",
+     "role": "אחמ״ש"
+    }
+   ]
+  },
+  {
+   "emp": "C",
+   "day": 0,
+   "kind": "m12_night",
+   "role": "מאבטח",
+   "fills": [
+    {
+     "shift": "night",
+     "role": "מאבטח"
+    }
+   ]
+  },
+  {
+   "emp": "I",
+   "day": 0,
+   "kind": "morning",
+   "role": "מוקדן"
+  },
+  {
+   "emp": "K",
+   "day": 0,
+   "kind": "night",
+   "role": "מוקדן"
+  },
+  {
+   "emp": "G",
+   "day": 0,
+   "kind": "noon",
+   "role": "מוקדן"
+  },
+  {
+   "emp": "F",
+   "day": 1,
+   "kind": "morning",
+   "role": "אחמ״ש"
+  },
+  {
+   "emp": "L",
+   "day": 1,
+   "kind": "morning",
+   "role": "מאבטח"
+  },
+  {
+   "emp": "B",
+   "day": 1,
+   "kind": "morning",
+   "role": "מוקדן"
+  },
+  {
+   "emp": "E",
+   "day": 1,
+   "kind": "night",
+   "role": "אחמ״ש"
+  },
+  {
+   "emp": "D",
+   "day": 1,
+   "kind": "night",
+   "role": "מאבטח"
+  },
+  {
+   "emp": "G",
+   "day": 1,
+   "kind": "night",
+   "role": "מוקדן"
+  },
+  {
+   "emp": "I",
+   "day": 1,
+   "kind": "noon",
+   "role": "אחמ״ש"
+  },
+  {
+   "emp": "N",
+   "day": 1,
+   "kind": "noon",
+   "role": "מאבטח"
+  },
+  {
+   "emp": "H",
+   "day": 1,
+   "kind": "noon",
+   "role": "מוקדן"
+  },
+  {
+   "emp": "F",
+   "day": 2,
+   "kind": "morning",
+   "role": "אחמ״ש"
+  },
+  {
+   "emp": "K",
+   "day": 2,
+   "kind": "morning",
+   "role": "מאבטח"
+  },
+  {
+   "emp": "C",
+   "day": 2,
+   "kind": "morning",
+   "role": "מוקדן"
+  },
+  {
+   "emp": "B",
+   "day": 2,
+   "kind": "night",
+   "role": "אחמ״ש"
+  },
+  {
+   "emp": "G",
+   "day": 2,
+   "kind": "night",
+   "role": "מאבטח"
+  },
+  {
+   "emp": "D",
+   "day": 2,
+   "kind": "night",
+   "role": "מוקדן"
+  },
+  {
+   "emp": "H",
+   "day": 2,
+   "kind": "noon",
+   "role": "אחמ״ש"
+  },
+  {
+   "emp": "E",
+   "day": 2,
+   "kind": "noon",
+   "role": "מאבטח"
+  },
+  {
+   "emp": "L",
+   "day": 2,
+   "kind": "noon",
+   "role": "מוקדן"
+  },
+  {
+   "emp": "F",
+   "day": 3,
+   "kind": "morning",
+   "role": "אחמ״ש"
+  },
+  {
+   "emp": "I",
+   "day": 3,
+   "kind": "morning",
+   "role": "מאבטח"
+  },
+  {
+   "emp": "H",
+   "day": 3,
+   "kind": "morning",
+   "role": "מוקדן"
+  },
+  {
+   "emp": "B",
+   "day": 3,
+   "kind": "night",
+   "role": "אחמ״ש"
+  },
+  {
+   "emp": "C",
+   "day": 3,
+   "kind": "night",
+   "role": "מאבטח"
+  },
+  {
+   "emp": "N",
+   "day": 3,
+   "kind": "night",
+   "role": "מוקדן"
+  },
+  {
+   "emp": "E",
+   "day": 3,
+   "kind": "noon",
+   "role": "אחמ״ש"
+  },
+  {
+   "emp": "K",
+   "day": 3,
+   "kind": "noon",
+   "role": "מאבטח"
+  },
+  {
+   "emp": "D",
+   "day": 3,
+   "kind": "noon",
+   "role": "מוקדן"
+  },
+  {
+   "emp": "I",
+   "day": 4,
+   "kind": "morning",
+   "role": "אחמ״ש"
+  },
+  {
+   "emp": "E",
+   "day": 4,
+   "kind": "morning",
+   "role": "מאבטח"
+  },
+  {
+   "emp": "D",
+   "day": 4,
+   "kind": "morning",
+   "role": "מוקדן"
+  },
+  {
+   "emp": "N",
+   "day": 4,
+   "kind": "night",
+   "role": "אחמ״ש"
+  },
+  {
+   "emp": "K",
+   "day": 4,
+   "kind": "night",
+   "role": "מאבטח"
+  },
+  {
+   "emp": "C",
+   "day": 4,
+   "kind": "night",
+   "role": "מוקדן"
+  },
+  {
+   "emp": "L",
+   "day": 4,
+   "kind": "noon",
+   "role": "אחמ״ש"
+  },
+  {
+   "emp": "G",
+   "day": 4,
+   "kind": "noon",
+   "role": "מאבטח"
+  },
+  {
+   "emp": "B",
+   "day": 4,
+   "kind": "noon",
+   "role": "מוקדן"
+  },
+  {
+   "emp": "G",
+   "day": 5,
+   "kind": "m12_day",
+   "role": "מאבטח",
+   "fills": [
+    {
+     "shift": "morning",
+     "role": "מאבטח"
+    },
+    {
+     "shift": "noon",
+     "role": "מאבטח"
+    }
+   ]
+  },
+  {
+   "emp": "E",
+   "day": 5,
+   "kind": "m12_day",
+   "role": "מוקדן",
+   "fills": [
+    {
+     "shift": "morning",
+     "role": "מוקדן"
+    },
+    {
+     "shift": "noon",
+     "role": "אחמ״ש"
+    }
+   ]
+  },
+  {
+   "emp": "L",
+   "day": 5,
+   "kind": "m12_night",
+   "role": "אחמ״ש",
+   "fills": [
+    {
+     "shift": "night",
+     "role": "אחמ״ש"
+    }
+   ]
+  },
+  {
+   "emp": "D",
+   "day": 5,
+   "kind": "m12_night",
+   "role": "מוקדן",
+   "fills": [
+    {
+     "shift": "night",
+     "role": "מוקדן"
+    }
+   ]
+  },
+  {
+   "emp": "H",
+   "day": 5,
+   "kind": "morning",
+   "role": "אחמ״ש"
+  },
+  {
+   "emp": "K",
+   "day": 5,
+   "kind": "night",
+   "role": "מאבטח"
+  },
+  {
+   "emp": "C",
+   "day": 5,
+   "kind": "noon",
+   "role": "מוקדן"
+  },
+  {
+   "emp": "N",
+   "day": 6,
+   "kind": "m12_day",
+   "role": "אחמ״ש",
+   "fills": [
+    {
+     "shift": "morning",
+     "role": "אחמ״ש"
+    },
+    {
+     "shift": "noon",
+     "role": "אחמ״ש"
+    }
+   ]
+  },
+  {
+   "emp": "C",
+   "day": 6,
+   "kind": "m12_day",
+   "role": "מוקדן",
+   "fills": [
+    {
+     "shift": "morning",
+     "role": "מוקדן"
+    },
+    {
+     "shift": "noon",
+     "role": "מאבטח"
+    }
+   ]
+  },
+  {
+   "emp": "G",
+   "day": 6,
+   "kind": "m12_night",
+   "role": "מאבטח",
+   "fills": [
+    {
+     "shift": "night",
+     "role": "מאבטח"
+    }
+   ]
+  },
+  {
+   "emp": "L",
+   "day": 6,
+   "kind": "m12_night",
+   "role": "מוקדן",
+   "fills": [
+    {
+     "shift": "night",
+     "role": "מוקדן"
+    }
+   ]
+  },
+  {
+   "emp": "TEMP",
+   "day": 6,
+   "kind": "morning",
+   "role": "מאבטח"
+  },
+  {
+   "emp": "F",
+   "day": 6,
+   "kind": "night",
+   "role": "אחמ״ש"
+  },
+  {
+   "emp": "D",
+   "day": 6,
+   "kind": "noon",
+   "role": "מוקדן"
+  }
+ ],
+ "requests": [
+  {
+   "emp": "B",
+   "day": 0,
+   "isOff": true,
+   "preferred": []
+  },
+  {
+   "emp": "B",
+   "day": 1,
+   "isOff": false,
+   "preferred": [
+    "morning"
+   ]
+  },
+  {
+   "emp": "B",
+   "day": 2,
+   "isOff": false,
+   "preferred": [
+    "night"
+   ]
+  },
+  {
+   "emp": "B",
+   "day": 4,
+   "isOff": false,
+   "preferred": [
+    "morning",
+    "noon"
+   ]
+  },
+  {
+   "emp": "B",
+   "day": 5,
+   "isOff": true,
+   "preferred": []
+  },
+  {
+   "emp": "B",
+   "day": 6,
+   "isOff": true,
+   "preferred": []
+  },
+  {
+   "emp": "C",
+   "day": 5,
+   "isOff": false,
+   "preferred": [
+    "noon"
+   ]
+  },
+  {
+   "emp": "C",
+   "day": 6,
+   "isOff": false,
+   "preferred": [
+    "noon"
+   ]
+  },
+  {
+   "emp": "D",
+   "day": 1,
+   "isOff": false,
+   "preferred": [
+    "morning"
+   ]
+  },
+  {
+   "emp": "D",
+   "day": 2,
+   "isOff": false,
+   "preferred": [
+    "morning",
+    "noon"
+   ]
+  },
+  {
+   "emp": "D",
+   "day": 3,
+   "isOff": false,
+   "preferred": [
+    "morning",
+    "noon",
+    "night"
+   ]
+  },
+  {
+   "emp": "D",
+   "day": 4,
+   "isOff": false,
+   "preferred": [
+    "noon",
+    "morning",
+    "night"
+   ]
+  },
+  {
+   "emp": "D",
+   "day": 5,
+   "isOff": false,
+   "preferred": [
+    "noon",
+    "morning"
+   ]
+  },
+  {
+   "emp": "D",
+   "day": 6,
+   "isOff": false,
+   "preferred": [
+    "morning"
+   ]
+  },
+  {
+   "emp": "E",
+   "day": 0,
+   "isOff": false,
+   "preferred": [
+    "night"
+   ]
+  },
+  {
+   "emp": "E",
+   "day": 1,
+   "isOff": false,
+   "preferred": [
+    "night"
+   ]
+  },
+  {
+   "emp": "E",
+   "day": 6,
+   "isOff": true,
+   "preferred": []
+  },
+  {
+   "emp": "F",
+   "day": 0,
+   "isOff": true,
+   "preferred": []
+  },
+  {
+   "emp": "F",
+   "day": 1,
+   "isOff": false,
+   "preferred": [
+    "morning"
+   ]
+  },
+  {
+   "emp": "F",
+   "day": 2,
+   "isOff": false,
+   "preferred": [
+    "morning"
+   ]
+  },
+  {
+   "emp": "F",
+   "day": 3,
+   "isOff": false,
+   "preferred": [
+    "morning"
+   ]
+  },
+  {
+   "emp": "F",
+   "day": 4,
+   "isOff": true,
+   "preferred": []
+  },
+  {
+   "emp": "F",
+   "day": 5,
+   "isOff": true,
+   "preferred": []
+  },
+  {
+   "emp": "F",
+   "day": 6,
+   "isOff": false,
+   "preferred": [
+    "night"
+   ]
+  },
+  {
+   "emp": "G",
+   "day": 0,
+   "isOff": false,
+   "preferred": [
+    "noon"
+   ]
+  },
+  {
+   "emp": "H",
+   "day": 1,
+   "isOff": false,
+   "preferred": [
+    "noon"
+   ]
+  },
+  {
+   "emp": "H",
+   "day": 2,
+   "isOff": false,
+   "preferred": [
+    "noon"
+   ]
+  },
+  {
+   "emp": "H",
+   "day": 3,
+   "isOff": false,
+   "preferred": [
+    "morning"
+   ]
+  },
+  {
+   "emp": "H",
+   "day": 5,
+   "isOff": false,
+   "preferred": [
+    "morning"
+   ]
+  },
+  {
+   "emp": "I",
+   "day": 0,
+   "isOff": false,
+   "preferred": [
+    "morning"
+   ]
+  },
+  {
+   "emp": "I",
+   "day": 1,
+   "isOff": false,
+   "preferred": [
+    "noon"
+   ]
+  },
+  {
+   "emp": "I",
+   "day": 2,
+   "isOff": true,
+   "preferred": []
+  },
+  {
+   "emp": "I",
+   "day": 3,
+   "isOff": false,
+   "preferred": [
+    "morning"
+   ]
+  },
+  {
+   "emp": "I",
+   "day": 4,
+   "isOff": false,
+   "preferred": [
+    "morning"
+   ]
+  },
+  {
+   "emp": "I",
+   "day": 5,
+   "isOff": true,
+   "preferred": []
+  },
+  {
+   "emp": "K",
+   "day": 0,
+   "isOff": false,
+   "preferred": [
+    "night"
+   ]
+  },
+  {
+   "emp": "K",
+   "day": 1,
+   "isOff": false,
+   "preferred": [
+    "noon"
+   ]
+  },
+  {
+   "emp": "K",
+   "day": 2,
+   "isOff": false,
+   "preferred": [
+    "noon"
+   ]
+  },
+  {
+   "emp": "K",
+   "day": 3,
+   "isOff": false,
+   "preferred": [
+    "morning"
+   ]
+  },
+  {
+   "emp": "K",
+   "day": 4,
+   "isOff": false,
+   "preferred": [
+    "morning"
+   ]
+  },
+  {
+   "emp": "K",
+   "day": 5,
+   "isOff": false,
+   "preferred": [
+    "night"
+   ]
+  },
+  {
+   "emp": "K",
+   "day": 6,
+   "isOff": true,
+   "preferred": []
+  },
+  {
+   "emp": "L",
+   "day": 1,
+   "isOff": false,
+   "preferred": [
+    "noon",
+    "morning"
+   ]
+  },
+  {
+   "emp": "L",
+   "day": 2,
+   "isOff": true,
+   "preferred": []
+  },
+  {
+   "emp": "L",
+   "day": 3,
+   "isOff": true,
+   "preferred": [
+    "night"
+   ]
+  },
+  {
+   "emp": "N",
+   "day": 0,
+   "isOff": false,
+   "preferred": [
+    "morning",
+    "night"
+   ]
+  },
+  {
+   "emp": "N",
+   "day": 1,
+   "isOff": false,
+   "preferred": [
+    "noon",
+    "morning"
+   ]
+  },
+  {
+   "emp": "N",
+   "day": 2,
+   "isOff": true,
+   "preferred": []
+  },
+  {
+   "emp": "N",
+   "day": 3,
+   "isOff": false,
+   "preferred": [
+    "night"
+   ]
+  },
+  {
+   "emp": "N",
+   "day": 4,
+   "isOff": false,
+   "preferred": [
+    "noon"
+   ]
+  },
+  {
+   "emp": "N",
+   "day": 5,
+   "isOff": true,
+   "preferred": []
+  },
+  {
+   "emp": "N",
+   "day": 6,
+   "isOff": false,
+   "preferred": [
+    "night"
+   ]
+  }
+ ]
+}
