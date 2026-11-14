@@ -55,6 +55,7 @@ test('employee links GuardPay and imports the published week', async ({ browser 
   await manager.page.getByRole('button', { name: 'שיבוץ אוטומטי' }).click()
   await expect(manager.page.getByTestId('coverage')).toBeVisible({ timeout: 30000 })
   await dismissCoverageIssues(manager.page)
+  await manager.page.locator(`[data-testid="schedule-actions-toggle"][aria-expanded="false"]`).click({ timeout: 3000 }).catch(() => {})
   await manager.page.getByRole('button', { name: 'פרסום הסידור' }).click()
   const confirmPublish = manager.page.getByRole('button', { name: /לחצו שוב לפרסום/ })
   await confirmPublish.click({ timeout: 3000 }).catch(() => {}) // absent when coverage is full
@@ -86,6 +87,7 @@ test('employee links GuardPay and imports the published week', async ({ browser 
   await expect(unpub).toHaveText('לחצו שוב לאישור ביטול', { timeout: 2000 })
   await unpub.click()
   await expect(manager.page.getByTestId('unpublish-schedule')).toBeHidden({ timeout: 30_000 })
+  await manager.page.locator(`[data-testid="schedule-actions-toggle"][aria-expanded="false"]`).click({ timeout: 3000 }).catch(() => {})
   await manager.page.getByRole('button', { name: 'פרסום הסידור' }).click()
   await manager.page.getByRole('button', { name: /לחצו שוב לפרסום/ }).click({ timeout: 3000 }).catch(() => {})
   await expect(manager.page.getByRole('button', { name: /פורסם/ })).toBeVisible({ timeout: 15000 })

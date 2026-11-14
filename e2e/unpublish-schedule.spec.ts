@@ -64,6 +64,7 @@ test('manager can publish, unpublish, and see the publish button return', async 
   // action awaits a slow PNG-render + Supabase Storage upload, then triggers
   // router.refresh which holds the transition open). The unpublish flow does
   // not depend on that transition settling, so we don't wait for it here.
+  await page.locator(`[data-testid="schedule-actions-toggle"][aria-expanded="false"]`).click({ timeout: 3000 }).catch(() => {})
   await page.getByRole('button', { name: 'פרסום הסידור' }).click()
   // Incomplete coverage arms an inline two-step confirm — click again to publish.
   const confirmPublish = page.getByRole('button', { name: /לחצו שוב לפרסום/ })

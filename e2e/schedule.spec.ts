@@ -72,6 +72,7 @@ test('manager generates an auto schedule and sees coverage + assignments', async
   // Generation is 8h-only by default — if gaps remain, the "עוד" sheet offers
   // "השלמה עם משמרות 12 שעות" to complete coverage with 12h shifts.
   // Small e2e seeds may or may not leave gaps, so this is conditional.
+  await page.locator(`[data-testid="schedule-actions-toggle"][aria-expanded="false"]`).click({ timeout: 3000 }).catch(() => {})
   await page.getByTestId('more-actions').click()
   await expect(page.getByTestId('more-actions-sheet')).toBeVisible()
   const completeTwelve = page.getByTestId('complete-twelve')

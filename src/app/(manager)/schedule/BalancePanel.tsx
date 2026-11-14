@@ -22,12 +22,14 @@ const headCell: React.CSSProperties = { textAlign: 'center' }
  * numbers follow every assignment with no extra request.
  */
 export function BalancePanel({
-  view, editMeta, selectedId, onSelect,
+  view, editMeta, selectedId, onSelect, onHide,
 }: {
   view: ScheduleView
   editMeta: EditMeta | null
   selectedId: string | null
   onSelect: (id: string | null) => void
+  /** Collapse the panel so the week table takes the full width. */
+  onHide: () => void
 }) {
   const [sort, setSort] = useState<BalanceSort>('total')
   const balance = useMemo(() => buildEmpBalance(view), [view])
@@ -66,7 +68,15 @@ export function BalancePanel({
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 'var(--space-2)' }}>
         <h2 style={{ margin: 0, fontSize: 'var(--text-h2)', fontWeight: 800, color: 'var(--text)' }}>מאזן עובדים</h2>
-        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-2)' }}>מתעדכן עם כל שיבוץ</span>
+        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-2)', marginInlineEnd: 'auto' }}>מתעדכן עם כל שיבוץ</span>
+        <button
+          type="button"
+          data-testid="balance-hide"
+          onClick={onHide}
+          style={{ border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-2)', borderRadius: 'var(--r-pill)', padding: '4px 12px', fontSize: 'var(--text-sm)', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)' }}
+        >
+          הסתרה
+        </button>
       </div>
 
       <Segmented options={SORTS} value={sort} onChange={(v) => setSort(v as BalanceSort)} />
@@ -75,8 +85,8 @@ export function BalancePanel({
         <span>עובד</span>
         <span style={headCell}>בוקר</span>
         <span style={headCell}>צהר׳</span>
-        <span style={headCell}>לילה</span>
-        <span style={headCell} title="משמרות 12 שעות">12ש׳</span>
+        <span style={headCell} title="כולל משמרות לילה של 12 שעות (19:00–07:00)">לילה</span>
+        <span style={headCell} title="משמרת יום של 12 שעות (07:00–19:00)">יום 12</span>
         <span style={headCell}>סה״כ</span>
         <span style={headCell}>בקשות</span>
       </div>

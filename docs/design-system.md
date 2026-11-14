@@ -21,12 +21,12 @@ properties (`inline-start`/`inline-end`) so RTL is automatic.
 
 - **Navigation:** below 1024px a fixed bottom tab bar (`components/nav/BottomNav.tsx`); from 1024px the
   tab row in the top bar. The page reserves room for the bar via `--bottom-nav-h` — anything pinned to
-  the bottom of the viewport must add it (see `.sched-actionbar`, `.submit-bar-sticky`).
+  the bottom of the viewport must add it (see `.sched-fab`, `.submit-bar-sticky`).
 - **Overlays:** `Sheet` is the one modal surface — a bottom sheet on phones, a centered dialog on
   desktop — with dialog role, Escape, a close button and a focus trap. `Drawer` is the side panel.
   Don't hand-roll `position: fixed` modals.
-- **Schedule page:** primary actions live in the pinned `ScheduleActionBar` (publish / auto-assign /
-  "עוד"); less common ones in `MoreActionsSheet`. The live per-worker panel (`BalancePanel`) docks
+- **Schedule page:** primary actions live behind one small floating button (`ScheduleActionBar`: publish /
+  auto-assign / more) so nothing covers the grid while editing; less common ones in `MoreActionsSheet`. The live per-worker panel (`BalancePanel`) docks
   beside the week table from 1280px. Marks in the grid are explained by `ScheduleLegend` — add an entry
   there when adding a new mark.
 

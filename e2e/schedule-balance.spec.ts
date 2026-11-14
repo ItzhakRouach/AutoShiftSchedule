@@ -53,6 +53,15 @@ test('balance panel lists every worker, matches the totals bar, and shares selec
   await expect(dana).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByTestId('emp-total-chip').filter({ hasText: 'דנה' })).toHaveAttribute('aria-pressed', 'true')
 
+  // Hiding the panel gives the table the full width; the choice survives a reload.
+  await page.getByTestId('balance-hide').click()
+  await expect(panel).toBeHidden()
+  await page.reload()
+  await expect(page.getByTestId('week-table')).toBeVisible({ timeout: 15000 })
+  await expect(page.getByTestId('balance-panel')).toBeHidden()
+  await page.getByTestId('balance-show').click()
+  await expect(page.getByTestId('balance-panel')).toBeVisible()
+
   if (process.env.BALANCE_SHOT) await page.screenshot({ path: process.env.BALANCE_SHOT, fullPage: true })
   await context.close()
 })

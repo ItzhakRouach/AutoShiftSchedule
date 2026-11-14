@@ -161,12 +161,14 @@ body:has(.bottom-nav) { --bottom-nav-h: 61px; padding-bottom: calc(61px + env(sa
 /* Manager work area: grid + live balance panel. Phones keep the distribution
    drawer; desktops stack the panel under the grid; wide screens dock it beside. */
 .sched-balance { display: none; }
+.sched-balance-show { display: none; }
 @media (min-width: 1024px) {
   .sched-balance { display: block; margin-top: 16px; }
+  .sched-balance-show { display: flex; justify-content: flex-end; margin-bottom: 8px; }
 }
 @media (min-width: 1280px) {
   .schedule-main:has(.sched-work) { max-width: min(1760px, 97vw); }
-  .sched-work {
+  .sched-work:not(.is-collapsed) {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 400px;
     gap: 16px;
@@ -178,24 +180,24 @@ body:has(.bottom-nav) { --bottom-nav-h: 61px; padding-bottom: calc(61px + env(sa
     top: 76px;
     max-height: calc(100vh - 92px);
     overflow-y: auto;
+    /* room for the floating actions button, which sits over this corner */
+    padding-bottom: 68px;
   }
 }
 
-/* ── Schedule action bar: publish / auto-assign / more, pinned to the bottom
-   of the viewport (above the phone tab bar) so they are always in reach. */
-.sched-actionbar {
-  position: sticky;
-  bottom: calc(10px + env(safe-area-inset-bottom) + var(--bottom-nav-h, 0px));
-  z-index: 30;
+/* ── Schedule actions: one small floating button (publish / auto-assign /
+   more open from it), clear of the phone tab bar. Kept in a corner so it never
+   covers the row being edited. */
+/* The page's last row must be able to scroll clear of the floating button. */
+.schedule-main:has(.sched-fab) { padding-bottom: 96px; }
+.sched-fab {
+  position: fixed;
+  inset-inline-end: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom) + var(--bottom-nav-h, 0px));
+  z-index: 40;
   display: flex;
+  flex-direction: column;
   gap: 8px;
-  max-width: 640px;
-  margin: 18px auto 0;
-  padding: 10px;
-  border-radius: var(--r-lg);
-  border: 1px solid var(--border);
-  background: var(--surface);
-  box-shadow: var(--shadow-lift);
 }
 
 /* ── Sheet: bottom sheet on phones, centered dialog on desktop. */

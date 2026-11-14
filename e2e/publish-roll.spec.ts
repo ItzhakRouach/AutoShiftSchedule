@@ -61,6 +61,7 @@ test('after publish, the editor rolls to the next week and requests stay editabl
   await expect(page.getByTestId('coverage')).toBeVisible({ timeout: 30000 })
   await dismissCoverageIssues(page)
 
+  await page.locator(`[data-testid="schedule-actions-toggle"][aria-expanded="false"]`).click({ timeout: 3000 }).catch(() => {})
   await page.getByRole('button', { name: 'פרסום הסידור' }).click()
   const confirmPublish = page.getByRole('button', { name: /לחצו שוב לפרסום/ })
   await confirmPublish.click({ timeout: 3000 }).catch(() => {}) // absent when coverage is full
@@ -91,6 +92,8 @@ test('after publish, the editor rolls to the next week and requests stay editabl
   // The banner links back to the published week's LIVE view (unpublish there).
   await page.getByRole('link', { name: 'לשבוע שפורסם' }).click()
   await expect(page).toHaveURL(/\/schedule\?w=/, { timeout: 15000 })
+  // On a fresh visit the share / unpublish tools are folded behind one button.
+  await page.getByTestId('publish-tools-toggle').click()
   await expect(page.getByTestId('unpublish-schedule')).toBeVisible({ timeout: 15000 })
 
   // Unpublish (two-step confirm) → the default editor returns to that week.

@@ -51,6 +51,7 @@ test('manager assigns a רענון day note to an employee', async ({ page }) =>
 
   // Open the day-note editor from the "עוד" sheet and assign יצחק a רענון on
   // day 2 (שלישי). The editor's own title is still "רענון / הערת יום".
+  await page.locator(`[data-testid="schedule-actions-toggle"][aria-expanded="false"]`).click({ timeout: 3000 }).catch(() => {})
   await page.getByTestId('more-actions').click()
   await page.getByRole('button', { name: 'שמירת עובד ליום (רענון)' }).click()
   await page.getByTestId('note-day-2').click()

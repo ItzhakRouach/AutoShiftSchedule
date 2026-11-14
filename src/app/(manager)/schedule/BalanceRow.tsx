@@ -56,8 +56,9 @@ export function BalanceRow({
         </span>
         <span data-testid="balance-morning" className="tabular" style={countCell(`${shiftColors.morning}33`)}>{row.counts.morning}</span>
         <span data-testid="balance-noon" className="tabular" style={countCell(`${shiftColors.noon}33`)}>{row.counts.noon}</span>
-        <span data-testid="balance-night" className="tabular" style={countCell(`${shiftColors.night}33`)}>{row.counts.night}</span>
-        <span data-testid="balance-twelve" className="tabular" style={countCell('var(--warning-soft)')}>{row.twelve}</span>
+        {/* A 19:00–07:00 shift is a night like any other; the 12h column is the 07:00–19:00 day shift. */}
+        <span data-testid="balance-night" className="tabular" style={countCell(`${shiftColors.night}33`)}>{row.counts.night + row.counts.m12_night}</span>
+        <span data-testid="balance-twelve" className="tabular" style={countCell('var(--warning-soft)')}>{row.counts.m12_day}</span>
         <span data-testid="balance-total" className="tabular" style={{ textAlign: 'center', fontSize: 'var(--text-h3)', fontWeight: 800, color: 'var(--text)' }}>{row.total}</span>
         <span data-testid="balance-requests" style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           <span className="tabular" style={{ textAlign: 'center', fontSize: 'var(--text-sm)', fontWeight: 700, color: row.asked > 0 ? 'var(--text)' : 'var(--text-3)' }}>
@@ -78,6 +79,7 @@ export function BalanceRow({
           </span>
         ))}
         <span className="tabular">{row.hours} שעות</span>
+        {row.twelve > 0 && <span className="tabular">מתוכן 12 שעות: {row.twelve}</span>}
         {flag && (
           <span style={{ fontWeight: 700, color: flag.color, background: flag.soft, borderRadius: 'var(--r-pill)', padding: '2px 8px' }}>{flag.text}</span>
         )}

@@ -16,6 +16,8 @@ interface BtnProps {
   disabled?: boolean
   type?: 'button' | 'submit' | 'reset'
   'data-testid'?: string
+  /** For buttons that open/close a region (disclosure pattern). */
+  'aria-expanded'?: boolean
 }
 
 export function Btn({
@@ -28,6 +30,7 @@ export function Btn({
   disabled,
   type = 'button',
   'data-testid': testId,
+  'aria-expanded': ariaExpanded,
 }: BtnProps) {
   const sizes: Record<BtnSize, { padding: string; fontSize: number; gap: number; h: number }> = {
     sm: { padding: '8px 14px', fontSize: 14, gap: 6, h: 36 },
@@ -71,6 +74,7 @@ export function Btn({
       type={type}
       className="btn"
       data-testid={testId}
+      aria-expanded={ariaExpanded}
       onClick={disabled ? undefined : onClick}
       disabled={disabled}
       style={{
