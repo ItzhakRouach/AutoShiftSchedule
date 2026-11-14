@@ -6,6 +6,8 @@ import { computePriorMetrics } from './prior-metrics'
 import { computeNextWeekHead } from './next-head'
 import {
   fetchApprovedVacations,
+  fetchDayNotes,
+  fetchRequirements,
   fetchAvailability,
   fetchEmployeeRoles,
   fetchEmployeesFull,
@@ -33,11 +35,11 @@ export async function fetchWorkplaceScoped(
     shiftTypes,
     roles,
     employees,
-    { data: requirements },
+    requirements,
     settings,
     requests,
     { data: holidayRows },
-    { data: dayNotesRaw },
+    dayNotesRaw,
     prior,
     priorAdjacent,
     nextAdjacent,
@@ -45,10 +47,7 @@ export async function fetchWorkplaceScoped(
     fetchShiftTypes(supabase, workplaceId),
     fetchRolesAll(supabase, workplaceId),
     fetchEmployeesFull(supabase, workplaceId),
-    supabase
-      .from('shift_requirements')
-      .select('day_of_week, shift_type_id, role_id, count')
-      .eq('workplace_id', workplaceId),
+    fetchRequirements(supabase, workplaceId),
     fetchSettings(supabase, workplaceId),
     fetchRequests(supabase, periodId),
     supabase
@@ -58,7 +57,7 @@ export async function fetchWorkplaceScoped(
       .gte('date', weekDatesArr[0])
       .lte('date', dayAfterISO),
     // רענון / day notes for this period → reserve those employees (hard off).
-    supabase.from('day_notes').select('employee_id, day_of_week').eq('period_id', periodId),
+    fetchDayNotes(supabase, periodId),
     findPriorPublishedPeriod(supabase, workplaceId, weekStart),
     findAdjacentPeriod(supabase, workplaceId, weekStart, -7),
     findAdjacentPeriod(supabase, workplaceId, weekStart, 7),

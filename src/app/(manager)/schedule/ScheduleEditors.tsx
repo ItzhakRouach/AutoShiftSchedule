@@ -2,9 +2,8 @@
 
 import type { ScheduleView } from '@/lib/schedule/view-data'
 import type { EditMeta } from '@/lib/schedule/edit-meta'
-import { SwapEditor, type SlotCtx } from './SwapEditor'
-import { TwelvePairEditor } from './TwelvePairEditor'
-import { DayNoteEditor } from './DayNoteEditor'
+import type { SlotCtx } from './SwapEditor'
+import { SwapEditor, TwelvePairEditor, DayNoteEditor } from './lazy'
 import { AssignToast } from './AssignToast'
 import type { CellAssign } from './useCellAssign'
 

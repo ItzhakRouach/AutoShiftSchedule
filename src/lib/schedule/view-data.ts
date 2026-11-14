@@ -5,6 +5,8 @@ import { buildEngineInput } from './build-input'
 import { resolveEditWeek } from './edit-week'
 import {
   fetchApprovedVacations,
+  fetchDayNotes,
+  fetchRequirements,
   fetchAssignmentRows,
   fetchEmployeesFull,
   fetchRequests,
@@ -55,26 +57,20 @@ export async function getScheduleView(
     rolesAll,
     empsRaw,
     assignsRaw,
-    { data: reqRaw },
+    reqRaw,
     allShiftTypes,
     requestsRaw,
-    { data: dayNotesRaw },
+    dayNotesRaw,
     { data: slotMarksRaw },
     vacationsRaw,
   ] = await Promise.all([
     fetchRolesAll(supabase, workplaceId),
     fetchEmployeesFull(supabase, workplaceId),
     fetchAssignmentRows(supabase, periodId),
-    supabase
-      .from('shift_requirements')
-      .select('day_of_week, shift_type_id, role_id, count')
-      .eq('workplace_id', workplaceId),
+    fetchRequirements(supabase, workplaceId),
     fetchShiftTypes(supabase, workplaceId),
     fetchRequests(supabase, periodId),
-    supabase
-      .from('day_notes')
-      .select('employee_id, day_of_week, label')
-      .eq('period_id', periodId),
+    fetchDayNotes(supabase, periodId),
     supabase
       .from('slot_marks')
       .select('day_of_week, shift_type_id, role_id, label')

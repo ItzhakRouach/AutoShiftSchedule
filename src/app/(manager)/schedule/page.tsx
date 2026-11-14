@@ -6,7 +6,7 @@ import { getActiveWorkplace } from '@/lib/workplace/current'
 import { addDaysISO, todayInIsraelISO, toISODateUTC } from '@/lib/dates/week'
 import { resolveEditWeek } from '@/lib/schedule/edit-week'
 import { getScheduleView } from '@/lib/schedule/view-data'
-import { getPublishedScheduleView, listPublishedWeeks, pastPublishedWeeks } from '@/lib/schedule/published-view'
+import { getPublishedScheduleView, listPublishedWeeks, pastPublishedWeeks, type PublishedWeek } from '@/lib/schedule/published-view'
 import { getEditMeta } from '@/lib/schedule/edit-meta'
 import { getWorkplaceVacations } from '@/lib/vacations/pending'
 import { Card } from '@/components/ui/Card'
@@ -58,9 +58,45 @@ export default async function SchedulePage({
   const targetPeriodId = liveOverride?.id ?? edit?.periodId ?? null
   const targetWeekStart = liveOverride?.weekStart ?? edit?.weekStart ?? null
 
+  // History navigation covers only weeks strictly BEFORE the editing week —
+  // a week published ahead of it must not appear (it would dead-end שבוע קודם
+  // on the editor); the editing week itself always opens the live editor.
+  // Started now, awaited with the editor's data below — except for a ?w= that
+  // may be a history view, which is decided first so it never loads the editor.
+  const weeksPromise = listPublishedWeeks(supabase, workplace.id)
+  const toPastWeeks = (weeks: PublishedWeek[]) => (edit ? pastPublishedWeeks(weeks, edit.weekStart) : [])
+
+  // History view: a published week that already ENDED → read-only.
+  const historyWeeks = sp?.w && !liveOverride && sp.w !== edit?.periodId ? toPastWeeks(await weeksPromise) : []
+  if (sp?.w && historyWeeks.some((w) => w.id === sp.w)) {
+    const pastWeeks = historyWeeks
+    const pubView = await getPublishedScheduleView(supabase, workplace.id, sp.w)
+    return (
+      <main className="schedule-main" style={{ background: 'var(--bg)', direction: 'rtl' }}>
+        <div className="schedule-controls">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 12 }}>
+            <h1 style={{ margin: 0, fontSize: 'var(--text-h1)', fontWeight: 800 }}>סידור עבודה</h1>
+            <Link href="/schedule" style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <Icon name="arrowLeft" size={15} /> לסידור הנוכחי
+            </Link>
+          </div>
+          <WeekNav weeks={pastWeeks} selectedId={sp.w!} />
+        </div>
+        {pubView ? (
+          <ScheduleGrids view={pubView} />
+        ) : (
+          <div className="schedule-controls">
+            <Card style={{ textAlign: 'center', padding: 32, color: 'var(--text-2)' }}>אין סידור לשבוע זה.</Card>
+          </div>
+        )}
+      </main>
+    )
+  }
+
+  // Only now load the editor — a history view above returns without it.
   const [view, weeks, workerVacations, editMetaRaw, rolelessRaw] = await Promise.all([
     getScheduleView(supabase, workplace.id, liveOverride?.id),
-    listPublishedWeeks(supabase, workplace.id),
+    weeksPromise,
     // Upcoming vacations of ANY status/kind for the "בקשות עובדים" per-worker
     // vacation sheet — richer than view.vacations (approved-only, used for grid
     // shading). Regular authed client: vacations_manager_write (owns_employee)
@@ -85,36 +121,8 @@ export default async function SchedulePage({
   const rolelessEmployees = (rolelessRaw.data ?? [])
     .filter((e) => (e.employee_roles ?? []).length === 0)
     .map((e) => ({ id: e.id as string, name: e.name as string }))
-  // History navigation covers only weeks strictly BEFORE the editing week —
-  // a week published ahead of it must not appear (it would dead-end שבוע קודם
-  // on the editor); the editing week itself always opens the live editor.
-  const pastWeeks = edit ? pastPublishedWeeks(weeks, edit.weekStart) : []
 
-  // History view: a published week that already ENDED → read-only.
-  const viewingPast = !liveOverride && !!sp?.w && pastWeeks.some((w) => w.id === sp.w)
-  if (viewingPast) {
-    const pubView = await getPublishedScheduleView(supabase, workplace.id, sp.w)
-    return (
-      <main className="schedule-main" style={{ background: 'var(--bg)', direction: 'rtl' }}>
-        <div className="schedule-controls">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 12 }}>
-            <h1 style={{ margin: 0, fontSize: 'var(--text-h1)', fontWeight: 800 }}>סידור עבודה</h1>
-            <Link href="/schedule" style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              <Icon name="arrowLeft" size={15} /> לסידור הנוכחי
-            </Link>
-          </div>
-          <WeekNav weeks={pastWeeks} selectedId={sp.w!} />
-        </div>
-        {pubView ? (
-          <ScheduleGrids view={pubView} />
-        ) : (
-          <div className="schedule-controls">
-            <Card style={{ textAlign: 'center', padding: 32, color: 'var(--text-2)' }}>אין סידור לשבוע זה.</Card>
-          </div>
-        )}
-      </main>
-    )
-  }
+  const pastWeeks = toPastWeeks(weeks)
 
   // Live editor — the rolling edit week, or a not-yet-ended ?w= week.
   const editMeta = view ? editMetaRaw : null

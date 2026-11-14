@@ -47,10 +47,10 @@ async function openFormableDay(page: Page): Promise<boolean> {
   const count = await dayBtns.count()
   for (let i = 0; i < count; i++) {
     await dayBtns.nth(i).click()
-    await expect(page.getByText(/צמד 12 שעות/)).toBeVisible({ timeout: 5000 })
+    await expect(page.getByRole('dialog', { name: /צמד 12 שעות/ })).toBeVisible({ timeout: 5000 })
     if (await page.getByText('בחרו תפקיד').isVisible()) return true
     await page.mouse.click(5, 5)
-    await expect(page.getByText(/צמד 12 שעות/)).toBeHidden({ timeout: 5000 })
+    await expect(page.getByRole('dialog', { name: /צמד 12 שעות/ })).toBeHidden({ timeout: 5000 })
   }
   return false
 }

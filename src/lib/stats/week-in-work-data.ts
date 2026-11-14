@@ -1,7 +1,7 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { resolveEditWeek } from '@/lib/schedule/edit-week'
-import { fetchAssignmentRows, fetchEmployeesFull, fetchShiftTypes } from '@/lib/schedule/cached-reads'
+import { fetchAssignmentRows, fetchEmployeesFull, fetchRequirements, fetchShiftTypes } from '@/lib/schedule/cached-reads'
 import { summarizeWeekInWork, type WeekInWork } from './week-in-work'
 
 /**
@@ -17,12 +17,12 @@ export async function getWeekInWork(
   const week = await resolveEditWeek(supabase, workplaceId)
   if (!week) return null
 
-  const [assignments, shiftTypes, employees, { data: requirements }, { data: slotMarks }, { data: requests }, { data: settings }, { data: workplace }] =
+  const [assignments, shiftTypes, employees, requirements, { data: slotMarks }, { data: requests }, { data: settings }, { data: workplace }] =
     await Promise.all([
       fetchAssignmentRows(supabase, week.periodId),
       fetchShiftTypes(supabase, workplaceId),
       fetchEmployeesFull(supabase, workplaceId),
-      supabase.from('shift_requirements').select('day_of_week, shift_type_id, role_id, count').eq('workplace_id', workplaceId),
+      fetchRequirements(supabase, workplaceId),
       supabase.from('slot_marks').select('day_of_week, shift_type_id, role_id, label').eq('period_id', week.periodId),
       supabase.from('requests').select('employee_id').eq('period_id', week.periodId),
       supabase.from('workplace_settings').select('request_deadline_dow, request_deadline_time').eq('workplace_id', workplaceId).maybeSingle(),
@@ -34,7 +34,7 @@ export async function getWeekInWork(
   return summarizeWeekInWork({
     weekStart: week.weekStart,
     shiftTypes,
-    requirements: requirements ?? [],
+    requirements,
     assignments,
     slotMarks: slotMarks ?? [],
     requests: requests ?? [],

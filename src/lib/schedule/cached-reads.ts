@@ -8,6 +8,7 @@
 import 'server-only'
 import { cache } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { addDaysISO, todayInIsraelISO } from '@/lib/dates/week'
 
 export const ensureUpcomingPeriodId = cache(
   async (sb: SupabaseClient, workplaceId: string, weekStart: string): Promise<string | null> => {
@@ -68,14 +69,43 @@ export const fetchSettings = cache(async (sb: SupabaseClient, workplaceId: strin
   return data
 })
 
-/** Approved absence ranges for the whole roster (RLS scopes to the manager's
- *  employees; workplaceId is the cache key). */
+/** How far back an approved absence can end and still matter to a week the
+ *  manager can open in the editor (the editor never opens a week that ended). */
+const VACATION_LOOKBACK_DAYS = 60
+
+/**
+ * Approved absence ranges for this workplace's roster that have not long ended.
+ * Filtered by the roster's employee ids so Postgres uses the employee index
+ * instead of running the RLS ownership check over every tenant's rows, and
+ * bounded in time so the result does not grow with the workplace's history.
+ */
 export const fetchApprovedVacations = cache(async (sb: SupabaseClient, workplaceId: string) => {
-  void workplaceId // cache key only — RLS already scopes the rows
+  const ids = (await fetchEmployeesFull(sb, workplaceId)).map((e) => e.id as string)
+  if (ids.length === 0) return []
   const { data } = await sb
     .from('employee_vacations')
     .select('employee_id, date_from, date_to, kind')
     .eq('status', 'approved')
+    .in('employee_id', ids)
+    .gte('date_to', addDaysISO(todayInIsraelISO(), -VACATION_LOOKBACK_DAYS))
+  return data ?? []
+})
+
+/** Weekly staffing requirements (week-shaped, keyed by workplace). */
+export const fetchRequirements = cache(async (sb: SupabaseClient, workplaceId: string) => {
+  const { data } = await sb
+    .from('shift_requirements')
+    .select('day_of_week, shift_type_id, role_id, count')
+    .eq('workplace_id', workplaceId)
+  return data ?? []
+})
+
+/** Manager day notes (רענון / free text) for one period. */
+export const fetchDayNotes = cache(async (sb: SupabaseClient, periodId: string) => {
+  const { data } = await sb
+    .from('day_notes')
+    .select('employee_id, day_of_week, label')
+    .eq('period_id', periodId)
   return data ?? []
 })
 
