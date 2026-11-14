@@ -58,7 +58,9 @@ describe('hard-days-first: scarce capacity goes to Fri/Sat/holiday before weekda
     expect(res.grid[5].noon[GUARD]).toEqual(['flex'])
   })
 
-  it('fully-staffable week: no retry — result is exactly the chronological fill', () => {
+  it('fully-staffable week, equally fair either way: the weekend-first run is kept', () => {
+    // Owner rule (2026-11-14): Friday and Saturday are filled first. 3 guards
+    // working every day leave no room for either order to be fairer.
     const employees = Array.from({ length: 3 }, (_, i) => emp(`g${i}`))
     const reqs = mergeReqs(
       reqFor([0, 1, 2, 3, 4, 5, 6], 'morning', GUARD, 1),
@@ -67,7 +69,7 @@ describe('hard-days-first: scarce capacity goes to Fri/Sat/holiday before weekda
     )
     const inp = input({ employees, requirements: reqs })
     expect(JSON.stringify(runFillHardDaysAware(inp).committed)).toBe(
-      JSON.stringify(runFill(inp).committed),
+      JSON.stringify(runFill(inp, false, false, false, true).committed),
     )
   })
 

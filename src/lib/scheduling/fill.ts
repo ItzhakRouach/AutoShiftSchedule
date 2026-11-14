@@ -6,6 +6,7 @@ import { emptyGrid } from './grid'
 import { openSlotsForDay, type FillState } from './dayfill'
 import { isHardDay, prioritizeDays } from './day-order'
 import { closeGaps } from './close-gaps'
+import { nightCount } from './fairness'
 import { runDiversityPass, buildNightThresholds } from './diversity'
 import { buildNightFloors } from './night-targets'
 import { runNightUnloadPass } from './night-unload'
@@ -180,20 +181,20 @@ function hardDayGaps(input: EngineInput, st: FillState): number {
   return n
 }
 
-/**
- * Coverage-priority fill. Chronological order gives the fairness passes their
- * best result, so it runs first; only when it leaves gaps on hard days
- * (Fri/Sat/holiday — the smallest candidate pools) is the week re-filled with
- * those days FIRST, and the run that covers them better wins (hard-day gaps,
- * then total filled; ties keep the chronological run).
- */
+/** Owner rule (2026-11-14): Fri, Sat and holidays first, then Sun→Thu. Both
+ *  orders run; weekend-first is kept unless chronological covers more, leaves
+ *  fewer hard-day gaps, or splits shifts and nights more evenly (in order). */
 export function runFillHardDaysAware(input: EngineInput, skipTwelve = false): FillState {
-  const chrono = runFill(input, skipTwelve)
-  const chronoGaps = hardDayGaps(input, chrono)
-  if (chronoGaps === 0) return chrono
   const hardFirst = runFill(input, skipTwelve, false, false, true)
-  const hardGaps = hardDayGaps(input, hardFirst)
-  if (hardGaps < chronoGaps) return hardFirst
-  if (hardGaps === chronoGaps && countFilled(hardFirst) > countFilled(chrono)) return hardFirst
-  return chrono
+  const chrono = runFill(input, skipTwelve)
+  const score = (st: FillState) => {
+    const open = input.days.reduce((n, d) => n + openSlotsForDay(input, st, d.index).length, 0)
+    const spread = (xs: number[]) => (xs.length ? Math.max(...xs) - Math.min(...xs) : 0)
+    const ids = input.employees.filter((e) => st.committed[e.id].length > 0).map((e) => e.id)
+    const unevenness = spread(ids.map((id) => st.committed[id].length)) + spread(ids.map((id) => nightCount(st.committed[id])))
+    return [open, hardDayGaps(input, st), unevenness]
+  }
+  const [h, c] = [score(hardFirst), score(chrono)]
+  for (let i = 0; i < h.length; i++) if (c[i] !== h[i]) return c[i] < h[i] ? chrono : hardFirst
+  return hardFirst
 }
