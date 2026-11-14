@@ -13,6 +13,7 @@ import { moveLegal, applyMove, type Move, type RequestGate, type SlotRef } from 
 import { nightCount } from './fairness'
 import { DEFAULT_NIGHT_CAP, wantsNight } from './night-targets'
 import { tryBlockSwap } from './block-swap'
+import { tryNightCycle } from './night-cycle'
 import { preservesRequestFloorFor } from './request-gate'
 
 const MAX_PASSES = 200
@@ -64,7 +65,8 @@ export function tryNightForNonNightSwap(
   for (const gn of gNights) {
     if (tryBlockSwap(input, metas, st, g, r, gn.a.day, requestGate)) return true
   }
-  return false
+  // Last: a third worker makes room (night-cycle.ts).
+  return tryNightCycle(input, metas, st, g, r, requestGate)
 }
 
 /**

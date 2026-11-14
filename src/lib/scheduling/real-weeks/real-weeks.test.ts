@@ -18,11 +18,9 @@ import { ownerRoleBreaks, scoreEngine, scoreManager, type RealWeek } from './met
 const WEEKS = [w1115, w1108, w1101, w1025] as unknown as RealWeek[]
 
 /** `${week}:${criterion}` the current engine is known to miss. */
-const KNOWN_GAPS = new Set<string>([
-  // After phase 1 (12h pairing + safe displacement) and the owner-confirmed
-  // availability fix: every week fully covered; nights remain.
-  '2026-11-15:night-spread', '2026-11-15:night-max',
-])
+// Every criterion is met on all four weeks (2026-11-14); add an entry here
+// only with a reason, if a deliberate trade-off makes one unreachable.
+const KNOWN_GAPS = new Set<string>([])
 
 const check = (week: string, criterion: string) => (KNOWN_GAPS.has(`${week}:${criterion}`) ? it.fails : it)
 
