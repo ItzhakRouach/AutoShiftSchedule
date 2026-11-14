@@ -122,11 +122,13 @@ describe('12h respects CROSS-WEEK rest (priorWeekTail / nextWeekHead)', () => {
   })
 
   it('assigns freely when priorWeekTail/nextWeekHead are absent (no false rejection)', () => {
-    const p = emp('p')
-    const req = mergeReqs(reqFor([0], 'morning', GUARD, 1), reqFor([0], 'noon', GUARD, 1))
-    const res = generateSchedule(input({ employees: [p], requirements: req, settings: on() }))
+    // q takes the night and relieves p at 19:00 — a 07:00–19:00 needs that partner.
+    const p = emp('p', { availability: { 0: ['morning', 'noon'] } })
+    const q = emp('q', { availability: { 0: ['noon', 'night'] } })
+    const req = mergeReqs(reqFor([0], 'morning', GUARD, 1), reqFor([0], 'noon', GUARD, 1), reqFor([0], 'night', GUARD, 1))
+    const res = generateSchedule(input({ employees: [p, q], requirements: req, settings: on() }))
     const sunday = res.twelveHourAssignments.filter((t) => t.day === 0 && t.variant === 'm12_day')
-    expect(sunday.length).toBe(1)
+    expect(sunday.map((t) => t.employeeId)).toEqual(['p'])
   })
 
   it('canTwelve allows Saturday m12_night when nextHead does not conflict', () => {

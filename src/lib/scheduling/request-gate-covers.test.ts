@@ -63,22 +63,23 @@ describe('satisfiedCount — 12h COVERS semantics', () => {
 })
 
 describe('engine end-to-end — stats.requestsSatisfied includes 12h coverage', () => {
-  it('a lone guard requesting morning, staffed via forced 12h day coverage, is counted', () => {
-    // 1 guard; morning+noon required on day 0; allow 12h. The engine can only
-    // cover both windows with a single m12_day (one shift/day blocks two 8h).
-    const employees = [emp('g1')]
-    const requests = buildRequests(employees, (_id, d) => (d === 0 ? { preferred: ['morning'] } : {}))
+  it('a guard requesting morning, staffed via a 12h day shift, is counted', () => {
+    // g1 asks for the morning, g2 for the night; noon has nobody. The only full
+    // cover is the pair: g1 07:00–19:00 (which still includes the morning they
+    // asked for) relieved by g2 19:00–07:00.
+    const employees = [emp('g1'), emp('g2')]
+    const requests = buildRequests(employees, (id, d) => (d === 0 ? { preferred: [id === 'g1' ? 'morning' : 'night'] } : {}))
     const res = generateSchedule(
       input({
         employees,
         requests,
         requirements: {
-          0: { morning: { [GUARD]: 1 }, noon: { [GUARD]: 1 }, night: {} },
+          0: { morning: { [GUARD]: 1 }, noon: { [GUARD]: 1 }, night: { [GUARD]: 1 } },
         },
         settings: { minRestHours: 8, idealRestHours: 16, allow12hFallback: true },
       }),
     )
-    expect(res.twelveHourAssignments).toHaveLength(1)
+    expect(res.twelveHourAssignments.map((t) => `${t.employeeId}:${t.variant}`).sort()).toEqual(['g1:m12_day', 'g2:m12_night'])
     expect(res.stats.g1.requestsSatisfied).toBe(1)
   })
 })

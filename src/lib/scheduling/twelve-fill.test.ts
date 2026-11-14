@@ -65,7 +65,27 @@ describe('day/night 12h PAIR is preferred over 03-15/15-03', () => {
 })
 
 describe('m12_day fills morning AND noon (counts toward each)', () => {
-  it('single guard, morning+noon gap → one m12_day covers both', () => {
+  it('morning+noon gap with a night guard to take over → one m12_day covers both', () => {
+    const g = emp('g', { availability: { 0: ['morning', 'noon'] } })
+    const n = emp('n', { availability: { 0: ['noon', 'night'] } })
+    const res = generateSchedule(
+      input({
+        employees: [g, n],
+        requirements: mergeReqs(reqFor([0], 'morning', GUARD, 1), reqFor([0], 'noon', GUARD, 1), reqFor([0], 'night', GUARD, 1)),
+        settings: on(),
+      }),
+    )
+    expect(res.warnings).toEqual([])
+    expect(res.twelveHourAssignments).toEqual<TwelveHourAssignment[]>([
+      { employeeId: 'g', day: 0, variant: 'm12_day', rolesByShift: { morning: GUARD, noon: GUARD } },
+      { employeeId: 'n', day: 0, variant: 'm12_night', rolesByShift: { night: GUARD } },
+    ])
+    expect(res.grid[0].morning[GUARD]).toEqual(['g'])
+    expect(res.grid[0].noon[GUARD]).toEqual(['g'])
+    expect(res.grid[0].night[GUARD]).toEqual(['n'])
+  })
+
+  it('a lone guard is NOT put on 07:00–19:00: with nobody at 19:00 the noon cell stays open', () => {
     const res = generateSchedule(
       input({
         employees: [emp('g')],
@@ -73,12 +93,8 @@ describe('m12_day fills morning AND noon (counts toward each)', () => {
         settings: on(),
       }),
     )
-    expect(res.warnings).toEqual([])
-    expect(res.twelveHourAssignments).toEqual<TwelveHourAssignment[]>([
-      { employeeId: 'g', day: 0, variant: 'm12_day', rolesByShift: { morning: GUARD, noon: GUARD } },
-    ])
-    expect(res.grid[0].morning[GUARD]).toEqual(['g'])
-    expect(res.grid[0].noon[GUARD]).toEqual(['g'])
+    expect(res.twelveHourAssignments).toEqual([])
+    expect(res.warnings).toHaveLength(1)
   })
 })
 
@@ -115,9 +131,11 @@ describe('cross-role 12h with the day/night pair only', () => {
   it('a multi-role person covers morning+noon as DIFFERENT roles via one m12_day', () => {
     // am holds both roles; m12_day (07–19) fills morning+noon. Require morning as
     // מוקדן and noon as אחמ״ש → a single m12_day person fills BOTH windows cross-role.
-    const am = emp('am', { roleIds: [SHIFT_MGR, DISPATCH] })
-    const req = mergeReqs(reqFor([0], 'morning', DISPATCH, 1), reqFor([0], 'noon', SHIFT_MGR, 1))
-    const res = generateSchedule(input({ employees: [am], requirements: req, settings: on() }))
+    // nm takes the night as אחמ״ש and relieves am at 19:00.
+    const am = emp('am', { roleIds: [SHIFT_MGR, DISPATCH], availability: { 0: ['morning', 'noon'] } })
+    const nm = emp('nm', { roleIds: [SHIFT_MGR], availability: { 0: ['noon', 'night'] } })
+    const req = mergeReqs(reqFor([0], 'morning', DISPATCH, 1), reqFor([0], 'noon', SHIFT_MGR, 1), reqFor([0], 'night', SHIFT_MGR, 1))
+    const res = generateSchedule(input({ employees: [am, nm], requirements: req, settings: on() }))
     expect(res.coverage.percent).toBe(100)
     expect(res.grid[0].morning[DISPATCH]).toEqual(['am'])
     expect(res.grid[0].noon[SHIFT_MGR]).toEqual(['am'])

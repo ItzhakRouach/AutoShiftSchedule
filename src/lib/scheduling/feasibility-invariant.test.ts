@@ -41,11 +41,13 @@ describe('FIX B — feasibility == actual fill invariant', () => {
     const eng12 = generateSchedule(
       input({ employees: [emp('a')], requirements: req, settings: settings({ allow12hFallback: true }) }),
     )
-    // With 12h enabled, 'a' works one m12 (2 windows) → 2 staffed, short by 1
-    // (3rd slot needs a 2nd person). 12h helped → needs12h.
+    // With 12h enabled a lone worker still staffs ONE slot: a 07:00–19:00 with
+    // nobody to take over at 19:00 does not cover the noon cell (twelve-pairing),
+    // so it is not assigned. 12h remains the suggested way out → needs12h.
     expect(eng12.feasibility.status).toBe('needs12h')
-    expect(eng12.feasibility.shortBy).toBe(1)
-    expect(eng12.feasibility.maxStaffable).toBe(2)
+    expect(eng12.feasibility.shortBy).toBe(2)
+    expect(eng12.feasibility.maxStaffable).toBe(1)
+    expect(eng12.twelveHourAssignments).toEqual([])
     expect(eng12.coverage.filledSlots).toBe(eng12.feasibility.maxStaffable)
   })
 

@@ -31,6 +31,7 @@ import {
   removeBase,
   commitTwelve,
 } from './twelve-plan'
+import { type AbsorbedMap, absorbKey, completePairs } from './twelve-pairing'
 
 const PREFERRED: TwelveHourKey[] = ['m12_day', 'm12_night']
 
@@ -56,6 +57,7 @@ function tryVariant(
   out: TwelveHourAssignment[],
   meta: DayMeta,
   variant: TwelveHourKey,
+  absorbed: AbsorbedMap,
 ): boolean {
   const day = meta.index
   const slots = openPairs(input, st, day).map((p) => ({ day, shift: p.shift, roleId: p.role }))
@@ -63,6 +65,7 @@ function tryVariant(
     const plan = planCover(input, st, e, day, variant)
     if (!plan || !legal(input, st, e, meta, variant, plan.absorb)) continue
     commitTwelve(st, out, e, day, variant, plan)
+    absorbed.set(absorbKey(e.id, day), plan.absorb)
     return true
   }
   return false
@@ -83,6 +86,7 @@ function tryDisplace(
   out: TwelveHourAssignment[],
   meta: DayMeta,
   variant: TwelveHourKey,
+  absorbed: AbsorbedMap,
 ): boolean {
   const day = meta.index
   for (const e of input.employees) {
@@ -113,6 +117,7 @@ function tryDisplace(
         }
         const plan: Plan = { rolesByShift: { [base.shift]: base.roleId, [shift]: role }, absorb: base }
         commitTwelve(st, out, e, day, variant, plan)
+        absorbed.set(absorbKey(e.id, day), base)
         return true
       }
     }
@@ -129,6 +134,7 @@ export function runTwelveFill(
   const out: TwelveHourAssignment[] = []
   if (!input.settings.allow12hFallback) return out
 
+  const absorbed: AbsorbedMap = new Map()
   for (const d of days) {
     const meta = d
     // PREFERRED day/night pair: greedy fill, then displacement to free an 8h holder
@@ -137,9 +143,12 @@ export function runTwelveFill(
     let moved = true
     while (moved && openPairs(input, st, d.index).length > 0) {
       moved = false
-      for (const v of PREFERRED) if (tryVariant(input, st, out, meta, v)) moved = true
-      if (!moved) for (const v of PREFERRED) if (tryDisplace(input, st, out, meta, v)) { moved = true; break }
+      for (const v of PREFERRED) if (tryVariant(input, st, out, meta, v, absorbed)) moved = true
+      if (!moved) for (const v of PREFERRED) if (tryDisplace(input, st, out, meta, v, absorbed)) { moved = true; break }
     }
+    // A 07:00–19:00 only covers noon if someone takes over at 19:00 — pair it
+    // with a 19:00–07:00, or stop counting it (see twelve-pairing.ts).
+    completePairs(input, st, out, meta, absorbed)
   }
   return out
 }

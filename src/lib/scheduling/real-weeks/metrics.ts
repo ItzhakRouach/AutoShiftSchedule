@@ -36,8 +36,8 @@ const ON_SITE_EVENING = new Set(['noon', 'm12_night', 'm12_15to3'])
 
 export interface WeekScore {
   openCells: number
-  /** Σ over days of people missing 19:00–23:00 against the noon headcount —
-   *  catches a "covered" noon cell whose 12h day worker has no night partner. */
+  /** Σ over days of noon positions reported filled with nobody on site
+   *  19:00–23:00 — a 12h day worker counted toward noon with no night partner. */
   eveningShort: number
   twelveCount: number
   nightsByEmp: Record<string, number>
@@ -99,21 +99,25 @@ export function nightPool(week: RealWeek, rows: ScheduleRow[]): string[] {
 
 export function scoreWeek(week: RealWeek, rows: ScheduleRow[], cells: Map<string, number>): WeekScore {
   let openCells = 0
-  const noonNeed: Record<number, number> = {}
+  /** Per day: how many noon positions the schedule claims to have filled. */
+  const noonClaimed: Record<number, number> = {}
   for (const [day, byShift] of Object.entries(week.input.requirements)) {
     for (const [shift, byRole] of Object.entries(byShift)) {
       for (const [role, count] of Object.entries(byRole as Record<string, number>)) {
         if (count <= 0) continue
-        if ((cells.get(`${day}:${shift}:${role}`) ?? 0) < count) openCells++
-        if (shift === 'noon') noonNeed[Number(day)] = (noonNeed[Number(day)] ?? 0) + count
+        const have = cells.get(`${day}:${shift}:${role}`) ?? 0
+        if (have < count) openCells++
+        if (shift === 'noon') noonClaimed[Number(day)] = (noonClaimed[Number(day)] ?? 0) + Math.min(have, count)
       }
     }
   }
 
+  // An open noon cell is already counted in openCells; this isolates the
+  // dishonest case — a cell reported filled with nobody there after 19:00.
   let eveningShort = 0
-  for (const [day, need] of Object.entries(noonNeed)) {
+  for (const [day, claimed] of Object.entries(noonClaimed)) {
     const onSite = rows.filter((r) => r.day === Number(day) && ON_SITE_EVENING.has(r.kind)).length
-    eveningShort += Math.max(0, need - onSite)
+    eveningShort += Math.max(0, claimed - onSite)
   }
 
   const nightsByEmp: Record<string, number> = {}

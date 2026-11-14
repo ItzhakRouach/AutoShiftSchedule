@@ -19,11 +19,11 @@ const WEEKS = [w1115, w1108, w1101, w1025] as unknown as RealWeek[]
 
 /** `${week}:${criterion}` the current engine is known to miss. */
 const KNOWN_GAPS = new Set<string>([
-  // Baseline 2026-11-14, before the owner-rules phases.
-  '2026-11-15:coverage', '2026-11-15:evening', '2026-11-15:night-spread', '2026-11-15:night-max',
-  '2026-11-08:evening', '2026-11-08:night-spread', '2026-11-08:night-max',
-  '2026-11-01:coverage', '2026-11-01:evening',
-  '2026-10-25:evening',
+  // Baseline 2026-11-14 minus what phase 1 (12h pairing) closed: the engine no
+  // longer reports a noon cell covered with nobody on site after 19:00.
+  '2026-11-15:coverage', '2026-11-15:twelve', '2026-11-15:night-spread', '2026-11-15:night-max',
+  '2026-11-08:night-spread', '2026-11-08:night-max',
+  '2026-11-01:coverage',
 ])
 
 const check = (week: string, criterion: string) => (KNOWN_GAPS.has(`${week}:${criterion}`) ? it.fails : it)

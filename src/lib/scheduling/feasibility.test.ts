@@ -56,12 +56,12 @@ describe('feasibility pre-check', () => {
     const f = checkFeasibility(
       input({ employees: [emp('a')], requirements: req, settings: settings({ allow12hFallback: true }) }),
     )
-    // 8h alone staffs 1 (one shift/day). The 12h pass lets 'a' work one m12 shift
-    // covering 2 windows → 2 staffed; still short by 1 (3rd slot needs a 2nd
-    // person). 12h helped → needs12h.
+    // 8h alone staffs 1 (one shift/day). A single person cannot form a day/night
+    // pair, and an unrelieved 07:00–19:00 does not cover noon, so still 1 staffed.
+    // 12h shifts are still what would close it (with a second person) → needs12h.
     expect(f.status).toBe('needs12h')
-    expect(f.maxStaffable).toBe(2)
-    expect(f.shortBy).toBe(1)
+    expect(f.maxStaffable).toBe(1)
+    expect(f.shortBy).toBe(2)
   })
 })
 
@@ -81,12 +81,11 @@ describe('12h fallback suggestions', () => {
     const on = generateSchedule(
       input({ employees: [emp('a')], requirements: req, settings: settings({ allow12hFallback: true }) }),
     )
-    // The 12h pass auto-assigns 'a' to m12_day (morning+noon); only night is
-    // left uncovered → exactly one residual suggestion (m12_night).
-    expect(on.twelveHourAssignments.map((t) => t.variant)).toEqual(['m12_day'])
-    expect(on.coverage.filledSlots).toBe(2)
-    expect(on.twelveHourSuggestions).toHaveLength(1)
-    expect(on.twelveHourSuggestions.map((s) => s.variant)).toEqual(['m12_night'])
+    // One person cannot be both halves of a day/night pair, so nothing is
+    // auto-assigned as 12h; the two uncovered slots surface as suggestions.
+    expect(on.twelveHourAssignments).toEqual([])
+    expect(on.coverage.filledSlots).toBe(1)
+    expect(on.twelveHourSuggestions.length).toBeGreaterThan(0)
     for (const s of on.twelveHourSuggestions) expect(s.day).toBe(0)
   })
 
@@ -99,18 +98,12 @@ describe('12h fallback suggestions', () => {
     const res = generateSchedule(
       input({ employees: [emp('a', { maxShifts: 7 })], requirements: fullGrid, settings: settings({ allow12hFallback: true }) }),
     )
-    // 21 slots, 1 employee, maxShifts:7. The 8h pass fills 7 (one/day); the 12h
-    // pass then upgrades EVERY day to an m12_day (covers morning+noon) — a 12h is
-    // ONE shift toward the weekly cap (underMax counts distinct work-days), so all
-    // 7 days can be 12h → 14 windows filled. Each day's night stays uncovered
-    // (one-shift-per-day blocks a 2nd assignment) → 7 residual m12_night
-    // suggestions, each rest-flagged vs that day's committed 12h block.
-    expect(res.coverage.filledSlots).toBe(14)
-    expect(res.twelveHourAssignments).toHaveLength(7)
-    expect(res.twelveHourAssignments.every((t) => t.variant === 'm12_day')).toBe(true)
-    expect(res.twelveHourSuggestions).toHaveLength(7)
-    expect(res.twelveHourSuggestions.every((s) => s.variant === 'm12_night')).toBe(true)
-    expect(res.twelveHourSuggestions.every((s) => s.restConflict)).toBe(true)
+    // 21 slots, 1 employee, maxShifts:7. The 8h pass fills 7 (one/day). A lone
+    // worker can never be relieved at 19:00, so no 12h is auto-assigned and the
+    // other 14 slots stay open — surfaced as 12h suggestions for the manager.
+    expect(res.coverage.filledSlots).toBe(7)
+    expect(res.twelveHourAssignments).toEqual([])
+    expect(res.twelveHourSuggestions.length).toBeGreaterThanOrEqual(7)
   })
 
   it('isolated single understaffed shift → exactly one suggestion', () => {
