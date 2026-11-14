@@ -22,6 +22,7 @@ import { TWELVE_HOUR_FILLS } from './fallback'
 import { orderedEmployees, openSlotsForDay } from './dayfill'
 import { isAssignable } from './constraints'
 import { canTwelve } from './twelve-rules'
+import { nightCount } from './fairness'
 import {
   type Plan,
   reqOf,
@@ -31,6 +32,7 @@ import {
   planCover,
   removeBase,
   commitTwelve,
+  uncommitTwelve,
 } from './twelve-plan'
 import { type AbsorbedMap, absorbKey, completePairs } from './twelve-pairing'
 
@@ -62,7 +64,11 @@ function tryVariant(
 ): boolean {
   const day = meta.index
   const slots = openPairs(input, st, day).map((p) => ({ day, shift: p.shift, roleId: p.role }))
-  for (const e of orderedEmployees(input, meta, st, slots)) {
+  // A 19:00–07:00 is a night: hand it to whoever has the fewest nights so far
+  // (stable sort keeps the usual candidate order among equals).
+  const ordered = orderedEmployees(input, meta, st, slots)
+  if (variant === 'm12_night') ordered.sort((a, b) => nightCount(st.committed[a.id]) - nightCount(st.committed[b.id]))
+  for (const e of ordered) {
     const plan = planCover(input, st, e, day, variant)
     if (!plan || !legal(input, st, e, meta, variant, plan.absorb)) continue
     commitTwelve(st, out, e, day, variant, plan)
@@ -96,20 +102,6 @@ function replaceHolder(
     return true
   }
   return false
-}
-
-/** Reverse commitTwelve for `e` on `day`, restoring the 8h it absorbed. */
-function uncommitTwelve(st: FillState, out: TwelveHourAssignment[], e: Employee, day: number, base: Assignment): void {
-  const mine = st.committed[e.id].filter((a) => a.day === day && a.is12h)
-  for (const a of mine) {
-    const cell = st.grid[day][a.shift][a.roleId]
-    cell.splice(cell.indexOf(e.id), 1)
-  }
-  st.committed[e.id] = st.committed[e.id].filter((a) => !mine.includes(a))
-  st.grid[day][base.shift][base.roleId].push(e.id)
-  st.committed[e.id].push(base)
-  const i = out.findIndex((t) => t.employeeId === e.id && t.day === day)
-  if (i >= 0) out.splice(i, 1)
 }
 
 /**

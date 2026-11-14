@@ -61,29 +61,36 @@ function nightRoles(requirements: Requirements): Set<string> {
  *  marked alongside other shifts means "night is acceptable", not "I want
  *  nights" (owner rule), so it goes into the even split like any other. */
 function requestedNights(input: EngineInput, empId: string): number {
-  const reqs = input.requests[empId] ?? {}
-  let n = 0
-  for (const day of Object.keys(reqs)) {
-    const r = reqs[Number(day)]
-    if (r && !r.off && r.preferred.length === 1 && r.preferred[0] === 'night') n++
-  }
-  return n
+  return input.days.filter((d) => wantsNight(input, empId, d.index)).length
 }
 
-function nightAvailabilityAllows(emp: Employee): boolean {
-  if (emp.availability == null) return true
-  return Object.values(emp.availability).some((allowed) => (allowed ?? []).includes('night'))
+/** The worker asked for the night on `day` and nothing else (owner rule:
+ *  that is a wanted night; night among other marks is merely acceptable). */
+export function wantsNight(input: EngineInput, empId: string, day: number): boolean {
+  const r = input.requests[empId]?.[day]
+  return !!r && !r.off && r.preferred.length === 1 && r.preferred[0] === 'night'
 }
 
-/** Workers among whom nights should be divided evenly: availability permits a
- *  night, they hold a role with required nights, and they are NOT a must_accept
- *  worker without night requests (those never work unrequested nights). */
+/** True when the worker could take a night on at least one day this week: not
+ *  away that day (vacation, reserve duty, sick, רענון) and their availability
+ *  allows a night then. Someone away all week must not dilute the split. */
+function canWorkSomeNight(input: EngineInput, emp: Employee): boolean {
+  return input.days.some((d) => {
+    if (input.requests[emp.id]?.[d.index]?.offHard) return false
+    return emp.availability == null || (emp.availability[d.index] ?? []).includes('night')
+  })
+}
+
+/** Workers among whom nights should be divided evenly: they can take a night
+ *  on some day this week, they hold a role with required nights, and they are
+ *  NOT a must_accept worker without night requests (those never work
+ *  unrequested nights). */
 export function nightEligible(input: EngineInput): string[] {
   const roles = nightRoles(input.requirements)
   return input.employees
     .filter(
       (e) =>
-        nightAvailabilityAllows(e) &&
+        canWorkSomeNight(input, e) &&
         e.roleIds.some((r) => roles.has(r)) &&
         !(e.mustAccept && requestedNights(input, e.id) === 0),
     )

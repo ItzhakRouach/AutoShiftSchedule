@@ -5,13 +5,15 @@
 // receiver's plain-8h NON-night cells (same-day AND cross-day — moveLegal
 // re-validates every hard constraint + request preservation, so requested
 // nights never move and off/availability/rest/one-per-day/maxShifts always
-// win). 2-swaps only; 3-cycle chains are a possible v2 if direct exchanges
-// prove too limited in practice.
+// win). 2-swaps first; when rest blocks every one, a block swap of a few
+// consecutive days (block-swap.ts).
 import type { DayMeta, EngineInput } from './types'
 import type { FillState } from './dayfill'
 import { moveLegal, applyMove, type Move, type RequestGate, type SlotRef } from './moves'
 import { nightCount } from './fairness'
-import { DEFAULT_NIGHT_CAP } from './night-targets'
+import { DEFAULT_NIGHT_CAP, wantsNight } from './night-targets'
+import { tryBlockSwap } from './block-swap'
+import { preservesRequestFloorFor } from './request-gate'
 
 const MAX_PASSES = 200
 
@@ -34,7 +36,8 @@ export function tryNightForNonNightSwap(
 ): boolean {
   const gNights = st.committed[g]
     .map((a, idx) => ({ a, idx }))
-    .filter(({ a }) => a.shift === 'night' && !a.is12h)
+    // A night the giver asked for (and only for) is theirs to keep.
+    .filter(({ a }) => a.shift === 'night' && !a.is12h && !wantsNight(input, g, a.day))
     .sort((x, y) => x.a.day - y.a.day || (x.a.roleId < y.a.roleId ? -1 : 1))
   const rCells = st.committed[r]
     .map((a, idx) => ({ a, idx }))
@@ -55,6 +58,11 @@ export function tryNightForNonNightSwap(
         return true
       }
     }
+  }
+  // No single swap is legal — usually rest: the receiver's next-morning shift
+  // follows the night. Exchange a short run of days instead (block-swap.ts).
+  for (const gn of gNights) {
+    if (tryBlockSwap(input, metas, st, g, r, gn.a.day, requestGate)) return true
   }
   return false
 }
@@ -91,7 +99,14 @@ export function runNightEvennessPass(
         if (r === g) continue
         if (counts[g] - counts[r] < 2) break // receivers ascending → no later r closes the gap
         if (counts[r] + 1 > capOf(thresholds, r)) continue // receiver stays ≤ cap
-        if (tryNightForNonNightSwap(input, st, metas, g, r)) {
+        // Owner rule (2026-11-14): nights are shared equally whatever people
+        // marked. Prefer a move that costs no granted request; failing that,
+        // one may spend a request — never below half of what the worker asked
+        // for (relaxed gate), and never a night they asked for.
+        if (
+          tryNightForNonNightSwap(input, st, metas, g, r) ||
+          tryNightForNonNightSwap(input, st, metas, g, r, preservesRequestFloorFor)
+        ) {
           moved = true
           break outer
         }

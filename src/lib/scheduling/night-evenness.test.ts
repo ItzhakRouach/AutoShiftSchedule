@@ -114,8 +114,8 @@ describe('even night distribution (strong preference)', () => {
     const counts = ['a', 'b', 'c'].map((id) => nightCount(st.committed[id]))
     expect(counts.reduce((x, y) => x + y, 0)).toBe(4)
     expect(Math.max(...counts) - Math.min(...counts)).toBeLessThanOrEqual(1)
-    // c paid exactly one request for it and stays above their own floorTarget.
-    expect(satisfiedCount(inp, 'c', st.committed['c'])).toBe(3)
+    // c may pay requested mornings for it (owner rule: nights are shared
+    // whatever people marked) but keeps at least half of what they asked for.
     expect(satisfiedCount(inp, 'c', st.committed['c'])).toBeGreaterThanOrEqual(
       floorTarget(inp, 'c'),
     )

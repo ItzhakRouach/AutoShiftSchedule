@@ -112,3 +112,17 @@ export function commitTwelve(
   }
   out.push({ employeeId: e.id, day, variant, rolesByShift: plan.rolesByShift })
 }
+
+/** Reverse commitTwelve for `e` on `day`, restoring the 8h it absorbed. */
+export function uncommitTwelve(st: FillState, out: TwelveHourAssignment[], e: Employee, day: number, base: Assignment): void {
+  const mine = st.committed[e.id].filter((a) => a.day === day && a.is12h)
+  for (const a of mine) {
+    const cell = st.grid[day][a.shift][a.roleId]
+    cell.splice(cell.indexOf(e.id), 1)
+  }
+  st.committed[e.id] = st.committed[e.id].filter((a) => !mine.includes(a))
+  st.grid[day][base.shift][base.roleId].push(e.id)
+  st.committed[e.id].push(base)
+  const i = out.findIndex((t) => t.employeeId === e.id && t.day === day)
+  if (i >= 0) out.splice(i, 1)
+}

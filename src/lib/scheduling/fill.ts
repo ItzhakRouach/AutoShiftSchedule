@@ -115,13 +115,9 @@ export function runFill(
         st.satisfied[e.id] = recountSatisfied(input, e.id, st.committed[e.id])
       }
     })
-    // NIGHT FLOOR: everything above is a CAP, and all of it runs through the
-    // strict request gate — so a heavy day-shift requester satisfies every
-    // request and escapes nights entirely, with no pass able to correct it.
-    // This one may spend a granted request to lift someone to their floor, but
-    // never below their own floorTarget (half their requests, min 2). Floors
-    // are proportional to committed shifts, so they must be built HERE, after
-    // the fill has settled who works how much.
+    // NIGHT FLOOR: lifts anyone still below their floor, spending a granted
+    // request if needed but never below half of their requests. Floors are
+    // proportional to committed shifts, so they are built here, after the fill.
     timed(st, 'night-floor', () => {
       runNightFloorPass(input, st, metas, nightThresholds, buildNightFloors(input, st.committed))
       for (const e of input.employees) {
@@ -151,10 +147,16 @@ export function runFill(
       st.satisfied[e.id] = recountSatisfied(input, e.id, st.committed[e.id])
     }
   })
-  // MANAGER BALANCE (re-run): coverage-rescue and the 12h pass ADD shifts after
-  // the first balance run, which can dilute a manager-holder below their
-  // ceil(total/2) in-role target. Same-shift role swaps are coverage-, load-
-  // and request-neutral, so a final polish here is always safe.
+  // NIGHT EVENNESS again: the 12h pass adds 19:00–07:00 nights after the first.
+  if (!skipDiversity) {
+    timed(st, 'night-evenness-2', () => {
+      runNightEvennessPass(input, st, metas, nightThresholds)
+      for (const e of input.employees) st.satisfied[e.id] = recountSatisfied(input, e.id, st.committed[e.id])
+    })
+  }
+  // MANAGER BALANCE (re-run): rescue and the 12h pass ADD shifts, which can
+  // dilute a manager-holder below their ceil(total/2) in-role target. Same-shift
+  // role swaps are coverage-, load- and request-neutral, so this is always safe.
   if (!skipDiversity) {
     timed(st, 'manager-balance-2', () => runManagerBalancePass(input, st, metas))
     // ROLE BALANCE: split every non-manager role's shifts evenly across its

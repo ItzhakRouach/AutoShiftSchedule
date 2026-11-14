@@ -53,6 +53,20 @@ describe('what a night request means', () => {
   })
 })
 
+describe('who shares the nights', () => {
+  it('people away all week (vacation, reserve duty, sick) are not counted in the split', () => {
+    const staff = crew(12)
+    const away = new Set(['w09', 'w10', 'w11', 'w12'])
+    const inp = input({
+      employees: staff, requirements: week,
+      requests: buildRequests(staff, (id) => (away.has(id) ? { off: true, offHard: true } : {})),
+    })
+    expect(nightEligible(inp).filter((id) => away.has(id))).toEqual([])
+    // 21 nights over the 8 who are here → 3 each at most, not 2.
+    expect(buildNightThresholds(inp).w01).toBe(3)
+  })
+})
+
 describe('nights within one of each other', () => {
   for (const seed of [1, 2, 3]) {
     it(`flexible "any shift" workers carry their share and no more (seed ${seed})`, () => {
