@@ -57,12 +57,15 @@ function nightRoles(requirements: Requirements): Set<string> {
   return roles
 }
 
-/** Days on which the employee explicitly requested a night shift. */
+/** Days on which the employee asked for the night and ONLY the night. A night
+ *  marked alongside other shifts means "night is acceptable", not "I want
+ *  nights" (owner rule), so it goes into the even split like any other. */
 function requestedNights(input: EngineInput, empId: string): number {
   const reqs = input.requests[empId] ?? {}
   let n = 0
   for (const day of Object.keys(reqs)) {
-    if ((reqs[Number(day)]?.preferred ?? []).includes('night')) n++
+    const r = reqs[Number(day)]
+    if (r && !r.off && r.preferred.length === 1 && r.preferred[0] === 'night') n++
   }
   return n
 }

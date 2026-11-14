@@ -44,13 +44,14 @@ describe('satisfiedCount — 12h COVERS semantics', () => {
     expect(satisfiedCount(inp, 'e1', a)).toBe(1)
   })
 
-  it('two preferred windows both covered by one 12h count as two satisfied', () => {
+  it('a day with two marked windows, both covered by one 12h, is ONE met request', () => {
+    // Marking several shifts on a day means "any of these" — one request.
     const inp = inputWithPrefs({ 0: ['morning', 'noon'] })
     const a: Assignment[] = [
       { employeeId: 'e1', day: 0, shift: 'morning', roleId: GUARD, is12h: true, variant: 'm12_day' },
       { employeeId: 'e1', day: 0, shift: 'noon', roleId: GUARD, is12h: true, variant: 'm12_day' },
     ]
-    expect(satisfiedCount(inp, 'e1', a)).toBe(2)
+    expect(satisfiedCount(inp, 'e1', a)).toBe(1)
   })
 
   it('12h NOT covering the requested window does not count', () => {

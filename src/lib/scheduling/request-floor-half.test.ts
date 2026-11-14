@@ -10,14 +10,14 @@ import type { ShiftKey } from './types'
 
 const SH: ShiftKey[] = ['morning', 'noon', 'night']
 
-/** Build an input where employee `id` makes `n` distinct (day,shift) requests
- *  (packed 3-per-day across days). */
+/** Build an input where employee `id` asks for shifts on `n` days (one request
+ *  per day — a day with several marked shifts is a single request). n ≤ 7
+ *  uses one shift a day; above that the extra marks fold into the same days. */
 function reqInput(id: string, n: number) {
   const e = emp(id)
   const requests = buildRequests([e], (eid, d) => {
-    if (eid !== id) return {}
-    const start = d * 3
-    return { preferred: SH.filter((_, i) => start + i < n) }
+    if (eid !== id || d >= n) return {}
+    return { preferred: [SH[d % 3]] }
   })
   return { inp: input({ employees: [e], requests }), id }
 }
@@ -25,7 +25,7 @@ function reqInput(id: string, n: number) {
 describe('floorTarget = max(min(2, rc), ceil(rc / 2))', () => {
   it('never below the legacy ≥2 floor, raises to half for heavy requesters', () => {
     const expected: Record<number, number> = {
-      0: 0, 1: 1, 2: 2, 3: 2, 4: 2, 5: 3, 6: 3, 7: 4, 8: 4, 9: 5,
+      0: 0, 1: 1, 2: 2, 3: 2, 4: 2, 5: 3, 6: 3, 7: 4,
     }
     for (const [n, exp] of Object.entries(expected)) {
       const { inp, id } = reqInput('x', Number(n))

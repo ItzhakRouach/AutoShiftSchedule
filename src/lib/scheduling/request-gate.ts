@@ -32,22 +32,25 @@ export function satisfiedCount(
     if (a.is12h && a.variant) for (const s of TWELVE_HOUR_COVERS[a.variant]) set.add(s)
     else set.add(a.shift)
   }
+  // One request per DAY: marking several shifts means "any of these is fine",
+  // so the day is met when the worker works any one of them (owner rule).
   let n = 0
   for (const [day, covered] of coveredByDay) {
     const r = reqs[day]
     if (!r) continue
-    for (const p of r.preferred) if (covered.has(p)) n++
+    if (r.preferred.some((p) => covered.has(p))) n++
   }
   return n
 }
 
-/** Total distinct preferred (day,shift) requests this employee made for the week. */
+/** Days this employee asked for specific shifts this week (one request per
+ *  day, however many acceptable shifts they marked on it). */
 export function requestCount(input: EngineInput, empId: string): number {
   const reqs = input.requests[empId]
   if (!reqs) return 0
   let n = 0
   for (const day of Object.keys(reqs).map(Number)) {
-    n += reqs[day].preferred.length
+    if (reqs[day].preferred.length > 0) n++
   }
   return n
 }
