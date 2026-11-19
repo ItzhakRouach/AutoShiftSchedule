@@ -130,14 +130,8 @@ export async function applyImproved(periodId: string, swaps: unknown): Promise<A
   const dbSwaps = toDbSwaps(week, outcome.accepted)
   if (!dbSwaps) return { ok: false, error: AI_ERRORS.STALE }
   const run = await runSwaps(supabase, pid.data, dbSwaps, 'manual')
+  if (run !== 'ok') return { ok: false, error: run === 'stale' ? AI_ERRORS.STALE : GENERIC_ERROR }
   revalidatePath('/schedule')
-  if (!run.ok) {
-    // Rolled back fully ⇒ nothing changed. Otherwise hand back what is still
-    // applied so the undo button covers it.
-    return run.left.length > 0
-      ? { ok: false, error: AI_ERRORS.PARTIAL, revert: run.left }
-      : { ok: false, error: GENERIC_ERROR }
-  }
   return { ok: true, applied: outcome.applied, revert: dbSwaps }
 }
 
@@ -164,6 +158,7 @@ export async function revertImproved(periodId: string, applied: unknown): Promis
   }
 
   const run = await runSwaps(supabase, pid.data, plan, 'restore')
+  if (run !== 'ok') return { ok: false, error: run === 'stale' ? AI_ERRORS.REVERT_STALE : GENERIC_ERROR }
   revalidatePath('/schedule')
-  return run.ok ? { ok: true } : { ok: false, error: GENERIC_ERROR }
+  return { ok: true }
 }

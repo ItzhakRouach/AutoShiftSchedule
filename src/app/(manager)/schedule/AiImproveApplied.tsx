@@ -9,15 +9,13 @@ import { revertImproved } from './ai-improve-actions'
 interface Props {
   periodId: string
   revert: DbSwap[]
-  /** Error from the apply step (a partial save) — shown instead of success. */
-  notice?: string | null
   /** Called once the week is back as it was (or the undo is dismissed). */
   onClear: () => void
 }
 
 /** After an AI improvement is saved: confirmation + one-tap undo of exactly
  *  those swaps. Two-step inline confirm (window.confirm is banned here). */
-export function AiImproveApplied({ periodId, revert, notice, onClear }: Props) {
+export function AiImproveApplied({ periodId, revert, onClear }: Props) {
   const [pending, start] = useTransition()
   const [confirming, setConfirming] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -33,11 +31,7 @@ export function AiImproveApplied({ periodId, revert, notice, onClear }: Props) {
 
   return (
     <div style={{ marginTop: 10 }} data-testid="ai-improve-applied">
-      {notice ? (
-        <InlineAlert kind="warning">{notice}</InlineAlert>
-      ) : (
-        <InlineAlert kind="success">השיפור הוחל על הסידור ({revert.length} החלפות).</InlineAlert>
-      )}
+      <InlineAlert kind="success">השיפור הוחל על הסידור ({revert.length} החלפות).</InlineAlert>
       <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
         {!confirming ? (
           <Btn variant="outline" size="sm" icon="swap" onClick={() => setConfirming(true)} data-testid="ai-improve-revert">

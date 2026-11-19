@@ -46,20 +46,12 @@ export function AiImprove({ periodId, employees }: { periodId: string; employees
     setError(null)
     startApply(async () => {
       const r = await applyImproved(periodId, res.swaps)
-      // A partial failure still returns what was written, so undo stays possible.
-      if (r.revert) { setRevert(r.revert); setRes(null) }
-      if (!r.ok) setError(r.error ?? 'שגיאה.')
+      if (r.ok && r.revert) { setRevert(r.revert); setRes(null) }
+      else setError(r.error ?? 'שגיאה.')
     })
   }
 
-  if (revert) {
-    return (
-      <AiImproveApplied
-        periodId={periodId} revert={revert} notice={error}
-        onClear={() => { setRevert(null); setError(null) }}
-      />
-    )
-  }
+  if (revert) return <AiImproveApplied periodId={periodId} revert={revert} onClear={() => setRevert(null)} />
 
   const nothing = res && res.applied === 0
 

@@ -1,12 +1,12 @@
 // Server-only write side of the AI improvement: pinning short-key swaps to real
-// ids, running them through the atomic `swap_assignments` RPC, and the preview
-// text. Kept out of the 'use server' file so none of it is client-callable.
+// ids, running them through the all-or-nothing `swap_assignments_batch` RPC,
+// and the preview text. Kept out of the 'use server' file so none of it is client-callable.
 import 'server-only'
 import type { createClient } from '@/lib/supabase/server'
 import type { ProposedSwap, SwapCell } from '@/lib/ai/apply-swaps'
 import { CODE_SHIFT } from '@/lib/ai/encode-week'
 import { buildKeyMaps } from '@/lib/ai/keys'
-import { swapRpcArgs, invertSwap, type DbSwap } from '@/lib/ai/swap-rows'
+import { swapRpcArgs, type DbSwap } from '@/lib/ai/swap-rows'
 import type { AiChange } from './ai-shared'
 import type { SavedWeek } from './ai-improve-load'
 
@@ -55,31 +55,22 @@ export function describeChanges(swaps: PinnedSwap[]): AiChange[] {
   })
 }
 
-export interface RunOutcome {
-  ok: boolean
-  /** Swaps that are in the DB after this call and were not rolled back — on
-   *  a failed rollback, what the manager still needs to be able to undo. */
-  left: DbSwap[]
-}
+export type RunOutcome = 'ok' | 'stale' | 'error'
 
 /**
- * Run the RPC once per swap (each call is its own transaction). On a failure,
- * the swaps already written are rolled back last-first; any whose rollback
- * also fails are reported in `left` so the UI can still offer the undo.
+ * Run every swap in ONE transaction (`swap_assignments_batch`): either all of
+ * them are written or none. The function re-checks that each worker still
+ * holds the expected 8h cell, so an edit made meanwhile aborts the batch as
+ * 'stale' instead of being moved blindly.
  */
 export async function runSwaps(supabase: Supabase, periodId: string, swaps: DbSwap[], mode: 'manual' | 'restore'): Promise<RunOutcome> {
-  const done: DbSwap[] = []
-  for (const sw of swaps) {
-    const { error } = await supabase.rpc('swap_assignments', swapRpcArgs(periodId, sw, mode))
-    if (!error) { done.push(sw); continue }
-    const left = [...done]
-    for (const d of [...done].reverse()) {
-      // The inverse restores the pre-swap rows, so it must restore sources too.
-      const undo = await supabase.rpc('swap_assignments', swapRpcArgs(periodId, invertSwap(d), mode === 'manual' ? 'restore' : 'manual'))
-      if (undo.error) break
-      left.pop()
-    }
-    return { ok: false, left }
-  }
-  return { ok: true, left: done }
+  const p_swaps = swaps.map((sw) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { p_period, ...args } = swapRpcArgs(periodId, sw, mode)
+    return args
+  })
+  const { error } = await supabase.rpc('swap_assignments_batch', { p_period: periodId, p_swaps })
+  if (!error) return 'ok'
+  // ai_swap_stale: a cell moved; 23505: a worker got another shift that day.
+  return error.message?.includes('ai_swap_stale') || error.code === '23505' ? 'stale' : 'error'
 }

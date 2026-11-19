@@ -8,7 +8,6 @@ export const AI_ERRORS: Record<AiErrorCode, string> & {
   PUBLISHED: string
   NOTHING_TO_APPLY: string
   STALE: string
-  PARTIAL: string
   REVERT_STALE: string
   REVERT_ILLEGAL: string
 } = {
@@ -23,7 +22,6 @@ export const AI_ERRORS: Record<AiErrorCode, string> & {
   PUBLISHED: 'הסידור פורסם — אי אפשר לשנות אותו.',
   NOTHING_TO_APPLY: 'לא נמצא שיפור חוקי להחלה.',
   STALE: 'הסידור השתנה מאז ההצעה, ולכן היא לא הוחלה. הריצו את בדיקת ה-AI שוב.',
-  PARTIAL: 'חלק מהשינויים נשמרו ולא ניתן היה להחזיר אותם. אפשר לבטל אותם בכפתור "בטל את שינויי ה-AI".',
   REVERT_ILLEGAL: 'אחרי עריכות שנעשו מאז, החזרת הסידור הקודם תפר כלל (מנוחה / משמרת אחת ביום / יום חופש). אפשר לתקן ידנית בטבלה.',
   REVERT_STALE: 'המשבצות ששינה ה-AI נערכו מאז, ולכן אי אפשר לבטל אוטומטית. אפשר לתקן ידנית בטבלה.',
 }
