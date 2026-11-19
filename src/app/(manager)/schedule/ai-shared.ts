@@ -2,11 +2,15 @@
 // Kept separate so each action file stays well under the 200-line rule.
 import type { AiErrorCode } from '@/lib/ai/client'
 import type { ScheduleScore } from '@/lib/ai/score'
+import type { ShiftKey } from '@/lib/scheduling/types'
 
 export const AI_ERRORS: Record<AiErrorCode, string> & {
-  MANUAL_EDITS: string
   PUBLISHED: string
   NOTHING_TO_APPLY: string
+  STALE: string
+  PARTIAL: string
+  REVERT_STALE: string
+  REVERT_ILLEGAL: string
 } = {
   NO_KEY: 'תכונת ה-AI אינה מוגדרת (חסר מפתח API).',
   NO_CREDIT: 'נגמר הקרדיט החודשי ל-API. התכונה תהיה זמינה שוב במחזור החיוב הבא.',
@@ -16,10 +20,23 @@ export const AI_ERRORS: Record<AiErrorCode, string> & {
   EMPTY: 'לא התקבלה תשובה. נסו שוב.',
   BAD_SHAPE: 'התשובה מה-AI הגיעה בפורמט שגוי. נסו שוב.',
   CALL_FAILED: 'שגיאה בפנייה ל-AI. נסו שוב.',
-  MANUAL_EDITS:
-    'יש עריכות ידניות בסידור. שיפור AI עובד רק על סידור אוטומטי נקי, כדי לא לדרוס את העריכות שלכם.',
   PUBLISHED: 'הסידור פורסם — אי אפשר לשנות אותו.',
   NOTHING_TO_APPLY: 'לא נמצא שיפור חוקי להחלה.',
+  STALE: 'הסידור השתנה מאז ההצעה, ולכן היא לא הוחלה. הריצו את בדיקת ה-AI שוב.',
+  PARTIAL: 'חלק מהשינויים נשמרו ולא ניתן היה להחזיר אותם. אפשר לבטל אותם בכפתור "בטל את שינויי ה-AI".',
+  REVERT_ILLEGAL: 'אחרי עריכות שנעשו מאז, החזרת הסידור הקודם תפר כלל (מנוחה / משמרת אחת ביום / יום חופש). אפשר לתקן ידנית בטבלה.',
+  REVERT_STALE: 'המשבצות ששינה ה-AI נערכו מאז, ולכן אי אפשר לבטל אוטומטית. אפשר לתקן ידנית בטבלה.',
+}
+
+/** One cell the AI proposes to change: `fromId` leaves it, `toId` takes it. */
+export interface AiChange {
+  day: number
+  shift: ShiftKey
+  /** Role NAME (the engine's role id). */
+  role: string
+  fromId: string
+  toId: string
+  why?: string
 }
 
 /** The manager-facing subset of a score. The engine's internal diversity cost

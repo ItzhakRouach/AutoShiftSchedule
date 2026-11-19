@@ -1,33 +1,41 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 import { Btn } from '@/components/ui/Btn'
 import { Spinner } from '@/components/ui/Spinner'
 import { InlineAlert } from '@/components/ui/InlineAlert'
+import type { ViewEmployee } from '@/lib/schedule/view-types'
 import { requestImprovement, applyImproved, type AiImproveResult } from './ai-improve-actions'
 import { AiImproveReport } from './AiImproveReport'
+import { AiImproveChanges } from './AiImproveChanges'
+import { AiImproveApplied } from './AiImproveApplied'
+import { useAiRevert } from './useAiRevert'
+
+const MAX_ASK = 500
 
 /**
- * Opt-in AI pass over the FINISHED schedule. It only ever proposes swaps of two
- * filled cells, each re-checked against every hard constraint and kept only if
- * the week measurably improves — so the floor is "nothing changes". Nothing is
- * written until the manager taps אישור, and the apply step re-validates the
- * swaps server-side rather than trusting anything sent from here.
+ * Opt-in AI pass over the schedule AS IT IS NOW — manual edits and 12h blocks
+ * included — reading every worker's requests. It only ever proposes swaps of
+ * two filled 8h cells, each re-checked against every hard constraint and kept
+ * only if the week measurably improves. The manager sees every changed cell
+ * before anything is written, and can undo the whole improvement afterwards.
  *
  * It takes ~2-4 minutes, so it is never part of generating a schedule.
  */
-export function AiImprove({ periodId }: { periodId: string }) {
+export function AiImprove({ periodId, employees }: { periodId: string; employees: ViewEmployee[] }) {
   const [pending, start] = useTransition()
   const [applying, startApply] = useTransition()
   const [res, setRes] = useState<AiImproveResult | null>(null)
-  const [done, setDone] = useState(false)
+  const [ask, setAsk] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [revert, setRevert] = useAiRevert(periodId)
+  const empById = useMemo(() => new Map(employees.map((e) => [e.id, e])), [employees])
 
   const run = () => {
     setError(null)
     setRes(null)
     start(async () => {
-      const r = await requestImprovement(periodId)
+      const r = await requestImprovement(periodId, ask.trim() || undefined)
       if (r.ok) setRes(r)
       else setError(r.error ?? 'שגיאה.')
     })
@@ -38,16 +46,18 @@ export function AiImprove({ periodId }: { periodId: string }) {
     setError(null)
     startApply(async () => {
       const r = await applyImproved(periodId, res.swaps)
-      if (r.ok) { setDone(true); setRes(null) }
-      else setError(r.error ?? 'שגיאה.')
+      // A partial failure still returns what was written, so undo stays possible.
+      if (r.revert) { setRevert(r.revert); setRes(null) }
+      if (!r.ok) setError(r.error ?? 'שגיאה.')
     })
   }
 
-  if (done) {
+  if (revert) {
     return (
-      <InlineAlert kind="success" style={{ marginTop: 10 }}>
-        השיפור הוחל על הסידור.
-      </InlineAlert>
+      <AiImproveApplied
+        periodId={periodId} revert={revert} notice={error}
+        onClear={() => { setRevert(null); setError(null) }}
+      />
     )
   }
 
@@ -56,13 +66,29 @@ export function AiImprove({ periodId }: { periodId: string }) {
   return (
     <div style={{ marginTop: 10 }}>
       {!res && (
-        <Btn
-          variant="outline" size="md" icon="sparkles" style={{ width: '100%' }}
-          disabled={pending} onClick={run} data-testid="ai-improve-btn"
-        >
-          {pending ? <Spinner size={16} /> : null}
-          {pending ? 'ה-AI בודק שיפורים… (עד 4 דקות)' : 'בדוק שיפור עם AI'}
-        </Btn>
+        <>
+          <textarea
+            value={ask}
+            onChange={(e) => setAsk(e.target.value.slice(0, MAX_ASK))}
+            disabled={pending}
+            rows={2}
+            placeholder="מה לשפר? (רשות) — למשל: פחות לילות לדנה, לתת לאבי את הבקשות שלו"
+            aria-label="בקשה ל-AI לשיפור הסידור"
+            data-testid="ai-improve-ask"
+            style={{
+              width: '100%', boxSizing: 'border-box', resize: 'vertical', marginBottom: 8,
+              padding: '8px 10px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)',
+              background: 'var(--surface)', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 13,
+            }}
+          />
+          <Btn
+            variant="outline" size="md" icon="sparkles" style={{ width: '100%' }}
+            disabled={pending} onClick={run} data-testid="ai-improve-btn"
+          >
+            {pending ? <Spinner size={16} /> : null}
+            {pending ? 'ה-AI בודק את הסידור והבקשות… (עד 4 דקות)' : 'שפר את הסידור הנוכחי עם AI'}
+          </Btn>
+        </>
       )}
 
       {error && <InlineAlert kind="error" style={{ marginTop: 10 }}>{error}</InlineAlert>}
@@ -73,24 +99,25 @@ export function AiImprove({ periodId }: { periodId: string }) {
           style={{ padding: '12px 14px', borderRadius: 'var(--r-md)', background: 'var(--surface-2)', border: '1px solid var(--border)' }}
         >
           <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
-            {nothing ? 'לא נמצא שיפור' : `נמצאו ${res.applied} החלפות משפרות`}
+            {nothing ? 'לא נמצא שיפור' : `נמצאו ${res.applied} החלפות משפרות — עדיין לא נשמר דבר`}
           </div>
           {res.notes && (
             <p style={{ margin: '6px 0 0', fontSize: 12.5, lineHeight: 1.75, color: 'var(--text-2)' }}>
               {res.notes}
             </p>
           )}
+          {!nothing && res.changes && <AiImproveChanges changes={res.changes} empById={empById} />}
           {!nothing && res.before && res.after && (
             <AiImproveReport before={res.before} after={res.after} />
           )}
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
             {!nothing && (
               <Btn variant="primary" size="sm" disabled={applying} onClick={apply} data-testid="ai-improve-apply">
-                {applying ? 'מחיל…' : 'החל על הסידור'}
+                {applying ? 'מחיל…' : 'אשר והחל על הסידור'}
               </Btn>
             )}
-            <Btn variant="ghost" size="sm" onClick={() => setRes(null)}>
-              {nothing ? 'סגור' : 'בטל'}
+            <Btn variant="ghost" size="sm" disabled={applying} onClick={() => setRes(null)}>
+              {nothing ? 'סגור' : 'דחה'}
             </Btn>
           </div>
           {res.costUsd != null && (

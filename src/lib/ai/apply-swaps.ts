@@ -18,7 +18,7 @@ import type { EngineInput } from '@/lib/scheduling/types'
 import type { FillState } from '@/lib/scheduling/dayfill'
 import { resultFromFillState } from '@/lib/scheduling'
 import { moveLegal, applyMove, type Move, type SlotRef } from '@/lib/scheduling/moves'
-import { preservesRequestFloorFor } from '@/lib/scheduling/request-gate'
+import { preservesRequestFloorFor, satisfiedCount } from '@/lib/scheduling/request-gate'
 import { CODE_SHIFT } from './encode-week'
 import { buildKeyMaps } from './keys'
 import { scoreSchedule, compareScores } from './score'
@@ -53,7 +53,7 @@ export interface SwapOutcome {
   rejected: { swap: ProposedSwap; reason: SwapRejection }[]
 }
 
-const cloneState = (st: FillState): FillState => ({
+export const cloneState = (st: FillState): FillState => ({
   ...st,
   grid: JSON.parse(JSON.stringify(st.grid)),
   committed: Object.fromEntries(
@@ -83,6 +83,9 @@ export function applySwaps(
   const rejected: SwapOutcome['rejected'] = []
   const accepted: ProposedSwap[] = []
   let applied = 0
+  // Score of the live state — recomputed only when a swap is kept, since every
+  // scoring may re-run the engine's fill for the feasibility baseline.
+  let current: ReturnType<typeof scoreSchedule> | null = null
 
   type Resolved =
     | { ok: true; empId: string; role: string }
@@ -112,6 +115,7 @@ export function applySwaps(
     }
 
     const metas = Object.fromEntries(input.days.map((d) => [d.index, d]))
+    current ??= scoreSchedule(input, resultFromFillState(input, st))
     const move: Move = { legs: [legA, legB] }
     // The relaxed gate lets a swap spend a granted request; the score check
     // below is what decides whether that trade was actually worth it.
@@ -119,10 +123,15 @@ export function applySwaps(
       rejected.push({ swap, reason: 'illegal' }); continue
     }
 
-    const before = scoreSchedule(input, resultFromFillState(input, st))
     applyMove(trial, move)
+    // applyMove only moves occupants; the granted-request tally it leaves stale
+    // is what the score reads first after coverage, so refresh it for both
+    // movers — otherwise a swap that grants a request can never count.
+    for (const leg of move.legs) {
+      trial.satisfied[leg.empId] = satisfiedCount(input, leg.empId, trial.committed[leg.empId])
+    }
     const after = scoreSchedule(input, resultFromFillState(input, trial))
-    if (compareScores(after, before) >= 0) {
+    if (compareScores(after, current) >= 0) {
       rejected.push({ swap, reason: 'not_an_improvement' }); continue
     }
 
@@ -130,6 +139,7 @@ export function applySwaps(
     st.grid = trial.grid
     st.committed = trial.committed
     st.satisfied = trial.satisfied
+    current = after
     accepted.push(swap)
     applied++
   }

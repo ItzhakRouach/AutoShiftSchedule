@@ -14,7 +14,8 @@ import { fakeModeActive, EMPTY_USAGE, type AiResult } from './client'
 import { callStructured, type StructuredOk } from './client-structured'
 import { SwapsSchema, type SwapsWire } from './improve-schema'
 import { buildImprovePrompt } from './improve-prompt'
-import { applySwaps, type ProposedSwap, type SwapRejection } from './apply-swaps'
+import { applySwaps, cloneState, type ProposedSwap, type SwapRejection } from './apply-swaps'
+import type { FillState } from '@/lib/scheduling/dayfill'
 import { scoreSchedule, compareScores, type ScheduleScore } from './score'
 import type Anthropic from '@anthropic-ai/sdk'
 
@@ -55,6 +56,11 @@ export interface ImproveOutcome {
 
 export interface ImproveOpts {
   propose?: SwapProposer
+  /** The week AS SAVED (manual edits, 12h blocks — see state-from-rows). When
+   *  absent the engine's own week is regenerated as the starting point. */
+  state?: FillState
+  /** Optional free-text ask from the manager ("give Dana fewer nights"). */
+  instruction?: string
 }
 
 export async function improveSchedule(
@@ -63,13 +69,14 @@ export async function improveSchedule(
 ): Promise<AiResult<ImproveOutcome>> {
   const propose = opts.propose ?? (fakeModeActive() ? fakeProposer : realProposer)
 
-  // The engine's week, kept pristine for comparison...
-  const baseResult = resultFromFillState(input, runFillHardDaysAware(input, input.skipTwelve ?? false))
+  // The starting week, kept pristine for comparison...
+  const start = () => (opts.state ? cloneState(opts.state) : runFillHardDaysAware(input, input.skipTwelve ?? false))
+  const baseResult = resultFromFillState(input, start())
   const baseScore = scoreSchedule(input, baseResult)
   // ...and an independent state the swaps mutate.
-  const st = runFillHardDaysAware(input, input.skipTwelve ?? false)
+  const st = start()
 
-  const { system, user } = buildImprovePrompt(input, baseResult)
+  const { system, user } = buildImprovePrompt(input, baseResult, opts.instruction)
   const call = await propose(system, [{ role: 'user', content: user }])
   if (!call.ok) return call
 

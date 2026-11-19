@@ -107,7 +107,7 @@ export function ScheduleClient({ view, editMeta, workerVacations, rolelessEmploy
 
       {!hasResult && <EmptyStateCard view={view} />}
 
-      {hasResult && !published && <AiImprove periodId={view.periodId} />}
+      {hasResult && !published && <AiImprove periodId={view.periodId} employees={view.employees} />}
 
       <div style={{ height: 14 }} />
       <Segmented

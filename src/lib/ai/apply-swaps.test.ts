@@ -189,3 +189,23 @@ describe('applySwaps — stale references in a batch', () => {
     expect(out.rejected[0].reason).toBe('no_such_cell')
   })
 })
+
+describe('applySwaps on a saved (hand-edited) week', () => {
+  it('counts a request the swap grants, so the swap is kept', async () => {
+    const { stateFromRows } = await import('./state-from-rows')
+    const i = swappableWeek()
+    // The manager left u2 off the day they asked for.
+    const st = stateFromRows(i, [
+      { employeeId: 'u2', day: 0, shiftKey: 'morning', roleName: GUARD, fills: null },
+      { employeeId: 'u1', day: 1, shiftKey: 'morning', roleName: GUARD, fills: null },
+    ])
+    const g = K(i).roleKey(GUARD)!
+    const key = (id: string) => K(i).empKey(id)!
+    const out = applySwaps(i, st, [
+      { a: { emp: key('u2'), day: 0, shift: 'M', role: g }, b: { emp: key('u1'), day: 1, shift: 'M', role: g } },
+    ])
+    expect(out.applied).toBe(1)
+    expect(st.grid[1].morning[GUARD]).toEqual(['u2'])
+    expect(st.satisfied.u2).toBe(1)
+  })
+})

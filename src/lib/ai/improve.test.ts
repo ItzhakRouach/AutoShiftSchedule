@@ -84,4 +84,18 @@ describe('improveSchedule', () => {
     if (!r.ok) return
     expect(r.usage.costUsd).toBeCloseTo(0.002, 6)
   })
+
+  it('starts from the saved week and passes the manager request to the model', async () => {
+    const { stateFromRows } = await import('./state-from-rows')
+    const i = week()
+    const state = stateFromRows(i, [{ employeeId: 'u1', day: 0, shiftKey: 'morning', roleName: GUARD, fills: null }])
+    const propose = proposer({ swaps: [], notes: '' })
+    const r = await improveSchedule(i, { propose, state, instruction: 'פחות לילות לדנה' })
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.data.baseScore.filledSlots).toBe(1) // the saved week, not a regenerated one
+    expect(state.grid[0].morning[GUARD]).toEqual(['u1']) // caller's state untouched
+    const user = (propose as ReturnType<typeof vi.fn>).mock.calls[0][1][0].content as string
+    expect(user).toContain('# MANAGER_REQUEST\nפחות לילות לדנה')
+  })
 })

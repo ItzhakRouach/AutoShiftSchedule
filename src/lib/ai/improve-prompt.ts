@@ -10,6 +10,9 @@ import { DOMAIN_RULESET } from './ruleset'
 
 const TASK = `TASK: improve the schedule below by proposing SWAPS.
 
+The schedule is the CURRENT state, which may include the manager's own manual
+edits and 12h blocks. Read every worker's requests (# REQ) against it.
+
 You may not add, remove or leave a slot empty. The only change you can propose is
 exchanging the occupants of TWO already-filled 8h cells. Coverage therefore stays
 exactly as it is, and your job is purely to make the week fairer.
@@ -34,14 +37,18 @@ Every swap is re-checked against all hard constraints and the overall fairness
 score, and silently discarded if it fails either — so propose only swaps you are
 confident in, and propose FEW (typically 3-10). Quality beats quantity.
 
+If a # MANAGER_REQUEST section is present, it is the manager's own wish for this
+week: favour swaps that serve it, but it never overrides a HARD RULE.
+
 In "why" give one short Hebrew sentence per swap. In "notes" give a one-paragraph
 Hebrew summary of what you were trying to fix.`
 
-export function buildImprovePrompt(input: EngineInput, result: EngineResult) {
+export function buildImprovePrompt(input: EngineInput, result: EngineResult, instruction?: string) {
   const { text: week, maps } = encodeWeek(input)
+  const ask = instruction?.trim()
   return {
     system: `${DOMAIN_RULESET}\n\n${TASK}`,
-    user: `${week}\n${encodeResult(input, result, maps)}`,
+    user: `${week}\n${encodeResult(input, result, maps)}${ask ? `\n# MANAGER_REQUEST\n${ask}` : ''}`,
     maps,
   }
 }
